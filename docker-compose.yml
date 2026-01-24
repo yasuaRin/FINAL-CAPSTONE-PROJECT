@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # Database (shared by all)
+  postgres:
+    extends:
+      file: ./shared/database/docker-compose.yml
+      service: postgres
+  
+  # Dadia's modules
+  overview-api:
+    build: ./admin/overview/backend
+    ports:
+      - "5001:5001"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+    depends_on:
+      - postgres
+    volumes:
+      - ./admin/overview/data:/app/data
+  
+  revenue-api:
+    build: ./admin/revenue-tracker/backend
+    ports:
+      - "5002:5002"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+    depends_on:
+      - postgres
+  
+  # Friend 1's module
+  partnership-api:
+    build: ./admin/smart-partnership/backend
+    ports:
+      - "5003:5003"
+    depends_on:
+      - postgres
+  
+  # Friend 2's module
+  team-api:
+    build: ./admin/team-management/backend
+    ports:
+      - "5004:5004"
+    depends_on:
+      - postgres
+  
+  # User website (Friend 3)
+  user-website:
+    build: ./user/website
+    ports:
+      - "3000:3000"
+  
+  # All frontends can be built similarly
