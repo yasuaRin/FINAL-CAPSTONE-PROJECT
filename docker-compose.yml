@@ -1,55 +1,40 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  # Database (shared by all)
-  postgres:
-    extends:
-      file: ./shared/database/docker-compose.yml
-      service: postgres
-  
-  # Dadia's modules
-  overview-api:
-    build: ./admin/overview/backend
-    ports:
-      - "5001:5001"
+  db:
+    image: postgres:18-alpine
+    container_name: vidhelp_db
     environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-    depends_on:
-      - postgres
+      POSTGRES_DB: vidhelp_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
     volumes:
-      - ./admin/overview/data:/app/data
-  
-  revenue-api:
-    build: ./admin/revenue-tracker/backend
-    ports:
-      - "5002:5002"
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:8.3
+    container_name: vidhelp_pgadmin
     environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-    depends_on:
-      - postgres
-  
-  # Friend 1's module
-  partnership-api:
-    build: ./admin/smart-partnership/backend
+      PGADMIN_DEFAULT_EMAIL: dadiaputu@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: 120705#
     ports:
-      - "5003:5003"
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
     depends_on:
-      - postgres
-  
-  # Friend 2's module
-  team-api:
-    build: ./admin/team-management/backend
-    ports:
-      - "5004:5004"
-    depends_on:
-      - postgres
-  
-  # User website (Friend 3)
-  user-website:
-    build: ./user/website
-    ports:
-      - "3000:3000"
-  
-  # All frontends can be built similarly
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  pgadmin_data:

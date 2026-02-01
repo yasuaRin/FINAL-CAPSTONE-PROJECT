@@ -1,0 +1,5 @@
+# scripts/requirements.txt - Python dependencies
+pandas>=1.5.0        # Data manipulation (reads Excel/CSV)
+openpyxl>=3.0.0      # Excel file support
+psycopg2-binary>=2.9 # PostgreSQL connector
+python-dotenv>=1.0   # Load .env files

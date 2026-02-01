@@ -1,48 +1,36 @@
-# VIDHELP Capstone Project
+# VidHelp Admin Panel
 
-## ADMIN PANEL MODULES
+Live selling analytics dashboard for beauty brands. Monitors revenue, viewers, and host performance across TikTok and Shopee.
 
-### Port Assignments
-| Module | Port | Developer | API Base |
-|--------|------|-----------|----------|
-| Overview Dashboard | 5001 | **Dadia** | `/api/overview/*` |
-| Revenue Tracker | 5002 | **Dadia** | `/api/revenue/*` |
-| Smart Partnership | 5003 | Friend 1 | `/api/partners/*` |
-| Team Management | 5004 | Friend 2 | `/api/team/*` |
-| User Website | 3000 | Friend 3 | `/api/user/*` |
+## Overview
+VidHelp Admin Panel is a centralized analytics system designed to support internal operations of PT. Video Bikin Sukses (VIDHELP). It enables data-driven decision-making through performance tracking, brand comparison, and campaign analysis.
 
-##  Project Structure
-admin/overview/ # Dadia - Dashboard overview
-admin/revenue-tracker/ # Dadia - Revenue analytics
-admin/smart-partnership/ # Friend 1 - UMKM partners
-admin/team-management/ # Friend 2 - Team management
-user/website/ # Friend 3 - Public website
-shared/ # Shared resources
+## Key Data
+- 44,161+ live selling sessions
+- 11 beauty & fashion brands
+- 150+ campaign periods
+- 20+ live stream hosts
 
+## Features
+- Real-time revenue tracking (TikTok & Shopee)
+- Host and brand performance analytics
+- Period-based campaign insights
+- Automated Google Sheets synchronization
 
-## Development Setup
-
-### 1. Start Shared Database
+## Quick Start
 ```bash
-docker-compose up postgres pgadmin
-# Database: localhost:5433
-# PGAdmin: http://localhost:5050
-```
+git clone <your-repo-url>
+cd capstone-project
+code SETUP.md
 
-## API Health Check
+## Project Structure
+capstone-project/
+├── backend/              # Express.js API
+├── frontend/             # React admin dashboard
+├── docker/               # Docker & database init
+├── credentials/          # Google API keys (gitignored)
+├── .env.example
+├── docker-compose.yml
+├── README.md
+└── SETUP.md
 
-### Admin-Overview Dashboard
-To check the health of the Overview Dashboard, use the following commands:
-
-```bash
-curl http://localhost:5001/health
-curl http://localhost:5001/api/kpis
-```
-
-### Admin-Revenue Tracker
-To check the health of the Revenue Tracker, use the following commands:
-
-```bash
-curl http://localhost:5002/health
-curl http://localhost:5002/api/revenue/daily
-```
