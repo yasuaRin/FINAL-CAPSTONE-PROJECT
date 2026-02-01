@@ -17,3 +17,6 @@ Thumbs.db
 .idea/
 *.log
 *.swp
+
+#Database data
+vidhelp_dump.zip
