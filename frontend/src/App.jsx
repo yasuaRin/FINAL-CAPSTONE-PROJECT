@@ -1,97 +1,65 @@
-﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+﻿// frontend/src/App.jsx
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AdminLayout } from './components/layout/AdminLayout';
-import { ProtectedRoute } from './components/layout/ProtectedRoute';
+import { Dashboard } from './pages/admin/Dashboard';
+import { Login } from './pages/auth/AdminLogin';
+import ForgotPassword  from './pages/auth/ForgotPassword';
+import  Register from './pages/auth/Register';
+import { useAuth } from './hooks/useAuth';
+import Brands from './pages/admin/Brands';
+import Revenue from './pages/admin/Revenue';
+import Team from './pages/admin/Team';
+import Leads from './pages/admin/Leads';
+import Profile from './pages/admin/Profile';
 
-// Public pages
-const Landing = lazy(() => import('./pages/public/Landing'));
-const Booking = lazy(() => import('./pages/public/Booking'));
+const ProtectedRoute = ({ children }) => {
+  const { loading } = useAuth();
+  const token = localStorage.getItem('token');
 
-// Auth pages
-const Login = lazy(() => import('./pages/auth/Login'));
-const Register = lazy(() => import('./pages/auth/Register'));
-const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
 
-// Admin pages
-const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
-const Revenue = lazy(() => import('./pages/admin/Revenue'));
-const Brands = lazy(() => import('./pages/admin/Brands'));
-const Leads = lazy(() => import('./pages/admin/Leads'));
-const Team = lazy(() => import('./pages/admin/Team'));
-const Profile = lazy(() => import('./pages/admin/Profile'));
+  if (!token) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  return <>{children}</>;
+};
 
 function App() {
   return (
-    <BrowserRouter>
-      <Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-        </div>
-      }>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Landing />} />
-          <Route path="/booking" element={<Booking />} />
+    <Routes>
+      <Route path="/" element={<Navigate to="/admin/login" replace />} />
+      <Route path="/admin/login" element={<Login />} />
+      <Route path="/admin/forgot-password" element={<ForgotPassword />} />
+      <Route path="/admin/register" element={<Register />} />
 
-          {/* Auth Routes */}
-          <Route path="/admin/login" element={<Login />} />
-          <Route path="/admin/signup" element={<Register />} />
-          <Route path="/admin/forgot-password" element={<ForgotPassword />} />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="revenue" element={<Revenue />} />
+        <Route path="brands" element={<Brands />} />
+        <Route path="team" element={<Team />} />
+        <Route path="leads" element={<Leads />} />
+        <Route path="profile" element={<Profile />} />
+        <Route path="settings" element={<div>Settings Page</div>} />
+      </Route>
 
-          {/* Protected Admin Routes */}
-          <Route path="/admin" element={
-            <ProtectedRoute>
-              <AdminLayout>
-                <Dashboard />
-              </AdminLayout>
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/admin/revenue" element={
-            <ProtectedRoute>
-              <AdminLayout>
-                <Revenue />
-              </AdminLayout>
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/admin/brands" element={
-            <ProtectedRoute>
-              <AdminLayout>
-                <Brands />
-              </AdminLayout>
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/admin/leads" element={
-            <ProtectedRoute>
-              <AdminLayout>
-                <Leads />
-              </AdminLayout>
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/admin/team" element={
-            <ProtectedRoute>
-              <AdminLayout>
-                <Team />
-              </AdminLayout>
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/admin/profile" element={
-            <ProtectedRoute>
-              <AdminLayout>
-                <Profile />
-              </AdminLayout>
-            </ProtectedRoute>
-          } />
-
-          {/* Catch all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+      <Route path="*" element={<Navigate to="/admin/login" replace />} />
+    </Routes>
   );
 }
 
