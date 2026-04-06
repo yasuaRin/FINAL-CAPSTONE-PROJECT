@@ -1,194 +1,318 @@
-﻿// frontend/src/components/layout/AdminLayout.tsx
-import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
+﻿import { useState, useEffect } from 'react';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import {
+  LayoutDashboard, TrendingUp, Briefcase, Radar,
+  Calendar, Bell, Users, User, Settings, LogOut,
+  Menu, Search, X
+} from 'lucide-react';
 
 export const AdminLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   useEffect(() => {
-    setSidebarOpen(false);
+    setIsSidebarOpen(false);
   }, [location.pathname]);
 
-  const menuItems = [
-    { path: '/admin/dashboard', icon: 'fa-chart-line', label: 'Dashboard' },
-    { path: '/admin/revenue', icon: 'fa-dollar-sign', label: 'Revenue' },
-    { path: '/admin/brands', icon: 'fa-building', label: 'Brands' },
-    { path: '/admin/team', icon: 'fa-users', label: 'Team' },
-    { path: '/admin/map', icon: 'fa-map', label: 'Smart Map' },
-    { path: '/admin/schedule', icon: 'fa-calendar', label: 'Schedule' },
+  const navItems = [
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard' },
+    { icon: TrendingUp, label: 'Revenue', path: '/admin/revenue' },
+    { icon: Briefcase, label: 'Brands', path: '/admin/brands' },
+    { icon: Radar, label: 'Lead Radar', path: '/admin/leads' },
+    { icon: Calendar, label: 'AI Schedule', path: '/admin/schedule' },
+    { icon: Bell, label: 'Intelligence', path: '/admin/notifications' },
+    { icon: Users, label: 'Staff', path: '/admin/team' },
+    { icon: User, label: 'My Profile', path: '/admin/profile' },
+    { icon: Settings, label: 'Settings', path: '/admin/settings' },
   ];
 
-  const isActive = (path) => location.pathname === path;
-  const currentPageTitle = menuItems.find(item => isActive(item.path))?.label || 'Dashboard';
+  const currentPage = navItems.find(i => location.pathname.startsWith(i.path))?.label || 'Dashboard';
 
   const handleLogout = async () => {
     await logout();
-    navigate('/admin/login', { replace: true }); // ← was '/login'
+    navigate('/admin/login', { replace: true });
   };
 
   return (
-    <div className="d-flex vh-100 overflow-hidden">
-      <aside
-        className={`bg-dark text-white d-flex flex-column position-fixed position-lg-static h-100 ${
-          sidebarOpen ? 'd-flex' : 'd-none d-lg-flex'
-        }`}
-        style={{ width: '280px', zIndex: 1045, transition: 'all 0.3s ease-in-out' }}
-      >
-        {/* Logo */}
-        <div className="p-4 border-bottom border-secondary">
-          <h2 className="h4 mb-0 text-white">
-            <i className="fas fa-chart-simple me-2"></i>
-            VIDHELP
-          </h2>
-          <p className="text-white-50 small mb-0 mt-1">Admin Portal</p>
-        </div>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#f0f2f5' }}>
 
-        {/* User Info */}
-        <div className="p-4 border-bottom border-secondary">
-          <div className="d-flex align-items-center gap-3">
-            <div
-              className="bg-primary rounded-circle d-flex align-items-center justify-content-center"
-              style={{ width: '48px', height: '48px' }}
-            >
-              <i className="fas fa-user fa-lg text-white"></i>
-            </div>
-            <div>
-              <h6 className="mb-0 text-white">{user?.full_name || 'Administrator'}</h6>
-              <small className="text-white-50 text-capitalize">{user?.role || 'Admin'}</small>
-            </div>
-          </div>
-        </div>
+      {/* Mobile overlay */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1040,
+            background: 'rgba(0,0,0,0.45)',
+            backdropFilter: 'blur(4px)'
+          }}
+        />
+      )}
 
-        {/* Navigation */}
-        <nav className="flex-grow-1 py-4">
-          <ul className="nav flex-column">
-            {menuItems.map((item) => {
-              const active = isActive(item.path);
-              return (
-                <li key={item.path} className="nav-item px-3 mb-2">
-                  <Link
+      {/* ── Sidebar ── */}
+      {[true, false].map((isDesktop) => (
+        <aside
+          key={isDesktop ? 'desktop' : 'mobile'}
+          style={{
+            width: '280px',
+            minWidth: '280px',
+            flexShrink: 0,
+            ...(isDesktop ? {
+              display: 'none'
+            } : {
+              position: 'fixed',
+              top: 0, left: 0, bottom: 0,
+              zIndex: 1045,
+              transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 0.3s ease'
+            })
+          }}
+          className={isDesktop ? 'd-none d-lg-block' : 'd-lg-none'}
+        >
+          {/* Sidebar Card */}
+          <div style={{
+            display: 'flex', flexDirection: 'column',
+            height: 'calc(100vh - 2rem)',
+            margin: '1rem',
+            borderRadius: '1rem',
+            background: 'white',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+            border: '1px solid rgba(0,0,0,0.06)',
+            overflow: 'hidden'
+          }}>
+            {/* Logo */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid rgba(0,0,0,0.06)',
+              display: 'flex', alignItems: 'center', gap: '12px'
+            }}>
+              <div style={{
+                width: '36px', height: '36px',
+                background: 'linear-gradient(195deg, #42424a, #191919)',
+                borderRadius: '10px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <LayoutDashboard size={18} color="white" />
+              </div>
+              <div>
+                <div style={{ fontSize: '16px', fontWeight: '800', color: '#344767', lineHeight: 1 }}>VidHelp</div>
+                <div style={{ fontSize: '11px', color: '#7b809a', marginTop: '2px' }}>Admin Portal</div>
+              </div>
+              {/* Mobile close */}
+              {!isDesktop && (
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#7b809a', display: 'flex', padding: '4px' }}
+                >
+                  <X size={18} />
+                </button>
+              )}
+            </div>
+
+            {/* User */}
+            <div style={{
+              padding: '16px 24px',
+              borderBottom: '1px solid rgba(0,0,0,0.06)',
+              display: 'flex', alignItems: 'center', gap: '12px'
+            }}>
+              <div style={{
+                width: '42px', height: '42px', flexShrink: 0,
+                background: 'linear-gradient(195deg, #667eea, #764ba2)',
+                borderRadius: '10px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '16px', fontWeight: '700', color: 'white'
+              }}>
+                {(user?.full_name || 'A').charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: '13px', fontWeight: '700', color: '#344767',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                }}>
+                  {user?.full_name || 'Administrator'}
+                </div>
+                <div style={{ fontSize: '11px', color: '#7b809a', textTransform: 'capitalize' }}>
+                  {user?.role || 'Admin'}
+                </div>
+              </div>
+              <div style={{
+                width: '8px', height: '8px', borderRadius: '50%',
+                background: '#4caf50', flexShrink: 0,
+                boxShadow: '0 0 0 2px rgba(76,175,80,0.25)'
+              }} />
+            </div>
+
+            {/* Nav */}
+            <nav style={{ flex: 1, padding: '12px', overflowY: 'auto' }}>
+              <div style={{
+                fontSize: '10px', fontWeight: '700', color: '#7b809a',
+                textTransform: 'uppercase', letterSpacing: '0.1em',
+                padding: '4px 12px 8px'
+              }}>
+                Main Menu
+              </div>
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.path}
                     to={item.path}
-                    className={`nav-link rounded-3 py-2 px-3 d-flex align-items-center gap-3 ${
-                      active ? 'bg-primary text-white active' : 'text-white-50 hover-text-white'
-                    }`}
-                    style={{ transition: 'all 0.2s ease' }}
+                    style={({ isActive }) => ({
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      padding: '10px 16px', borderRadius: '10px',
+                      marginBottom: '2px', textDecoration: 'none',
+                      fontSize: '13px', fontWeight: isActive ? '600' : '400',
+                      background: isActive
+                        ? 'linear-gradient(195deg, #42424a 0%, #191919 100%)'
+                        : 'transparent',
+                      color: isActive ? 'white' : '#7b809a',
+                      boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.2)' : 'none',
+                      transition: 'all 0.15s ease'
+                    })}
+                    onMouseEnter={e => {
+                      const isActive = e.currentTarget.style.background.includes('191919');
+                      if (!isActive) {
+                        e.currentTarget.style.background = 'rgba(0,0,0,0.04)';
+                        e.currentTarget.style.color = '#344767';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      const isActive = e.currentTarget.style.background.includes('191919');
+                      if (!isActive) {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.color = '#7b809a';
+                      }
+                    }}
                   >
-                    <i className={`fas ${item.icon} fa-fw`}></i>
+                    <Icon size={18} />
                     <span>{item.label}</span>
-                    {active && <i className="fas fa-chevron-right ms-auto fa-xs"></i>}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+                  </NavLink>
+                );
+              })}
+            </nav>
 
-        {/* Logout */}
-        <div className="p-4 border-top border-secondary mt-auto">
-          <button
-            onClick={handleLogout}
-            className="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center gap-2"
-          >
-            <i className="fas fa-sign-out-alt"></i>
-            <span>Logout</span>
-          </button>
-        </div>
-      </aside>
-
-      <main className="flex-grow-1 bg-light overflow-auto">
-        {/* Top Navbar */}
-        <nav className="navbar navbar-expand-lg bg-white shadow-sm sticky-top">
-          <div className="container-fluid px-4">
-            <div>
-              <h5 className="mb-0 fw-semibold">{currentPageTitle}</h5>
-              <small className="text-muted">
-                {new Date().toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </small>
-            </div>
-
-            <div className="d-flex align-items-center gap-3">
-              {/* Notifications */}
-              <div className="dropdown">
-                <button
-                  className="btn btn-link text-dark position-relative"
-                  data-bs-toggle="dropdown"
-                >
-                  <i className="fas fa-bell fs-5"></i>
-                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                    3
-                  </span>
-                </button>
-                <ul className="dropdown-menu dropdown-menu-end p-0" style={{ width: '300px' }}>
-                  <li className="px-3 py-2 border-bottom">
-                    <h6 className="mb-0">Notifications</h6>
-                  </li>
-                  <li>
-                    <a className="dropdown-item py-3" href="#">
-                      <div className="d-flex gap-3">
-                        <i className="fas fa-dollar-sign text-success mt-1"></i>
-                        <div>
-                          <p className="mb-0 small">New revenue recorded</p>
-                          <small className="text-muted">2 minutes ago</small>
-                        </div>
-                      </div>
-                    </a>
-                  </li>
-                  <li className="border-top">
-                    <a className="dropdown-item text-center py-2 small" href="#">
-                      View all notifications
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {/* User Dropdown */}
-              <div className="dropdown">
-                <button
-                  className="btn btn-link text-dark dropdown-toggle d-flex align-items-center gap-2"
-                  data-bs-toggle="dropdown"
-                >
-                  <i className="fas fa-user-circle fs-4"></i>
-                  <span className="d-none d-md-inline">
-                    {user?.full_name?.split(' ')[0] || 'Admin'}
-                  </span>
-                </button>
-                <ul className="dropdown-menu dropdown-menu-end">
-                  <li>
-                    <Link className="dropdown-item" to="/admin/profile">
-                      <i className="fas fa-user me-2"></i> My Profile
-                    </Link>
-                  </li>
-                  <li>
-                    <Link className="dropdown-item" to="/admin/settings">
-                      <i className="fas fa-cog me-2"></i> Settings
-                    </Link>
-                  </li>
-                  <li><hr className="dropdown-divider" /></li>
-                  <li>
-                    <button className="dropdown-item text-danger" onClick={handleLogout}>
-                      <i className="fas fa-sign-out-alt me-2"></i> Logout
-                    </button>
-                  </li>
-                </ul>
-              </div>
+            {/* Sign out */}
+            <div style={{ padding: '12px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+              <button
+                onClick={handleLogout}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                  padding: '10px 16px', borderRadius: '10px',
+                  background: 'transparent', border: 'none',
+                  color: '#7b809a', cursor: 'pointer',
+                  fontSize: '13px', fontWeight: '400',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(234,6,6,0.06)';
+                  e.currentTarget.style.color = '#ea0606';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = '#7b809a';
+                }}
+              >
+                <LogOut size={18} />
+                Sign Out
+              </button>
             </div>
           </div>
-        </nav>
+        </aside>
+      ))}
 
-        <div className="p-4">
-          <Outlet />
-        </div>
+      {/* ── Main ── */}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+
+        {/* Topbar */}
+        <header style={{
+          height: '72px', display: 'flex', alignItems: 'center',
+          padding: '0 28px', gap: '16px', flexShrink: 0,
+          background: 'transparent'
+        }}>
+          {/* Mobile menu toggle */}
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="d-lg-none"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              padding: '8px', borderRadius: '8px', color: '#344767', display: 'flex'
+            }}
+          >
+            <Menu size={22} />
+          </button>
+
+          {/* Breadcrumb */}
+          <div>
+            <div style={{ fontSize: '11px', color: '#7b809a', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Pages / {currentPage}
+            </div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: '#344767' }}>
+              {currentPage}
+            </div>
+          </div>
+
+          {/* Right side */}
+          <div style={{
+            marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px',
+            background: 'rgba(255,255,255,0.7)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.8)',
+            borderRadius: '12px',
+            padding: '8px 16px',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
+          }}>
+            {/* Search */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} className="d-none d-md-flex">
+              <Search size={14} color="#7b809a" />
+              <input
+                type="text"
+                placeholder="Search..."
+                style={{
+                  border: 'none', background: 'transparent', outline: 'none',
+                  fontSize: '13px', color: '#344767', width: '160px',
+                  borderBottom: '1px solid #d2d6da', paddingBottom: '2px'
+                }}
+              />
+            </div>
+
+            {/* Divider */}
+            <div style={{ width: '1px', height: '20px', background: '#d2d6da' }} className="d-none d-md-block" />
+
+            {/* Avatar */}
+            <div
+              onClick={() => navigate('/admin/profile')}
+              style={{
+                width: '34px', height: '34px', borderRadius: '50%',
+                background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '13px', fontWeight: '700', color: 'white',
+                cursor: 'pointer', border: '2px solid white',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+              }}
+            >
+              {(user?.full_name || 'A').charAt(0).toUpperCase()}
+            </div>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <section style={{ flex: 1, overflowY: 'auto', padding: '0 28px 28px' }}>
+          <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+            <Outlet />
+          </div>
+        </section>
       </main>
+
+      {/* Desktop sidebar fix */}
+      <style>{`
+        @media (min-width: 992px) {
+          aside.d-none.d-lg-block {
+            display: block !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
