@@ -1,60 +1,179 @@
 ﻿@import "tailwindcss";
 
+@plugin "tailwindcss-animate";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar-background: var(--sidebar-background);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
 @layer base {
   :root {
     --background: #f0f2f5;
     --foreground: #344767;
     --card: #ffffff;
     --card-foreground: #344767;
+    --popover: #ffffff;
+    --popover-foreground: #344767;
     --primary: #1a1a1a;
     --primary-foreground: #ffffff;
+    --secondary: #7b809a;
+    --secondary-foreground: #ffffff;
     --muted: #f0f2f5;
     --muted-foreground: #7b809a;
+    --accent: #f0f2f5;
+    --accent-foreground: #344767;
+    --destructive: #1a1a1a;
+    --destructive-foreground: #ffffff;
     --border: #d2d6da;
     --input: #d2d6da;
-    --destructive: #ea0606;
-    --destructive-foreground: #ffffff;
+    --ring: #1a1a1a;
+    --radius: 0.75rem;
+    
     --sidebar-background: #ffffff;
     --sidebar-foreground: #344767;
-    --sidebar-border: rgba(0,0,0,0.08);
-    --sidebar-accent: rgba(0,0,0,0.04);
+    --sidebar-primary: #1a1a1a;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: rgba(0, 0, 0, 0.05);
+    --sidebar-accent-foreground: #1a1a1a;
+    --sidebar-border: rgba(0, 0, 0, 0.1);
+    --sidebar-ring: rgba(0, 0, 0, 0.1);
   }
+}
 
+@layer base {
   * {
-    border-color: var(--border);
-    box-sizing: border-box;
+    @apply border-border outline-ring/50;
   }
-
   body {
-    background-color: var(--background);
-    color: var(--foreground);
-    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    margin: 0;
+    @apply bg-background text-foreground font-sans antialiased;
   }
-
   h1, h2, h3, h4, h5, h6 {
-    font-weight: 700;
-    letter-spacing: -0.025em;
-    color: #344767;
+    @apply font-bold tracking-tight text-[#344767];
   }
 }
 
 @layer components {
-  /* ── Cards ── */
   .dashboard-card {
-    background: white;
-    color: #344767;
-    border-radius: 0.75rem;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
-    position: relative;
-    overflow: hidden;
+    @apply bg-card text-card-foreground rounded-xl border-0 shadow-md transition-all hover:shadow-xl relative;
+  }
+  
+  .card-header-gradient {
+    @apply absolute -top-4 left-4 right-4 h-16 rounded-xl shadow-lg flex items-center px-4 text-white z-10;
   }
 
-  .dashboard-card:hover {
-    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  .material-gradient {
+    background: linear-gradient(195deg, #42424a 0%, #191919 100%);
   }
+  
+  .primary-gradient {
+    background: linear-gradient(195deg, #42424a 0%, #191919 100%);
+  }
+
+  .info-gradient {
+    background: linear-gradient(195deg, #49a3f1 0%, #1a73e8 100%);
+  }
+
+  .success-gradient {
+    background: linear-gradient(195deg, #66bb6a 0%, #43a047 100%);
+  }
+
+  .warning-gradient {
+    background: linear-gradient(195deg, #ffa726 0%, #fb8c00 100%);
+  }
+
+  .error-gradient {
+    background: linear-gradient(195deg, #42424a 0%, #191919 100%);
+  }
+  
+  .dashboard-table {
+    @apply w-full text-left border-collapse;
+  }
+  
+  .dashboard-table th {
+    @apply px-4 py-3 text-[11px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border opacity-70;
+  }
+  
+  .dashboard-table td {
+    @apply px-4 py-4 text-sm border-b border-border transition-colors;
+  }
+  
+  .dashboard-table tr:last-child td {
+    @apply border-0;
+  }
+}
+
+@layer utilities {
+  .crimson-glow {
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .thick-border {
+    @apply border-2 border-border;
+  }
+
+  .neo-shadow {
+    @apply shadow-sm;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-muted hover:bg-muted-foreground/30 transition-colors rounded-full;
+}
+
 
   /* ── Gradients ── */
   .primary-gradient {
@@ -186,10 +305,49 @@
     color: white;
     z-index: 10;
   }
-}
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #d2d6da; border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: #7b809a; }
+
+/* ============================================
+   CHARTS AND SCROLLING FIXES
+   ============================================ */
+
+/* Ensure the main app container allows scrolling */
+html, body, #root {
+  height: 100%;
+  overflow: hidden; /* This is fine - children will scroll */
+}
+
+/* Fix for Recharts ResponsiveContainer */
+.recharts-responsive-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 350px;
+}
+/* Ensure dashboard cards with charts have enough height */
+.dashboard-card {
+  width: 100%;
+  overflow: visible; /* Allow content to flow */
+}
+
+/* Chart container fix */
+.dashboard-card .recharts-wrapper {
+  width: 100% !important;
+}
+
+/* Ensure the main content area scrolls */
+main > section:last-child {
+  overflow-y: auto !important;
+  height: calc(100vh - 80px) !important; /* 80px is header height */
+}
+
+/* For the revenue page charts */
+.chart-container {
+  width: 100%;
+  height: 400px;
+  position: relative;
+}

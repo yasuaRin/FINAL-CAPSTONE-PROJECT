@@ -96,11 +96,12 @@ export const DateRangeSelector = ({ value, onChange }) => {
         start = startOfMonth(now);
         end   = endOfMonth(now);
         break;
-      case 'lastMonth':
+      case 'lastMonth': {
         const lastMonth = subMonths(now, 1);
         start = startOfMonth(lastMonth);
         end   = endOfMonth(lastMonth);
         break;
+      }
       default:
         break;
     }
@@ -260,4 +261,4 @@ export const DateRangeSelector = ({ value, onChange }) => {
   );
 };
 
-export default DateRangeSelector;
+export default DateRangeSelector; 

@@ -1,8 +1,8 @@
 ﻿// frontend/src/App.jsx
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AdminLayout } from './components/layout/AdminLayout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
-import { Dashboard } from './pages/admin/Dashboard';
+import Dashboard from './pages/admin/Dashboard';
 import Revenue from './pages/admin/Revenue';
 import Brands from './pages/admin/Brands';
 import Team from './pages/admin/Team';
@@ -11,26 +11,26 @@ import AdminLogin from './pages/auth/AdminLogin';
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
-          <Route path="/admin/login" element={<AdminLogin />} />
-                
+        <Route path="/admin/login" element={<AdminLogin />} />
+
         <Route path="/admin" element={
           <ProtectedRoute>
             <AdminLayout />
           </ProtectedRoute>
         }>
-          <Route index element={<Navigate to="/admin/dashboard" />} />
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route index element={<Dashboard />} />
           <Route path="revenue" element={<Revenue />} />
           <Route path="brands" element={<Brands />} />
           <Route path="team" element={<Team />} />
           <Route path="profile" element={<Profile />} />
         </Route>
-        
-        <Route path="/" element={<Navigate to="/admin/dashboard" />} />
+
+        <Route path="/" element={<Navigate to="/admin" replace />} />
+        <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 

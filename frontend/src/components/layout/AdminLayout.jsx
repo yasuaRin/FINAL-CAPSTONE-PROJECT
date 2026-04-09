@@ -2,15 +2,14 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
-  LayoutDashboard, TrendingUp, Briefcase, Radar,
-  Calendar, Bell, Users, User, Settings, LogOut,
-  Menu, Search, X
+  LayoutDashboard, Users, LogOut, Bell, Search, Map as MapIcon,
+  TrendingUp, Menu, X, Settings, Briefcase, User, Calendar, Radar
 } from 'lucide-react';
 
 export const AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const location = useLocation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
 
   useEffect(() => {
@@ -18,7 +17,7 @@ export const AdminLayout = () => {
   }, [location.pathname]);
 
   const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard' },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
     { icon: TrendingUp, label: 'Revenue', path: '/admin/revenue' },
     { icon: Briefcase, label: 'Brands', path: '/admin/brands' },
     { icon: Radar, label: 'Lead Radar', path: '/admin/leads' },
@@ -26,10 +25,8 @@ export const AdminLayout = () => {
     { icon: Bell, label: 'Intelligence', path: '/admin/notifications' },
     { icon: Users, label: 'Staff', path: '/admin/team' },
     { icon: User, label: 'My Profile', path: '/admin/profile' },
-    { icon: Settings, label: 'Settings', path: '/admin/settings' },
+    { icon: Settings, label: 'Settings', path: '/admin/settings' }
   ];
-
-  const currentPage = navItems.find(i => location.pathname.startsWith(i.path))?.label || 'Dashboard';
 
   const handleLogout = async () => {
     await logout();
@@ -37,282 +34,105 @@ export const AdminLayout = () => {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#f0f2f5' }}>
-
-      {/* Mobile overlay */}
-      {isSidebarOpen && (
-        <div
-          onClick={() => setIsSidebarOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 1040,
-            background: 'rgba(0,0,0,0.45)',
-            backdropFilter: 'blur(4px)'
-          }}
-        />
-      )}
-
-      {/* ── Sidebar ── */}
-      {[true, false].map((isDesktop) => (
-        <aside
-          key={isDesktop ? 'desktop' : 'mobile'}
-          style={{
-            width: '280px',
-            minWidth: '280px',
-            flexShrink: 0,
-            ...(isDesktop ? {
-              display: 'none'
-            } : {
-              position: 'fixed',
-              top: 0, left: 0, bottom: 0,
-              zIndex: 1045,
-              transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-              transition: 'transform 0.3s ease'
-            })
-          }}
-          className={isDesktop ? 'd-none d-lg-block' : 'd-lg-none'}
-        >
-          {/* Sidebar Card */}
-          <div style={{
-            display: 'flex', flexDirection: 'column',
-            height: 'calc(100vh - 2rem)',
-            margin: '1rem',
-            borderRadius: '1rem',
-            background: 'white',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
-            border: '1px solid rgba(0,0,0,0.06)',
-            overflow: 'hidden'
-          }}>
-            {/* Logo */}
-            <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid rgba(0,0,0,0.06)',
-              display: 'flex', alignItems: 'center', gap: '12px'
-            }}>
-              <div style={{
-                width: '36px', height: '36px',
-                background: 'linear-gradient(195deg, #42424a, #191919)',
-                borderRadius: '10px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <LayoutDashboard size={18} color="white" />
-              </div>
-              <div>
-                <div style={{ fontSize: '16px', fontWeight: '800', color: '#344767', lineHeight: 1 }}>VidHelp</div>
-                <div style={{ fontSize: '11px', color: '#7b809a', marginTop: '2px' }}>Admin Portal</div>
-              </div>
-              {/* Mobile close */}
-              {!isDesktop && (
-                <button
-                  onClick={() => setIsSidebarOpen(false)}
-                  style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#7b809a', display: 'flex', padding: '4px' }}
-                >
-                  <X size={18} />
-                </button>
-              )}
+    <div className="flex h-screen bg-background text-foreground overflow-hidden relative">
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 flex flex-col transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        {/* Sidebar Header */}
+        <div className="p-6 border-b border-sidebar-border">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-sidebar-primary rounded-lg flex items-center justify-center">
+              <LayoutDashboard size={20} className="text-sidebar-primary-foreground" />
             </div>
-
-            {/* User */}
-            <div style={{
-              padding: '16px 24px',
-              borderBottom: '1px solid rgba(0,0,0,0.06)',
-              display: 'flex', alignItems: 'center', gap: '12px'
-            }}>
-              <div style={{
-                width: '42px', height: '42px', flexShrink: 0,
-                background: 'linear-gradient(195deg, #667eea, #764ba2)',
-                borderRadius: '10px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '16px', fontWeight: '700', color: 'white'
-              }}>
-                {(user?.full_name || 'A').charAt(0).toUpperCase()}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: '13px', fontWeight: '700', color: '#344767',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                }}>
-                  {user?.full_name || 'Administrator'}
-                </div>
-                <div style={{ fontSize: '11px', color: '#7b809a', textTransform: 'capitalize' }}>
-                  {user?.role || 'Admin'}
-                </div>
-              </div>
-              <div style={{
-                width: '8px', height: '8px', borderRadius: '50%',
-                background: '#4caf50', flexShrink: 0,
-                boxShadow: '0 0 0 2px rgba(76,175,80,0.25)'
-              }} />
-            </div>
-
-            {/* Nav */}
-            <nav style={{ flex: 1, padding: '12px', overflowY: 'auto' }}>
-              <div style={{
-                fontSize: '10px', fontWeight: '700', color: '#7b809a',
-                textTransform: 'uppercase', letterSpacing: '0.1em',
-                padding: '4px 12px 8px'
-              }}>
-                Main Menu
-              </div>
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    style={({ isActive }) => ({
-                      display: 'flex', alignItems: 'center', gap: '12px',
-                      padding: '10px 16px', borderRadius: '10px',
-                      marginBottom: '2px', textDecoration: 'none',
-                      fontSize: '13px', fontWeight: isActive ? '600' : '400',
-                      background: isActive
-                        ? 'linear-gradient(195deg, #42424a 0%, #191919 100%)'
-                        : 'transparent',
-                      color: isActive ? 'white' : '#7b809a',
-                      boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.2)' : 'none',
-                      transition: 'all 0.15s ease'
-                    })}
-                    onMouseEnter={e => {
-                      const isActive = e.currentTarget.style.background.includes('191919');
-                      if (!isActive) {
-                        e.currentTarget.style.background = 'rgba(0,0,0,0.04)';
-                        e.currentTarget.style.color = '#344767';
-                      }
-                    }}
-                    onMouseLeave={e => {
-                      const isActive = e.currentTarget.style.background.includes('191919');
-                      if (!isActive) {
-                        e.currentTarget.style.background = 'transparent';
-                        e.currentTarget.style.color = '#7b809a';
-                      }
-                    }}
-                  >
-                    <Icon size={18} />
-                    <span>{item.label}</span>
-                  </NavLink>
-                );
-              })}
-            </nav>
-
-            {/* Sign out */}
-            <div style={{ padding: '12px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-              <button
-                onClick={handleLogout}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '10px 16px', borderRadius: '10px',
-                  background: 'transparent', border: 'none',
-                  color: '#7b809a', cursor: 'pointer',
-                  fontSize: '13px', fontWeight: '400',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = 'rgba(234,6,6,0.06)';
-                  e.currentTarget.style.color = '#ea0606';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = '#7b809a';
-                }}
-              >
-                <LogOut size={18} />
-                Sign Out
-              </button>
+            <div>
+              <h2 className="font-bold text-lg text-sidebar-foreground">VidHelp</h2>
+              <p className="text-xs text-sidebar-foreground/70">Intelligence Console</p>
             </div>
           </div>
-        </aside>
-      ))}
+        </div>
 
-      {/* ── Main ── */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        {/* Navigation */}
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path));
 
-        {/* Topbar */}
-        <header style={{
-          height: '72px', display: 'flex', alignItems: 'center',
-          padding: '0 28px', gap: '16px', flexShrink: 0,
-          background: 'transparent'
-        }}>
-          {/* Mobile menu toggle */}
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) => `
+                  flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200
+                  ${isActive 
+                    ? 'primary-gradient text-white shadow-md' 
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'}
+                `}
+              >
+                <span className="shrink-0"><Icon size={20} /></span>
+                <span className="text-sm font-light">{item.label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        {/* User Section */}
+        <div className="p-4 border-t border-sidebar-border">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 bg-sidebar-accent rounded-full flex items-center justify-center">
+              <User size={16} className="text-sidebar-accent-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-sidebar-foreground truncate">
+                {user?.full_name || user?.email || 'Admin'}
+              </p>
+              <p className="text-xs text-sidebar-foreground/70 capitalize">
+                {user?.role || 'Administrator'}
+              </p>
+            </div>
+          </div>
           <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="d-lg-none"
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              padding: '8px', borderRadius: '8px', color: '#344767', display: 'flex'
-            }}
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
           >
-            <Menu size={22} />
+            <LogOut size={18} />
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      <main className="flex-1 flex flex-col min-w-0 overflow-auto">
+        <header className="h-20 flex items-center justify-between px-6 lg:px-8 z-30 shrink-0 border-b border-border bg-card">
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors"
+          >
+            <Menu size={20} />
           </button>
 
-          {/* Breadcrumb */}
-          <div>
-            <div style={{ fontSize: '11px', color: '#7b809a', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Pages / {currentPage}
-            </div>
-            <div style={{ fontSize: '15px', fontWeight: '700', color: '#344767' }}>
-              {currentPage}
-            </div>
+          {/* Page title */}
+          <div className="flex-1 lg:flex-none">
+            <h1 className="text-xl font-bold text-foreground">
+              {navItems.find(item => location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path)))?.label || 'Dashboard'}
+            </h1>
           </div>
 
-          {/* Right side */}
-          <div style={{
-            marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px',
-            background: 'rgba(255,255,255,0.7)',
-            backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255,255,255,0.8)',
-            borderRadius: '12px',
-            padding: '8px 16px',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
-          }}>
-            {/* Search */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} className="d-none d-md-flex">
-              <Search size={14} color="#7b809a" />
-              <input
-                type="text"
-                placeholder="Search..."
-                style={{
-                  border: 'none', background: 'transparent', outline: 'none',
-                  fontSize: '13px', color: '#344767', width: '160px',
-                  borderBottom: '1px solid #d2d6da', paddingBottom: '2px'
-                }}
-              />
-            </div>
-
-            {/* Divider */}
-            <div style={{ width: '1px', height: '20px', background: '#d2d6da' }} className="d-none d-md-block" />
-
-            {/* Avatar */}
-            <div
-              onClick={() => navigate('/admin/profile')}
-              style={{
-                width: '34px', height: '34px', borderRadius: '50%',
-                background: 'linear-gradient(135deg, #667eea, #764ba2)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '13px', fontWeight: '700', color: 'white',
-                cursor: 'pointer', border: '2px solid white',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-              }}
-            >
-              {(user?.full_name || 'A').charAt(0).toUpperCase()}
-            </div>
+          {/* Header actions */}
+          <div className="flex items-center gap-4">
+            <button className="p-2 rounded-lg hover:bg-muted transition-colors">
+              <Search size={20} className="text-muted-foreground" />
+            </button>
+            <button className="p-2 rounded-lg hover:bg-muted transition-colors relative">
+              <Bell size={20} className="text-muted-foreground" />
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-destructive rounded-full"></span>
+            </button>
           </div>
         </header>
 
-        {/* Page content */}
-        <section style={{ flex: 1, overflowY: 'auto', padding: '0 28px 28px' }}>
-          <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        <section className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
+          <div className="max-w-7xl mx-auto pt-4">
             <Outlet />
           </div>
         </section>
       </main>
-
-      {/* Desktop sidebar fix */}
-      <style>{`
-        @media (min-width: 992px) {
-          aside.d-none.d-lg-block {
-            display: block !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };

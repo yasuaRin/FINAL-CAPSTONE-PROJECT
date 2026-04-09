@@ -20,6 +20,46 @@ npm install
 
 ---
 
+## Project Structure
+
+```
+backend/
+├── .env                    # Environment variables (Supabase keys, JWT secret, etc.)
+├── .env.example           # Template for environment variables
+├── node_modules/          # NPM dependencies
+├── package-lock.json      # NPM lock file
+├── package.json          # Project dependencies and scripts
+├── README.md             # API documentation and setup guide
+└── src/                  # Source code
+    ├── controllers/      # Business logic for each module
+    │   ├── authController.js     # Authentication logic
+    │   ├── brandsController.js   # Brands CRUD operations
+    │   ├── leadsController.js    # Leads management
+    │   ├── revenueController.js  # Revenue/session data operations
+    │   └── teamController.js     # Team member management
+    ├── index.js          # Main server file (Express app setup)
+    ├── middleware/       # Custom middleware
+    │   └── authMiddleware.js     # JWT authentication middleware
+    ├── routes/           # API route definitions
+    │   ├── authRoutes.js         # Authentication routes (/api/auth/*)
+    │   ├── brandsRoutes.js       # Brands routes (/api/brands/*)
+    │   ├── leadsRoutes.js        # Leads routes (/api/leads/*)
+    │   ├── revenueRoutes.js      # Revenue routes (/api/revenue/*)
+    │   └── teamRoutes.js         # Team routes (/api/team/*)
+    └── utils/            # Utility functions
+        └── supabase.js           # Supabase client configuration
+```
+
+### Architecture Overview
+
+- **Modular Structure**: Each feature (auth, brands, revenue, team, leads) has its own controller and routes file
+- **Separation of Concerns**: Controllers handle business logic, routes handle HTTP endpoints, middleware handles authentication
+- **Supabase Integration**: The `supabase.js` utility provides the database client
+- **Environment Config**: Sensitive data is stored in `.env` file
+- **Express.js Framework**: Main server setup in `index.js`
+
+---
+
 ## Environment Configuration
 
 Create a `.env` file inside the `backend/` folder. Copy the structure below and fill in your actual values:
