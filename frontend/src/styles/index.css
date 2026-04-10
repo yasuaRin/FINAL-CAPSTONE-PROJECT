@@ -12,38 +12,28 @@
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-
   --color-sidebar-background: var(--sidebar-background);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -76,7 +66,7 @@
     --input: #d2d6da;
     --ring: #1a1a1a;
     --radius: 0.75rem;
-    
+
     --sidebar-background: #ffffff;
     --sidebar-foreground: #344767;
     --sidebar-primary: #1a1a1a;
@@ -86,117 +76,50 @@
     --sidebar-border: rgba(0, 0, 0, 0.1);
     --sidebar-ring: rgba(0, 0, 0, 0.1);
   }
-}
 
-@layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+
   h1, h2, h3, h4, h5, h6 {
-    @apply font-bold tracking-tight text-[#344767];
+    @apply font-bold tracking-tight;
+    color: #344767;
   }
 }
 
 @layer components {
   .dashboard-card {
     @apply bg-card text-card-foreground rounded-xl border-0 shadow-md transition-all hover:shadow-xl relative;
+    width: 100%;
+    overflow: visible;
   }
-  
+
   .card-header-gradient {
-    @apply absolute -top-4 left-4 right-4 h-16 rounded-xl shadow-lg flex items-center px-4 text-white z-10;
+    position: absolute;
+    top: -16px;
+    left: 16px;
+    right: 16px;
+    height: 64px;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    color: white;
+    z-index: 10;
   }
 
-  .material-gradient {
-    background: linear-gradient(195deg, #42424a 0%, #191919 100%);
-  }
-  
-  .primary-gradient {
-    background: linear-gradient(195deg, #42424a 0%, #191919 100%);
-  }
+  .material-gradient { background: linear-gradient(195deg, #42424a 0%, #191919 100%); }
+  .primary-gradient  { background: linear-gradient(195deg, #42424a 0%, #191919 100%); }
+  .info-gradient     { background: linear-gradient(195deg, #49a3f1 0%, #1a73e8 100%); }
+  .success-gradient  { background: linear-gradient(195deg, #66bb6a 0%, #43a047 100%); }
+  .warning-gradient  { background: linear-gradient(195deg, #ffa726 0%, #fb8c00 100%); }
+  .error-gradient    { background: linear-gradient(195deg, #ef5350 0%, #e53935 100%); }
 
-  .info-gradient {
-    background: linear-gradient(195deg, #49a3f1 0%, #1a73e8 100%);
-  }
-
-  .success-gradient {
-    background: linear-gradient(195deg, #66bb6a 0%, #43a047 100%);
-  }
-
-  .warning-gradient {
-    background: linear-gradient(195deg, #ffa726 0%, #fb8c00 100%);
-  }
-
-  .error-gradient {
-    background: linear-gradient(195deg, #42424a 0%, #191919 100%);
-  }
-  
-  .dashboard-table {
-    @apply w-full text-left border-collapse;
-  }
-  
-  .dashboard-table th {
-    @apply px-4 py-3 text-[11px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border opacity-70;
-  }
-  
-  .dashboard-table td {
-    @apply px-4 py-4 text-sm border-b border-border transition-colors;
-  }
-  
-  .dashboard-table tr:last-child td {
-    @apply border-0;
-  }
-}
-
-@layer utilities {
-  .crimson-glow {
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-  }
-
-  .thick-border {
-    @apply border-2 border-border;
-  }
-
-  .neo-shadow {
-    @apply shadow-sm;
-  }
-}
-
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-::-webkit-scrollbar-thumb {
-  @apply bg-muted hover:bg-muted-foreground/30 transition-colors rounded-full;
-}
-
-
-  /* ── Gradients ── */
-  .primary-gradient {
-    background: linear-gradient(195deg, #42424a 0%, #191919 100%);
-  }
-
-  .info-gradient {
-    background: linear-gradient(195deg, #49a3f1 0%, #1a73e8 100%);
-  }
-
-  .success-gradient {
-    background: linear-gradient(195deg, #66bb6a 0%, #43a047 100%);
-  }
-
-  .warning-gradient {
-    background: linear-gradient(195deg, #ffa726 0%, #fb8c00 100%);
-  }
-
-  .error-gradient {
-    background: linear-gradient(195deg, #ef5350 0%, #e53935 100%);
-  }
-
-  /* ── Table ── */
   .dashboard-table {
     width: 100%;
     text-align: left;
@@ -226,10 +149,9 @@
   }
 
   .dashboard-table tbody tr:hover td {
-    background-color: rgba(0,0,0,0.015);
+    background-color: rgba(0, 0, 0, 0.015);
   }
 
-  /* ── Buttons ── */
   .btn-primary {
     display: inline-flex;
     align-items: center;
@@ -244,13 +166,13 @@
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     text-decoration: none;
   }
 
   .btn-primary:hover {
     opacity: 0.9;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     transform: translateY(-1px);
   }
 
@@ -260,7 +182,6 @@
     transform: none;
   }
 
-  /* ── Inputs ── */
   .input {
     width: 100%;
     background: #f0f2f5;
@@ -276,7 +197,7 @@
 
   .input:focus {
     border-color: #1a1a1a;
-    box-shadow: 0 0 0 2px rgba(26,26,26,0.08);
+    box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.08);
     background: white;
   }
 
@@ -289,65 +210,295 @@
     letter-spacing: 0.06em;
     margin-bottom: 6px;
   }
-
-  /* ── Card Header Gradient ── */
-  .card-header-gradient {
-    position: absolute;
-    top: -16px;
-    left: 16px;
-    right: 16px;
-    height: 64px;
-    border-radius: 0.75rem;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    color: white;
-    z-index: 10;
-  }
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #d2d6da; border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: #7b809a; }
-
-/* ============================================
-   CHARTS AND SCROLLING FIXES
-   ============================================ */
-
-/* Ensure the main app container allows scrolling */
-html, body, #root {
-  height: 100%;
-  overflow: hidden; /* This is fine - children will scroll */
 }
 
-/* Fix for Recharts ResponsiveContainer */
+@layer utilities {
+  .crimson-glow { box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); }
+  .thick-border  { @apply border-2 border-border; }
+  .neo-shadow    { @apply shadow-sm; }
+}
+
+/* ============================================ */
+/* MAIN ADMIN LAYOUT STYLES - SCROLLING WORKS */
+/* ============================================ */
+
+/* Root layout */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-root-container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #f0f2f5;
+}
+
+/* Desktop sidebar */
+.admin-sidebar-desktop {
+  position: relative;
+  width: 280px;
+  height: 100%;
+  flex-shrink: 0;
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .admin-sidebar-desktop {
+    display: block;
+  }
+}
+
+/* Mobile sidebar */
+.admin-sidebar-mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100%;
+  z-index: 1000;
+}
+
+.admin-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+}
+
+/* Main content area */
+.admin-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Header */
+.admin-header {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: transparent;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.admin-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.admin-menu-button {
+  padding: 8px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #344767;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-menu-button:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.admin-breadcrumb-prefix {
+  font-size: 12px;
+  color: #7b809a;
+  margin: 0;
+}
+
+.admin-breadcrumb-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #344767;
+  margin: 0;
+}
+
+.admin-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(8px);
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.admin-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f0f2f5;
+  border: 1px solid #d2d6da;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.admin-avatar:hover {
+  background: #e0e4e9;
+  transform: scale(1.05);
+}
+
+.admin-avatar-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #344767;
+}
+
+.admin-search-wrapper {
+  display: none;
+  position: relative;
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  .admin-search-wrapper {
+    display: flex;
+  }
+}
+
+.admin-search-icon {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #7b809a;
+}
+
+.admin-search-input {
+  padding: 6px 8px 6px 28px;
+  border: none;
+  border-bottom: 1px solid #d2d6da;
+  background: transparent;
+  font-size: 12px;
+  width: 160px;
+  outline: none;
+  color: #344767;
+}
+
+.admin-search-input:focus {
+  border-bottom-color: #1a1a1a;
+}
+
+/* SCROLLABLE CONTENT - THIS IS THE FIX */
+.admin-scrollable-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  position: relative;
+}
+
+/* Custom scrollbar */
+.admin-scrollable-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-scrollable-content::-webkit-scrollbar-track {
+  background: #e0e4e9;
+  border-radius: 4px;
+}
+
+.admin-scrollable-content::-webkit-scrollbar-thumb {
+  background: #7b809a;
+  border-radius: 4px;
+}
+
+.admin-scrollable-content::-webkit-scrollbar-thumb:hover {
+  background: #344767;
+}
+
+/* Firefox scrollbar */
+.admin-scrollable-content {
+  scrollbar-width: thin;
+  scrollbar-color: #7b809a #e0e4e9;
+}
+
+/* Content container */
+.admin-content-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* Recharts */
 .recharts-responsive-container {
   width: 100% !important;
   height: 100% !important;
   min-height: 350px;
 }
-/* Ensure dashboard cards with charts have enough height */
-.dashboard-card {
-  width: 100%;
-  overflow: visible; /* Allow content to flow */
-}
 
-/* Chart container fix */
 .dashboard-card .recharts-wrapper {
   width: 100% !important;
 }
 
-/* Ensure the main content area scrolls */
-main > section:last-child {
-  overflow-y: auto !important;
-  height: calc(100vh - 80px) !important; /* 80px is header height */
-}
-
-/* For the revenue page charts */
 .chart-container {
   width: 100%;
   height: 400px;
   position: relative;
+}
+
+/* ===== SCROLLING FIX - ADD THIS TO THE END OF YOUR CSS FILE ===== */
+
+/* Force the section to scroll - targets your actual Tailwind classes */
+section.flex-1.overflow-y-auto {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+/* Make sure the main container doesn't block scrolling */
+main.flex-1.flex.flex-col {
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Ensure the div inside can grow */
+section.flex-1.overflow-y-auto > div {
+  min-height: min-content;
+}
+
+/* Style the scrollbar so you can see it */
+section.flex-1.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+section.flex-1.overflow-y-auto::-webkit-scrollbar-track {
+  background: #e0e4e9;
+  border-radius: 4px;
+}
+
+section.flex-1.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #7b809a;
+  border-radius: 4px;
+}
+
+section.flex-1.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #344767;
+}
+
+/* FOR TESTING - Force content to be tall (remove after confirming scroll works) */
+.max-w-7xl {
+  min-height: 200vh !important;
 }
