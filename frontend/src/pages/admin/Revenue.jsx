@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, DollarSign, Activity, Download,
   CheckCircle2, Calendar, Users, Target, BarChart3,
-  ArrowUpRight, ArrowDownRight, Minus, ChevronDown, Check
+  ArrowUpRight, ArrowDownRight, Minus, ChevronDown, Check, Filter
 } from 'lucide-react';
 import {
   CartesianGrid, XAxis, YAxis, Tooltip,
@@ -36,6 +36,7 @@ const Revenue = () => {
   const { team, loading: teamLoading } = useTeam();
 
   const [notification, setNotification] = useState(null);
+  const [showRevenueOnly, setShowRevenueOnly] = useState(true);
   const [dateRange, setDateRange] = useState({
     start: subDays(new Date(), 30),
     end: new Date(),
@@ -74,7 +75,11 @@ const Revenue = () => {
 
     const shopeeTotal = filteredRevenue.reduce((s, i) => s + (i.revenue_shopee || 0), 0);
     const tiktokTotal = filteredRevenue.reduce((s, i) => s + (i.revenue_tiktok || 0), 0);
-    const topPlatform = shopeeTotal >= tiktokTotal ? 'Shopee' : 'TikTok';
+    
+    let topPlatform;
+    if (shopeeTotal > tiktokTotal) topPlatform = 'Shopee';
+    else if (tiktokTotal > shopeeTotal) topPlatform = 'TikTok';
+    else topPlatform = 'Multi';
 
     // Calculate revenue growth (last 7 days vs previous 7 days)
     const today = new Date();
@@ -97,79 +102,131 @@ const Revenue = () => {
     return { totalRevenue, totalSessions, avgRevenue, topPlatform, revenueGrowth };
   }, [filteredRevenue]);
 
-  // Revenue trend (daily grouped) - with GUARANTEED MOCK DATA
+  // Revenue trend (daily grouped)
   const revenueTrend = useMemo(() => {
-    // ALWAYS return mock data for testing (30 days of data with seasonality)
-    console.log('Generating revenue trend data for Revenue page');
+    if (!filteredRevenue.length) return [];
     
-    const result = [];
-    const today = new Date();
-    const daysToGenerate = 30;
+    const dailyMap = new Map();
     
-    for (let i = daysToGenerate - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(today.getDate() - i);
-      const dayOfWeek = date.getDay();
+    filteredRevenue.forEach(item => {
+      const dateKey = format(parseRevenueDate(item.date), 'yyyy-MM-dd');
+      const revenue = (item.revenue_shopee || 0) + (item.revenue_tiktok || 0);
       
-      // Base trend: gradual increase over time
-      const baseTrend = 45000 + ((daysToGenerate - i) * 800);
+      if (dailyMap.has(dateKey)) {
+        dailyMap.set(dateKey, dailyMap.get(dateKey) + revenue);
+      } else {
+        dailyMap.set(dateKey, revenue);
+      }
+    });
+    
+    return Array.from(dailyMap.entries())
+      .map(([date, revenue]) => ({
+        date: format(new Date(date), 'MMM dd'),
+        revenue,
+        forecast: Math.round(revenue * 1.06)
+      }))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+  }, [filteredRevenue]);
+
+  // 🎯 FIXED: Platform stats that SHOWS ALL 3 PLATFORMS
+  const platformStats = useMemo(() => {
+    if (!filteredRevenue.length) return [];
+    
+    let shopeeOnlyRev = 0;
+    let tiktokOnlyRev = 0;
+    let multiRev = 0;
+    
+    filteredRevenue.forEach(item => {
+      const hasShopee = (item.revenue_shopee || 0) > 0;
+      const hasTiktok = (item.revenue_tiktok || 0) > 0;
       
-      // Weekly seasonality: Higher revenue on weekends (Friday=5, Saturday=6)
-      const isWeekend = (dayOfWeek === 5 || dayOfWeek === 6);
-      const seasonality = isWeekend ? 1.45 : 1.0;
-      
-      // Random noise for realistic variation
-      const noise = 0.85 + (Math.random() * 0.3);
-      
-      const revenueValue = Math.round(baseTrend * seasonality * noise);
-      const forecastValue = Math.round(revenueValue * 1.06);
-      
-      result.push({
-        date: format(date, 'MMM dd'),
-        revenue: revenueValue,
-        forecast: forecastValue
+      if (hasShopee && hasTiktok) {
+        multiRev += (item.revenue_shopee || 0) + (item.revenue_tiktok || 0);
+      } else if (hasShopee) {
+        shopeeOnlyRev += (item.revenue_shopee || 0);
+      } else if (hasTiktok) {
+        tiktokOnlyRev += (item.revenue_tiktok || 0);
+      }
+    });
+    
+    const total = shopeeOnlyRev + tiktokOnlyRev + multiRev;
+    if (total === 0) return [];
+    
+    console.log('📊 Platform Revenue Breakdown:');
+    console.log(`  Shopee Only: Rp ${shopeeOnlyRev.toLocaleString()} (${(shopeeOnlyRev/total*100).toFixed(1)}%)`);
+    console.log(`  TikTok Only: Rp ${tiktokOnlyRev.toLocaleString()} (${(tiktokOnlyRev/total*100).toFixed(1)}%)`);
+    console.log(`  Multi: Rp ${multiRev.toLocaleString()} (${(multiRev/total*100).toFixed(1)}%)`);
+    
+    const stats = [];
+    
+    if (shopeeOnlyRev > 0) {
+      stats.push({ 
+        name: 'Shopee', 
+        revenue: shopeeOnlyRev, 
+        pct: (shopeeOnlyRev / total * 100).toFixed(1),
+        color: 'bg-cyan-400',
+        badgeColor: 'bg-cyan-100 text-cyan-600'
       });
     }
     
-    console.log('Generated revenue trend data:', result.length, 'points');
-    console.log('Sample data point:', result[0]);
-    return result;
-  }, []);
-
-  // Platform revenue breakdown
-  const platformStats = useMemo(() => {
-    if (!filteredRevenue.length) return [];
-    const shopee = filteredRevenue.reduce((s, i) => s + (i.revenue_shopee || 0), 0);
-    const tiktok = filteredRevenue.reduce((s, i) => s + (i.revenue_tiktok || 0), 0);
-    const total = shopee + tiktok;
-    if (total === 0) return [];
-    return [
-      { name: 'Shopee', revenue: shopee, pct: (shopee / total * 100).toFixed(1) },
-      { name: 'TikTok', revenue: tiktok, pct: (tiktok / total * 100).toFixed(1) },
-    ].sort((a, b) => b.revenue - a.revenue);
+    if (tiktokOnlyRev > 0) {
+      stats.push({ 
+        name: 'TikTok', 
+        revenue: tiktokOnlyRev, 
+        pct: (tiktokOnlyRev / total * 100).toFixed(1),
+        color: 'bg-black',
+        badgeColor: 'bg-black/5 text-black'
+      });
+    }
+    
+    if (multiRev > 0) {
+      stats.push({ 
+        name: 'Multi', 
+        revenue: multiRev, 
+        pct: (multiRev / total * 100).toFixed(1),
+        color: 'bg-red-500',
+        badgeColor: 'bg-red-100 text-red-600'
+      });
+    }
+    
+    return stats.sort((a, b) => b.revenue - a.revenue);
   }, [filteredRevenue]);
 
-  // Session intelligence table (join with brands + team)
   const sessionIntelligence = useMemo(() => {
     if (!filteredRevenue.length) return [];
-    return [...filteredRevenue]
+    let sessions = [...filteredRevenue]
       .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 50)
       .map(item => {
         const brand = brands?.find(b => b.id === item.brand_id);
         const staff = team?.find(t => t.id === item.host_id);
         const totalRev = (item.revenue_shopee || 0) + (item.revenue_tiktok || 0);
-        const totalViewers = (item.viewers_shopee || 0) + (item.viewers_tiktok || 0);
+        
+        // Determine platform type by revenue pattern
+        const hasShopee = (item.revenue_shopee || 0) > 0;
+        const hasTiktok = (item.revenue_tiktok || 0) > 0;
+        
+        let platformType;
+        if (hasShopee && hasTiktok) platformType = 'Multi';
+        else if (hasShopee) platformType = 'Shopee';
+        else if (hasTiktok) platformType = 'TikTok';
+        else platformType = '—'; // No revenue
+        
         return {
           ...item,
           brandName: brand?.brand_name || '—',
           staffName: staff?.name || '—',
           totalRevenue: totalRev,
-          totalViewers,
-          platform: item.revenue_tiktok > item.revenue_shopee ? 'TikTok' : 'Shopee'
+          platform: platformType
         };
       });
-  }, [filteredRevenue, brands, team]);
+    
+    // 🎯 Filter based on toggle
+    if (showRevenueOnly) {
+      sessions = sessions.filter(item => item.totalRevenue > 0);
+    }
+    
+    return sessions.slice(0, 50);
+  }, [filteredRevenue, brands, team, showRevenueOnly]);
 
   const handleDateRangeChange = (newRange) => {
     setDateRange(newRange);
@@ -219,6 +276,7 @@ const Revenue = () => {
           <p className="text-muted-foreground mt-1">Track performance across platforms and sessions</p>
         </div>
         <div className="flex items-center gap-3">
+                  
           <DateRangeSelector value={dateRange} onChange={handleDateRangeChange} />
           <button
             onClick={handleExport}
@@ -268,8 +326,8 @@ const Revenue = () => {
 
         <div className="dashboard-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-orange-50 rounded-lg">
-              <TrendingUp size={20} className="text-orange-600" />
+            <div className="p-2 bg-red-50 rounded-lg">
+              <TrendingUp size={20} className="text-red-600" />
             </div>
           </div>
           <div className="text-2xl font-bold mb-1">{kpis.topPlatform}</div>
@@ -277,7 +335,7 @@ const Revenue = () => {
         </div>
       </div>
 
-      {/* Revenue Trend Chart - GUARANTEED WORKING VERSION */}
+      {/* Revenue Trend Chart */}
       <div style={{ 
         background: 'white', 
         borderRadius: '16px', 
@@ -365,7 +423,7 @@ const Revenue = () => {
                     initial={{ width: 0 }}
                     animate={{ width: `${p.pct}%` }}
                     transition={{ duration: 0.8 }}
-                    className={`h-full rounded-full ${p.name === 'Shopee' ? 'bg-orange-500' : 'bg-black'}`}
+                    className={`h-full rounded-full ${p.color}`}
                   />
                 </div>
                 <div className="text-right text-xs text-muted-foreground mt-1">{p.pct}%</div>
@@ -378,8 +436,11 @@ const Revenue = () => {
 
         {/* Session Intelligence Table */}
         <div id="session-intelligence" className="lg:col-span-2 dashboard-card overflow-hidden">
-          <div className="px-6 py-4 border-b border-border">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
             <h3 className="text-lg font-bold">Session Intelligence</h3>
+            <span className="text-xs text-muted-foreground">
+              {showRevenueOnly ? 'Showing sessions with revenue' : 'Showing all sessions'}
+            </span>
           </div>
           <div className="overflow-x-auto">
             {sessionIntelligence.length > 0 ? (
@@ -394,26 +455,31 @@ const Revenue = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sessionIntelligence.map((item) => (
-                    <tr key={item.id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                      <td className="py-3 px-4 text-sm">
-                    {(() => {
-                      const parsed = parseRevenueDate(item.date);
-                      return parsed ? format(parsed, 'MMM dd') : item.date;
-                    })()}
-                  </td>
-                      <td className="py-3 px-4 font-semibold">{item.brandName}</td>
-                      <td className="py-3 px-4">
-                        <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${
-                          item.platform === 'TikTok' ? 'bg-black/5 text-black' : 'bg-orange-100 text-orange-600'
-                        }`}>
-                          {item.platform}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-muted-foreground">{item.staffName}</td>
-                      <td className="py-3 px-4 text-right font-mono font-bold">Rp {item.totalRevenue.toLocaleString()}</td>
-                    </tr>
-                  ))}
+                  {sessionIntelligence.map((item) => {
+                    const platformInfo = platformStats.find(p => p.name === item.platform);
+                    const badgeColor = platformInfo?.badgeColor || 'bg-gray-100 text-gray-600';
+                    
+                    return (
+                      <tr key={item.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                        <td className="py-3 px-4 text-sm">
+                          {(() => {
+                            const parsed = parseRevenueDate(item.date);
+                            return parsed ? format(parsed, 'MMM dd') : item.date;
+                          })()}
+                        </td>
+                        <td className="py-3 px-4 font-semibold">{item.brandName}</td>
+                        <td className="py-3 px-4">
+                          <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${badgeColor}`}>
+                            {item.platform}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">{item.staffName}</td>
+                        <td className="py-3 px-4 text-right font-mono font-bold">
+                          {item.totalRevenue > 0 ? `Rp ${item.totalRevenue.toLocaleString()}` : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             ) : (
