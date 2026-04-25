@@ -16,13 +16,29 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(helmet());
-app.use(compression());
+// Dynamic CORS - accepts any localhost port
+const allowedOrigins = [
+  /^http:\/\/localhost:\d+$/,
+  /^http:\/\/127\.0\.0\.1:\d+$/
+];
+
+// Single CORS middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true);
+    const isAllowed = allowedOrigins.some(pattern => pattern.test(origin));
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
+
+// Other middleware
+app.use(helmet());
+app.use(compression());
 app.use(express.json());
 app.use(morgan('dev'));
 
@@ -42,8 +58,8 @@ app.use('/api/brands', brandsRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/leads', leadsRoutes);
 
-// 404 handler
-app.use('*path', (req, res) => {
+// 404 handler - FIXED: Use function with (req, res) instead of '*'
+app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Endpoint not found' });
 });
 

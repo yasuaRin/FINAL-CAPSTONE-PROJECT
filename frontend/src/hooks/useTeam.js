@@ -1,5 +1,6 @@
+// frontend/src/hooks/useTeam.js
 import { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import { supabase } from '../services/supabase';
 
 export const useTeam = () => {
   const [team, setTeam] = useState([]);
@@ -9,9 +10,19 @@ export const useTeam = () => {
   const fetchTeam = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/team/read');
-      setTeam(response.data.data || []);
+      console.log('Fetching team from Supabase...');
+      
+      const { data, error: teamError } = await supabase
+        .from('staff')
+        .select('*')
+        .order('name');
+
+      if (teamError) throw teamError;
+      
+      console.log(`Fetched ${data?.length || 0} team members`);
+      setTeam(data || []);
     } catch (err) {
+      console.error('Error fetching team:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -22,35 +33,10 @@ export const useTeam = () => {
     fetchTeam();
   }, []);
 
-  const createMember = async (memberData) => {
-    try {
-      const response = await api.post('/team/create', memberData);
-      await fetchTeam();
-      return { success: true, data: response.data.data };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+  return { 
+    team, 
+    loading, 
+    error, 
+    refetch: fetchTeam 
   };
-
-  const updateMember = async (id, updates) => {
-    try {
-      const response = await api.put(`/team/update/${id}`, updates);
-      await fetchTeam();
-      return { success: true, data: response.data.data };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  };
-
-  const deleteMember = async (id) => {
-    try {
-      await api.delete(`/team/delete/${id}`);
-      await fetchTeam();
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  };
-
-  return { team, loading, error, createMember, updateMember, deleteMember, refetch: fetchTeam };
 };
