@@ -20,14 +20,54 @@ npm install
 
 ---
 
+## Project Structure
+
+```
+backend/
+├── .env                    # Environment variables (Supabase keys, JWT secret, etc.)
+├── .env.example           # Template for environment variables
+├── node_modules/          # NPM dependencies
+├── package-lock.json      # NPM lock file
+├── package.json          # Project dependencies and scripts
+├── README.md             # API documentation and setup guide
+└── src/                  # Source code
+    ├── controllers/      # Business logic for each module
+    │   ├── authController.js     # Authentication logic
+    │   ├── brandsController.js   # Brands CRUD operations
+    │   ├── leadsController.js    # Leads management
+    │   ├── revenueController.js  # Revenue/session data operations
+    │   └── teamController.js     # Team member management
+    ├── index.js          # Main server file (Express app setup)
+    ├── middleware/       # Custom middleware
+    │   └── authMiddleware.js     # JWT authentication middleware
+    ├── routes/           # API route definitions
+    │   ├── authRoutes.js         # Authentication routes (/api/auth/*)
+    │   ├── brandsRoutes.js       # Brands routes (/api/brands/*)
+    │   ├── leadsRoutes.js        # Leads routes (/api/leads/*)
+    │   ├── revenueRoutes.js      # Revenue routes (/api/revenue/*)
+    │   └── teamRoutes.js         # Team routes (/api/team/*)
+    └── utils/            # Utility functions
+        └── supabase.js           # Supabase client configuration
+```
+
+### Architecture Overview
+
+- **Modular Structure**: Each feature (auth, brands, revenue, team, leads) has its own controller and routes file
+- **Separation of Concerns**: Controllers handle business logic, routes handle HTTP endpoints, middleware handles authentication
+- **Supabase Integration**: The `supabase.js` utility provides the database client
+- **Environment Config**: Sensitive data is stored in `.env` file
+- **Express.js Framework**: Main server setup in `index.js`
+
+---
+
 ## Environment Configuration
 
 Create a `.env` file inside the `backend/` folder. Copy the structure below and fill in your actual values:
 
 ```env
-PORT=3000
+PORT=5000
 NODE_ENV=development
-CORS_ORIGIN=http://localhost:5173,http://localhost:3000
+CORS_ORIGIN=http://localhost:5173,http://localhost:5000
 
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -61,14 +101,14 @@ npm run dev
 Expected output in terminal:
 
 ```
-Server running on port 3000
+Server running on port 5000
 Environment: development
 ```
 
 To verify the server is alive, open your browser and go to:
 
 ```
-http://localhost:3000/health
+http://localhost:5000/health
 ```
 
 Expected response:
@@ -93,7 +133,7 @@ Send a POST request to login and copy the token from the response.
 
 ```
 Method  : POST
-URL     : http://localhost:3000/api/auth/login
+URL     : http://localhost:5000/api/auth/login
 ```
 
 Body (raw JSON):
@@ -127,7 +167,7 @@ In Postman, go to the Authorization tab of any request, select Bearer Token, and
 
 ## Endpoint Testing Guide
 
-Base URL: `http://localhost:3000`
+Base URL: `http://localhost:5000`
 
 All endpoints below require the Bearer token from the Authentication section above unless stated otherwise.
 
@@ -141,7 +181,7 @@ The Dashboard page pulls data from the Revenue and Brands endpoints. If both of 
 
 ```
 Method  : GET
-URL     : http://localhost:3000/api/revenue/read
+URL     : http://localhost:5000/api/revenue/read
 Auth    : Bearer Token
 ```
 
@@ -151,7 +191,7 @@ Expected response: 200 with a `data` array. Each item contains `revenue_shopee` 
 
 ```
 Method  : GET
-URL     : http://localhost:3000/api/brands/read
+URL     : http://localhost:5000/api/brands/read
 Auth    : Bearer Token
 ```
 
@@ -167,7 +207,7 @@ Retrieves all live session records with joined brand, platform, and staff data.
 
 ```
 Method  : GET
-URL     : http://localhost:3000/api/revenue/read
+URL     : http://localhost:5000/api/revenue/read
 Auth    : Bearer Token
 ```
 
@@ -179,7 +219,7 @@ You can filter by date range or brand using query parameters.
 
 ```
 Method  : GET
-URL     : http://localhost:3000/api/revenue/read?startDate=2025-01-01&endDate=2025-12-31
+URL     : http://localhost:5000/api/revenue/read?startDate=2025-01-01&endDate=2025-12-31
 Auth    : Bearer Token
 ```
 
@@ -191,7 +231,7 @@ Creates a new live session record. All fields below are required by the database
 
 ```
 Method  : POST
-URL     : http://localhost:3000/api/revenue/create
+URL     : http://localhost:5000/api/revenue/create
 Auth    : Bearer Token
 ```
 
@@ -202,7 +242,7 @@ Body (raw JSON):
   "date": "2025-01-15",
   "time": "10:00",
   "revenue_shopee": 500000,
-  "revenue_tiktok": 300000,
+  "revenue_tiktok": 500000,
   "period_id": 1,
   "host_id": 1,
   "brand_id": "f0cd0235-ffd8-4ac3-b033-ae9c86d4f0e8",
@@ -220,7 +260,7 @@ Updates an existing revenue record by ID.
 
 ```
 Method  : PUT
-URL     : http://localhost:3000/api/revenue/update/{id}
+URL     : http://localhost:5000/api/revenue/update/{id}
 Auth    : Bearer Token
 ```
 
@@ -242,7 +282,7 @@ Deletes a revenue record by ID.
 
 ```
 Method  : DELETE
-URL     : http://localhost:3000/api/revenue/delete/{id}
+URL     : http://localhost:5000/api/revenue/delete/{id}
 Auth    : Bearer Token
 ```
 
@@ -267,7 +307,7 @@ Returns all brands ordered by name.
 
 ```
 Method  : GET
-URL     : http://localhost:3000/api/brands/read
+URL     : http://localhost:5000/api/brands/read
 Auth    : Bearer Token
 ```
 
@@ -279,7 +319,7 @@ Creates a new brand record.
 
 ```
 Method  : POST
-URL     : http://localhost:3000/api/brands/create
+URL     : http://localhost:5000/api/brands/create
 Auth    : Bearer Token
 ```
 
@@ -301,7 +341,7 @@ Updates an existing brand by ID.
 
 ```
 Method  : PUT
-URL     : http://localhost:3000/api/brands/update/{brand_id}
+URL     : http://localhost:5000/api/brands/update/{brand_id}
 Auth    : Bearer Token
 ```
 
@@ -323,7 +363,7 @@ Deletes a brand by ID.
 
 ```
 Method  : DELETE
-URL     : http://localhost:3000/api/brands/delete/{brand_id}
+URL     : http://localhost:5000/api/brands/delete/{brand_id}
 Auth    : Bearer Token
 ```
 
@@ -344,7 +384,7 @@ Returns a risk level (low, medium, high) for each brand based on total revenue f
 
 ```
 Method  : GET
-URL     : http://localhost:3000/api/brands/risk-signals
+URL     : http://localhost:5000/api/brands/risk-signals
 Auth    : Bearer Token
 ```
 
@@ -360,7 +400,7 @@ The Profile page uses this endpoint to display the currently logged-in user's de
 
 ```
 Method  : GET
-URL     : http://localhost:3000/api/auth/profile
+URL     : http://localhost:5000/api/auth/profile
 Auth    : Bearer Token
 ```
 

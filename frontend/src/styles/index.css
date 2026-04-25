@@ -1,70 +1,504 @@
 ﻿@import "tailwindcss";
 
+@plugin "tailwindcss-animate";
+
 @theme {
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar-background: var(--sidebar-background);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 @layer base {
+  :root {
+    --background: #f0f2f5;
+    --foreground: #344767;
+    --card: #ffffff;
+    --card-foreground: #344767;
+    --popover: #ffffff;
+    --popover-foreground: #344767;
+    --primary: #1a1a1a;
+    --primary-foreground: #ffffff;
+    --secondary: #7b809a;
+    --secondary-foreground: #ffffff;
+    --muted: #f0f2f5;
+    --muted-foreground: #7b809a;
+    --accent: #f0f2f5;
+    --accent-foreground: #344767;
+    --destructive: #1a1a1a;
+    --destructive-foreground: #ffffff;
+    --border: #d2d6da;
+    --input: #d2d6da;
+    --ring: #1a1a1a;
+    --radius: 0.75rem;
+
+    --sidebar-background: #ffffff;
+    --sidebar-foreground: #344767;
+    --sidebar-primary: #1a1a1a;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: rgba(0, 0, 0, 0.05);
+    --sidebar-accent-foreground: #1a1a1a;
+    --sidebar-border: rgba(0, 0, 0, 0.1);
+    --sidebar-ring: rgba(0, 0, 0, 0.1);
+  }
+
   * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+    @apply border-border outline-ring/50;
   }
 
   body {
-    @apply antialiased text-gray-900 bg-gray-50;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight;
+    color: #344767;
   }
 }
 
 @layer components {
+  .dashboard-card {
+    @apply bg-card text-card-foreground rounded-xl border-0 shadow-md transition-all hover:shadow-xl relative;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .card-header-gradient {
+    position: absolute;
+    top: -16px;
+    left: 16px;
+    right: 16px;
+    height: 64px;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    color: white;
+    z-index: 10;
+  }
+
+  .material-gradient { background: linear-gradient(195deg, #42424a 0%, #191919 100%); }
+  .primary-gradient  { background: linear-gradient(195deg, #42424a 0%, #191919 100%); }
+  .info-gradient     { background: linear-gradient(195deg, #49a3f1 0%, #1a73e8 100%); }
+  .success-gradient  { background: linear-gradient(195deg, #66bb6a 0%, #43a047 100%); }
+  .warning-gradient  { background: linear-gradient(195deg, #ffa726 0%, #fb8c00 100%); }
+  .error-gradient    { background: linear-gradient(195deg, #ef5350 0%, #e53935 100%); }
+
+  .dashboard-table {
+    width: 100%;
+    text-align: left;
+    border-collapse: collapse;
+  }
+
+  .dashboard-table th {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #7b809a;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #d2d6da;
+    opacity: 0.7;
+  }
+
+  .dashboard-table td {
+    padding: 16px;
+    font-size: 14px;
+    border-bottom: 1px solid #f0f2f5;
+    transition: background-color 0.15s ease;
+  }
+
+  .dashboard-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .dashboard-table tbody tr:hover td {
+    background-color: rgba(0, 0, 0, 0.015);
+  }
+
   .btn-primary {
-    @apply bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 
-           transition-colors duration-200 font-medium;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: linear-gradient(195deg, #42424a 0%, #191919 100%);
+    color: white;
+    border: none;
+    border-radius: 0.625rem;
+    padding: 10px 24px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    text-decoration: none;
   }
-  
-  .btn-secondary {
-    @apply bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 
-           transition-colors duration-200 font-medium;
+
+  .btn-primary:hover {
+    opacity: 0.9;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
   }
-  
-  .btn-danger {
-    @apply bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 
-           transition-colors duration-200 font-medium;
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
   }
-  
-  .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
-  }
-  
+
   .input {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg 
-           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
-           transition-shadow duration-200;
+    width: 100%;
+    background: #f0f2f5;
+    border: 1px solid #d2d6da;
+    border-radius: 0.5rem;
+    padding: 10px 16px;
+    font-size: 14px;
+    color: #344767;
+    outline: none;
+    transition: all 0.2s ease;
+    font-family: inherit;
   }
-  
+
+  .input:focus {
+    border-color: #1a1a1a;
+    box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.08);
+    background: white;
+  }
+
   .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #7b809a;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
   }
-  
-  .sidebar-item {
-    @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200;
+}
+
+@layer utilities {
+  .crimson-glow { box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); }
+  .thick-border  { @apply border-2 border-border; }
+  .neo-shadow    { @apply shadow-sm; }
+}
+
+/* ============================================ */
+/* MAIN ADMIN LAYOUT STYLES - SCROLLING WORKS */
+/* ============================================ */
+
+/* Root layout */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-root-container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #f0f2f5;
+}
+
+/* Desktop sidebar */
+.admin-sidebar-desktop {
+  position: relative;
+  width: 280px;
+  height: 100%;
+  flex-shrink: 0;
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .admin-sidebar-desktop {
+    display: block;
   }
-  
-  .sidebar-item.active {
-    @apply bg-primary-500 text-white;
+}
+
+/* Mobile sidebar */
+.admin-sidebar-mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100%;
+  z-index: 1000;
+}
+
+.admin-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+}
+
+/* Main content area */
+.admin-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Header
+.admin-header {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: transparent;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.admin-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px; */
+/* } */
+
+.admin-menu-button {
+  padding: 8px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #344767;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-menu-button:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.admin-breadcrumb-prefix {
+  font-size: 12px;
+  color: #7b809a;
+  margin: 0;
+}
+
+.admin-breadcrumb-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #344767;
+  margin: 0;
+}
+
+/* .admin-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(8px);
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+} */
+
+.admin-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f0f2f5;
+  border: 1px solid #d2d6da;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.admin-avatar:hover {
+  background: #e0e4e9;
+  transform: scale(1.05);
+}
+
+.admin-avatar-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #344767;
+}
+
+/* .admin-search-wrapper {
+  display: none;
+  position: relative;
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  .admin-search-wrapper {
+    display: flex;
   }
-  
-  .sidebar-item:not(.active) {
-    @apply text-gray-700 hover:bg-primary-50 hover:text-primary-600;
-  }
+}
+
+.admin-search-icon {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #7b809a;
+}
+
+.admin-search-input {
+  padding: 6px 8px 6px 28px;
+  border: none;
+  border-bottom: 1px solid #d2d6da;
+  background: transparent;
+  font-size: 12px;
+  width: 160px;
+  outline: none;
+  color: #344767;
+}
+
+.admin-search-input:focus {
+  border-bottom-color: #1a1a1a;
+} */
+
+/* SCROLLABLE CONTENT - THIS IS THE FIX */
+.admin-scrollable-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  position: relative;
+}
+
+/* Custom scrollbar */
+.admin-scrollable-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-scrollable-content::-webkit-scrollbar-track {
+  background: #e0e4e9;
+  border-radius: 4px;
+}
+
+.admin-scrollable-content::-webkit-scrollbar-thumb {
+  background: #7b809a;
+  border-radius: 4px;
+}
+
+.admin-scrollable-content::-webkit-scrollbar-thumb:hover {
+  background: #344767;
+}
+
+/* Firefox scrollbar */
+.admin-scrollable-content {
+  scrollbar-width: thin;
+  scrollbar-color: #7b809a #e0e4e9;
+}
+
+/* Content container */
+.admin-content-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* Recharts */
+.recharts-responsive-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 350px;
+}
+
+.dashboard-card .recharts-wrapper {
+  width: 100% !important;
+}
+
+.chart-container {
+  width: 100%;
+  height: 400px;
+  position: relative;
+}
+
+/* ===== SCROLLING FIX - ADD THIS TO THE END OF YOUR CSS FILE ===== */
+
+/* Force the section to scroll - targets your actual Tailwind classes */
+section.flex-1.overflow-y-auto {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+/* Make sure the main container doesn't block scrolling */
+main.flex-1.flex.flex-col {
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Ensure the div inside can grow */
+section.flex-1.overflow-y-auto > div {
+  min-height: min-content;
+}
+
+/* Style the scrollbar so you can see it */
+section.flex-1.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+section.flex-1.overflow-y-auto::-webkit-scrollbar-track {
+  background: #e0e4e9;
+  border-radius: 4px;
+}
+
+section.flex-1.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #7b809a;
+  border-radius: 4px;
+}
+
+section.flex-1.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #344767;
+}
+
+/* FOR TESTING - Force content to be tall (remove after confirming scroll works) */
+.max-w-7xl {
+  min-height: auto;
 }

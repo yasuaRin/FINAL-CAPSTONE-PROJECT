@@ -1,5 +1,5 @@
+// frontend/src/hooks/useAuth.js
 import { useState, useEffect } from 'react';
-import { api } from '../services/api';
 import { supabase } from '../services/supabase';
 
 export const useAuth = () => {
@@ -7,61 +7,53 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkUser();
-    
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session) {
+    const getUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+        // Restore token on page refresh
+        if (session?.access_token) {
           localStorage.setItem('token', session.access_token);
-          await fetchUser(session.user.id);
+        }
+      } catch (error) {
+        console.error('Auth error:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+        setLoading(false);
+        // Keep token in sync whenever session changes
+        if (session?.access_token) {
+          localStorage.setItem('token', session.access_token);
         } else {
-          setUser(null);
           localStorage.removeItem('token');
         }
-        setLoading(false);
       }
     );
 
-    return () => authListener?.subscription.unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      localStorage.setItem('token', session.access_token);
-      await fetchUser(session.user.id);
-    }
-    setLoading(false);
-  };
-
-  const fetchUser = async (userId) => {
-    try {
-      const { data } = await supabase
-        .from('admins')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      setUser(data);
-    } catch (error) {
-      console.error('Error fetching user:', error);
-    }
-  };
-
   const login = async (email, password) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      if (error) throw error;
+    if (error) throw new Error(error.message); // ← this was missing, errors were silent
 
+    if (data.session) {
       localStorage.setItem('token', data.session.access_token);
-      await fetchUser(data.user.id);
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
     }
+
+    return data;
   };
 
   const logout = async () => {
@@ -70,5 +62,5 @@ export const useAuth = () => {
     setUser(null);
   };
 
-  return { user, loading, login, logout, isAuthenticated: !!user };
+  return { user, loading, login, logout };
 };
