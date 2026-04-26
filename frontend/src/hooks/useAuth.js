@@ -1,4 +1,3 @@
-// frontend/src/hooks/useAuth.js
 import { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 
@@ -11,7 +10,6 @@ export const useAuth = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         setUser(session?.user ?? null);
-        // Restore token on page refresh
         if (session?.access_token) {
           localStorage.setItem('token', session.access_token);
         }
@@ -27,9 +25,14 @@ export const useAuth = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          setLoading(false);
+          return;
+        }
+
         setUser(session?.user ?? null);
         setLoading(false);
-        // Keep token in sync whenever session changes
+
         if (session?.access_token) {
           localStorage.setItem('token', session.access_token);
         } else {
@@ -46,13 +49,10 @@ export const useAuth = () => {
       email,
       password,
     });
-
-    if (error) throw new Error(error.message); // ← this was missing, errors were silent
-
+    if (error) throw new Error(error.message);
     if (data.session) {
       localStorage.setItem('token', data.session.access_token);
     }
-
     return data;
   };
 
