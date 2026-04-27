@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 
 // ─── TIER 1: Static index (pages + actions) ───────────────────────────────────
-// These never change so there's zero latency — no DB call needed.
 const STATIC_ITEMS = [
   { id: 'p1', title: 'Dashboard',      category: 'Page',   path: '/admin',          keywords: 'home main overview stats' },
   { id: 'p2', title: 'Revenue',        category: 'Page',   path: '/admin/revenue',  keywords: 'money income profit analytics reports' },
@@ -22,7 +21,6 @@ const STATIC_ITEMS = [
   { id: 'a2', title: 'Add New Staff',  category: 'Action', path: '/admin/team',     keywords: 'create hire new member plus' },
 ];
 
-// Icon per category for the dropdown
 const CategoryIcon = ({ category }) => {
   const props = { size: 13, style: { flexShrink: 0 } };
   if (category === 'Page')   return <FileText {...props} style={{ ...props.style, color: '#1a73e8' }} />;
@@ -36,38 +34,41 @@ const CategoryIcon = ({ category }) => {
 
 export const AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
+  const avatarMenuRef = useRef(null);
 
-  // ── Search state ────────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery]       = useState('');
-  const [supabaseItems, setSupabaseItems]   = useState([]);  // Tier 2: live DB results
-  const [highlightQuery, setHighlightQuery] = useState('');   // committed query that drives highlights
-  const searchRef                           = useRef(null);  // for click-outside
-  const pageContentRef                      = useRef(null);  // page content container for highlight
-  // ───────────────────────────────────────────────────────────────────────────
+  const [supabaseItems, setSupabaseItems]   = useState([]);
+  const [highlightQuery, setHighlightQuery] = useState('');
+  const searchRef                           = useRef(null);
+  const pageContentRef                      = useRef(null);
 
-  // Highlight engine — runs when user commits a search (Enter or dropdown click)
   const { matchCount, currentMatch, goNext, goPrev, clearHighlights } = usePageSearch(highlightQuery, pageContentRef);
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, loading: authLoading } = useAuth();
 
-  // Profile data from auth.users
+  // ── FIX: tambahkan adminProfile dari useAuth ──────────────────────────────
+  const { user, logout, loading: authLoading, adminProfile } = useAuth();
+
+  // Prioritaskan data dari tabel admins (adminProfile), fallback ke user_metadata
   const displayName =
+    adminProfile?.full_name ||
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
     user?.email?.split('@')[0] ||
     'Admin';
 
+  // ── FIX: avatarUrl sekarang diambil dari tabel admins lewat adminProfile ──
   const avatarUrl =
+    adminProfile?.avatar_url ||
     user?.user_metadata?.avatar_url ||
     user?.user_metadata?.picture ||
     null;
 
   const initials = displayName.charAt(0).toUpperCase();
 
-  // ── TIER 2: Supabase search (brands + staff) ────────────────────────────────
-  // Fires only when user has typed ≥ 2 characters to avoid hammering the DB.
+  // ── TIER 2: Supabase search ───────────────────────────────────────────────
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
       setSupabaseItems([]);
@@ -77,14 +78,12 @@ export const AdminLayout = () => {
     const fetchFromSupabase = async () => {
       const q = searchQuery.trim();
 
-      // Search brands table
       const { data: brands } = await supabase
         .from('brands')
         .select('brand_id, brand_name')
         .ilike('brand_name', `%${q}%`)
         .limit(3);
 
-      // Search team/staff table — adjust column name if yours differs
       const { data: staff } = await supabase
         .from('staff')
         .select('id, name')
@@ -110,13 +109,10 @@ export const AdminLayout = () => {
       setSupabaseItems([...brandItems, ...staffItems]);
     };
 
-    // Debounce 300ms so we don't fire on every keystroke
     const timer = setTimeout(fetchFromSupabase, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-  // ───────────────────────────────────────────────────────────────────────────
 
-  // ── Filter static items against query ──────────────────────────────────────
   const filteredStatic = searchQuery.trim() === '' ? [] : STATIC_ITEMS.filter(item => {
     const q = searchQuery.toLowerCase();
     return (
@@ -126,12 +122,9 @@ export const AdminLayout = () => {
     );
   });
 
-  // Merge Tier 1 + Tier 2, cap at 6 results
   const allResults = [...filteredStatic, ...supabaseItems].slice(0, 6);
   const showDropdown = searchQuery.trim().length > 0;
-  // ───────────────────────────────────────────────────────────────────────────
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e) => {
       if (searchRef.current && !searchRef.current.contains(e.target)) {
@@ -142,14 +135,22 @@ export const AdminLayout = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Auth guard
+  useEffect(() => {
+    const handler = (e) => {
+      if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target)) {
+        setIsAvatarMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/admin/login', { replace: true });
     }
   }, [authLoading, user, navigate]);
 
-  // Close sidebar on route change
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [location.pathname]);
@@ -179,7 +180,7 @@ export const AdminLayout = () => {
   const pageSegment = location.pathname.split('/').filter(Boolean).pop() || 'Dashboard';
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-[calc(100vh-1rem)] sm:h-[calc(100vh-2rem)] m-2 sm:m-4 rounded-xl bg-white shadow-xl overflow-hidden border border-black/10">
+    <div className="flex flex-col h-full bg-white shadow-xl overflow-hidden border-r border-black/10" style={{ margin: '8px', borderRadius: '12px', height: 'calc(100vh - 16px)' }}>
       <div className="p-4 sm:p-6 flex items-center justify-between border-b border-black/10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-black/5">
@@ -215,32 +216,22 @@ export const AdminLayout = () => {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-black/10">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all text-sm font-light hover:bg-black/5"
-          style={{ color: '#7b809a' }}
-        >
-          <LogOut size={18} />
-          Sign Out
-        </button>
-      </div>
+
     </div>
   );
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden relative">
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
 
+      {/* Sidebar — part of flex flow, pushes main content */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 sm:w-72 flex flex-col transition-transform duration-300 ease-in-out ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        style={{
+          width: isSidebarOpen ? '272px' : '0px',
+          minWidth: isSidebarOpen ? '272px' : '0px',
+          transition: 'width 0.3s ease, min-width 0.3s ease',
+          overflow: 'hidden',
+          flexShrink: 0,
+        }}
       >
         <SidebarContent />
       </aside>
@@ -285,13 +276,12 @@ export const AdminLayout = () => {
               padding: '8px 16px',
             }}
           >
-            {/* ── SEARCH (desktop only) with live dropdown ── */}
+            {/* Search — desktop only */}
             <div
               ref={searchRef}
               className="hidden lg:flex flex-col"
               style={{ minWidth: '200px', position: 'relative' }}
             >
-              {/* Input row */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Search size={16} style={{ color: '#7b809a', flexShrink: 0 }} />
                 <input
@@ -310,18 +300,15 @@ export const AdminLayout = () => {
                     padding: '2px 0',
                   }}
                 />
-                {/* Clear button */}
                 {searchQuery && (
                   <button onClick={() => { setSearchQuery(''); setHighlightQuery(''); clearHighlights(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
                     <X size={14} style={{ color: '#7b809a' }} />
                   </button>
                 )}
               </div>
-              {/* Underline */}
               <div style={{ height: '1px', background: searchQuery ? '#344767' : '#e2e8f0', marginTop: '4px', transition: 'background 0.2s' }} />
 
-
-              {/* ── DROPDOWN ── */}
+              {/* Dropdown */}
               {showDropdown && (
                 <div style={{
                   position: 'absolute',
@@ -373,26 +360,82 @@ export const AdminLayout = () => {
             {/* Divider — desktop only */}
             <div className="hidden lg:block" style={{ width: '1px', height: '28px', background: '#e2e8f0' }} />
 
-            {/* Avatar — always visible */}
-            <div
-              onClick={() => navigate('/admin/profile')}
-              title={displayName}
-              style={{
-                width: '36px', height: '36px', borderRadius: '50%',
-                border: '1px solid #e2e8f0', overflow: 'hidden',
-                cursor: 'pointer', flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: '#f0f2f5', transition: 'transform 0.2s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#344767', userSelect: 'none' }}>
-                  {initials}
-                </span>
+            {/* Avatar with dropdown — always visible */}
+            <div ref={avatarMenuRef} style={{ position: 'relative', flexShrink: 0 }}>
+              <div
+                onClick={() => setIsAvatarMenuOpen(prev => !prev)}
+                title={displayName}
+                style={{
+                  width: '36px', height: '36px', borderRadius: '50%',
+                  border: '1px solid #e2e8f0', overflow: 'hidden',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: '#f0f2f5', transition: 'transform 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={displayName}
+                    referrerPolicy="no-referrer"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#344767', userSelect: 'none' }}>
+                    {initials}
+                  </span>
+                )}
+              </div>
+
+              {/* Dropdown menu */}
+              {isAvatarMenuOpen && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 10px)', right: 0,
+                  background: 'white', borderRadius: '12px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                  border: '1px solid #f1f1f1', overflow: 'hidden',
+                  minWidth: '180px', zIndex: 200,
+                }}>
+                  {/* User info */}
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f2f5' }}>
+                    <p style={{ fontSize: '12px', fontWeight: 700, color: '#344767', margin: 0 }}>{displayName}</p>
+                    <p style={{ fontSize: '11px', color: '#7b809a', margin: '2px 0 0' }}>{user?.email}</p>
+                  </div>
+
+                  {/* My Profile */}
+                  <button
+                    onClick={() => { navigate('/admin/profile'); setIsAvatarMenuOpen(false); }}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                      padding: '10px 16px', background: 'none', border: 'none',
+                      cursor: 'pointer', fontSize: '13px', color: '#344767', textAlign: 'left',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  >
+                    <User size={15} style={{ color: '#7b809a' }} />
+                    My Profile
+                  </button>
+
+                  {/* Logout */}
+                  <button
+                    onClick={() => { setIsAvatarMenuOpen(false); handleLogout(); }}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                      padding: '10px 16px', background: 'none', border: 'none',
+                      cursor: 'pointer', fontSize: '13px', color: '#ea0606', textAlign: 'left',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(234,6,6,0.05)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  >
+                    <LogOut size={15} style={{ color: '#ea0606' }} />
+                    Sign Out
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -404,11 +447,7 @@ export const AdminLayout = () => {
           </div>
         </section>
 
-
-        {/* ── FLOATING FIND BAR (Ctrl+F style) ─────────────────────────────
-            Appears at the bottom-right when highlightQuery is active.
-            Shows: query text | currentMatch/matchCount | prev | next | close
-        ──────────────────────────────────────────────────────────────────── */}
+        {/* Floating find bar */}
         {highlightQuery && (
           <div
             style={{
@@ -428,20 +467,16 @@ export const AdminLayout = () => {
               userSelect: 'none',
             }}
           >
-            {/* Query text */}
             <span style={{ color: '#94a3b8', marginRight: '4px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {highlightQuery}
             </span>
 
-            {/* Match counter */}
             <span style={{ color: '#FEF08A', fontWeight: 700, minWidth: '36px', textAlign: 'center' }}>
               {matchCount === 0 ? '0/0' : `${currentMatch}/${matchCount}`}
             </span>
 
-            {/* Divider */}
             <div style={{ width: '1px', height: '16px', background: '#334155', margin: '0 4px' }} />
 
-            {/* Prev ^ */}
             <button
               onClick={goPrev}
               disabled={matchCount === 0}
@@ -457,7 +492,6 @@ export const AdminLayout = () => {
               &#8743;
             </button>
 
-            {/* Next v */}
             <button
               onClick={goNext}
               disabled={matchCount === 0}
@@ -473,10 +507,8 @@ export const AdminLayout = () => {
               &#8744;
             </button>
 
-            {/* Divider */}
             <div style={{ width: '1px', height: '16px', background: '#334155', margin: '0 4px' }} />
 
-            {/* Close X */}
             <button
               onClick={() => { setHighlightQuery(''); clearHighlights(); }}
               title="Close"
