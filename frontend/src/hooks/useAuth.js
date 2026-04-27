@@ -1,4 +1,3 @@
-// frontend/src/hooks/useAuth.js
 import { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 
@@ -43,9 +42,11 @@ export const useAuth = () => {
           setLoading(false);
           return;
         }
+
         setUser(session?.user ?? null);
         await fetchAdminData(session?.user ?? null);
         setLoading(false);
+
         if (session?.access_token) {
           localStorage.setItem('token', session.access_token);
         } else {
