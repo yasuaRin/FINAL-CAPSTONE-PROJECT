@@ -8,12 +8,16 @@ import Brands from './pages/admin/Brands';
 import Team from './pages/admin/Team';
 import Profile from './pages/admin/Profile';
 import AdminLogin from './pages/auth/AdminLogin';
+import AdminResetPassword from './pages/auth/AdminResetPassword';
+import AdminAuthCallback from './pages/auth/AdminAuthCallback';
 
 function App() {
   return (
     <HashRouter>
       <Routes>
         <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/auth/reset-password" element={<AdminResetPassword />} />
+        <Route path="/admin/auth/callback" element={<AdminAuthCallback />} />
 
         <Route path="/admin" element={
           <ProtectedRoute>
