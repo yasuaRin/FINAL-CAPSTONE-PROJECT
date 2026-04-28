@@ -55,6 +55,7 @@ const RoleBadge = ({ role }) => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Team() {
   const { user, role: currentRole } = useAuth();
+  const formAvatarRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const [members, setMembers] = useState([]);
@@ -65,6 +66,7 @@ export default function Team() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [formError, setFormError] = useState('');
   const [formAvatar, setFormAvatar] = useState(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedRole, setSelectedRole] = useState('staff');
 
@@ -129,19 +131,59 @@ export default function Team() {
     return false;
   };
 
-  // ── Avatar upload ─────────────────────────────────────────────────────────
-  const handleAvatarUpload = (e) => {
+  // ── Helper: extract storage path from public URL ──────────────────────────
+  const getStoragePath = (url) => {
+    if (!url || !url.includes('/avatars/')) return null;
+    return url.split('/avatars/')[1];
+  };
+
+  const deleteFromStorage = async (url) => {
+    const path = getStoragePath(url);
+    if (!path) return;
+    await supabase.storage.from('avatars').remove([path]);
+  };
+
+  // ── Avatar upload → Supabase Storage ────────────────────────────────────
+  const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => setFormAvatar(reader.result);
-    reader.readAsDataURL(file);
+
+    setAvatarUploading(true);
+    setFormError('');
+    try {
+      // Delete old photo from storage first
+      if (formAvatar) await deleteFromStorage(formAvatar);
+
+      const ext = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const filePath = `members/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      setFormAvatar(data.publicUrl);
+      formAvatarRef.current = data.publicUrl;
+    } catch (err) {
+      console.error('Avatar upload error:', err);
+      setFormError('Failed to upload avatar. Please try again.');
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
   // ── Open / close form ─────────────────────────────────────────────────────
   const openForm = (member = null) => {
     setEditingMember(member);
-    setFormAvatar(member?.avatar || null);
+    const avatar = member?.avatar || null;
+    setFormAvatar(avatar);
+    formAvatarRef.current = avatar;
     setFormError('');
     setSelectedRole(member?.role || 'staff');
     setIsFormOpen(true);
@@ -151,8 +193,11 @@ export default function Team() {
     setIsFormOpen(false);
     setEditingMember(null);
     setFormAvatar(null);
+    formAvatarRef.current = null;
     setFormError('');
     setSelectedRole('staff');
+    setAvatarUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // ── Submit ────────────────────────────────────────────────────────────────
@@ -178,7 +223,7 @@ export default function Team() {
             full_name:  name,
             phone:      phone || null,
             is_active:  status === 'active',
-            avatar_url: formAvatar || editingMember.avatar,
+            avatar_url: formAvatarRef.current,
           }).eq('id', editingMember._id);
           if (error) throw error;
         } else {
@@ -186,7 +231,7 @@ export default function Team() {
             name, email, phone,
             role: roleDescription,
             status,
-            avatar_url: formAvatar || editingMember.avatar || null,
+            avatar_url: formAvatarRef.current,
           }).eq('id', editingMember._id);
           if (error) throw error;
         }
@@ -477,25 +522,47 @@ export default function Team() {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 24 }}>
               <div style={{ position: 'relative' }}>
                 <div style={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', border: '3px solid #e4e1db', cursor: 'pointer' }}
-                  onClick={() => fileInputRef.current?.click()}>
-                  <img
-                    src={formAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${editingMember?.name || 'new'}`}
-                    alt="avatar"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
+                  onClick={() => !avatarUploading && fileInputRef.current?.click()}>
+                  {avatarUploading ? (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5' }}>
+                      <div style={{ width: 24, height: 24, border: '3px solid #e4e1db', borderTopColor: '#1a1a1a', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                    </div>
+                  ) : (
+                    <img
+                      src={formAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${editingMember?.name || 'new'}`}
+                      alt="avatar"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  )}
                 </div>
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{ position: 'absolute', bottom: -2, right: -2, width: 26, height: 26, borderRadius: '50%', background: '#1a1a1a', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={() => !avatarUploading && fileInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  style={{ position: 'absolute', bottom: -2, right: -2, width: 26, height: 26, borderRadius: '50%', background: '#1a1a1a', border: 'none', cursor: avatarUploading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: avatarUploading ? 0.6 : 1 }}
                 >
                   <Upload size={12} color="white" />
                 </button>
               </div>
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
               <p style={{ fontSize: 10, color: '#7b809a', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
-                Click to update photo
+                {avatarUploading ? 'Uploading...' : 'Click photo to update'}
               </p>
+              {formAvatar && !avatarUploading && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try { await deleteFromStorage(formAvatar); } catch (_) {}
+                    setFormAvatar(null);
+                    formAvatarRef.current = null;
+                    setAvatarUploading(false);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  style={{ fontSize: 11, color: '#ea0606', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                >
+                  Remove photo
+                </button>
+              )}
             </div>
 
             <form onSubmit={handleSubmit}>
@@ -577,9 +644,9 @@ export default function Team() {
                   style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid #e4e1db', background: 'white', color: '#344767', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
                   Cancel
                 </button>
-                <button type="submit" disabled={submitting}
-                  style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: '#1a1a1a', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: submitting ? 0.7 : 1 }}>
-                  {submitting ? 'Saving...' : editingMember ? 'Save Changes' : 'Add Member'}
+                <button type="submit" disabled={submitting || avatarUploading}
+                  style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: '#1a1a1a', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: (submitting || avatarUploading) ? 0.7 : 1 }}>
+                  {submitting ? 'Saving...' : avatarUploading ? 'Uploading photo...' : editingMember ? 'Save Changes' : 'Add Member'}
                 </button>
               </div>
             </form>
