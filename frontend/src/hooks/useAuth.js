@@ -13,6 +13,14 @@ export const useAuth = () => {
       .select('role, is_active, full_name, avatar_url, phone')
       .eq('id', authUser.id)
       .single();
+
+    // Auto-save Google avatar jika belum ada di tabel admins
+    const googleAvatar = authUser.user_metadata?.picture || authUser.user_metadata?.avatar_url;
+    if (data && !data.avatar_url && googleAvatar) {
+      await supabase.from('admins').update({ avatar_url: googleAvatar }).eq('id', authUser.id);
+      data.avatar_url = googleAvatar;
+    }
+
     setAdminData(data || null);
   };
 
@@ -42,11 +50,9 @@ export const useAuth = () => {
           setLoading(false);
           return;
         }
-
         setUser(session?.user ?? null);
         await fetchAdminData(session?.user ?? null);
         setLoading(false);
-
         if (session?.access_token) {
           localStorage.setItem('token', session.access_token);
         } else {
