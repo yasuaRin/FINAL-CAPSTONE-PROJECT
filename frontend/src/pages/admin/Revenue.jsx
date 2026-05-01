@@ -247,24 +247,24 @@ const Revenue = () => {
       animate={{ opacity: 1 }}
       className="space-y-8 pb-16 relative"
     >
-      {/* Notification Toast - Glassmorphism Style */}
+      {/* Notification Toast - Theme Aware */}
       <AnimatePresence>
         {notification && (
           <motion.div
             initial={{ opacity: 0, y: -20, x: '-50%' }}
             animate={{ opacity: 1, y: 20, x: '-50%' }}
             exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className="fixed top-4 left-1/2 z-[100] bg-black/90 backdrop-blur-xl text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/20"
+            className="fixed top-4 left-1/2 z-[100] bg-card backdrop-blur-xl text-foreground px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-border"
           >
             <div className="bg-emerald-500 rounded-full p-1">
-              <CheckCircle2 size={16} />
+              <CheckCircle2 size={16} className="text-white" />
             </div>
             <span className="text-sm font-bold tracking-tight">{notification}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Header - AI Studio Glassmorphism Style */}
+      {/* Header - Theme Aware */}
       <div className="bg-card rounded-[2rem] p-8 border border-border">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
@@ -276,7 +276,7 @@ const Revenue = () => {
                 Financial Intelligence
               </span>
             </div>
-            <h1 className="text-4xl font-bold tracking-tight text-white font-sans">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground font-sans">
               Revenue Analytics
             </h1>
             <p className="text-muted-foreground mt-2 font-medium text-sm">
@@ -297,7 +297,7 @@ const Revenue = () => {
         </div>
       </div>
 
-      {/* KPI Cards - AI Studio Glass Style */}
+      {/* KPI Cards - Theme Aware */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <motion.div 
           whileHover={{ y: -4 }} 
@@ -307,12 +307,12 @@ const Revenue = () => {
             <div className="p-2 bg-primary/10 rounded-xl">
               <DollarSign size={20} className="text-primary" />
             </div>
-            <div className={`flex items-center gap-1 text-[10px] font-black ${kpis.revenueGrowth >= 0 ? 'text-emerald-400 bg-emerald-400/10' : 'text-red-400 bg-red-400/10'} px-2 py-1 rounded-full`}>
+            <div className={`flex items-center gap-1 text-[10px] font-black ${kpis.revenueGrowth >= 0 ? 'text-emerald-500 bg-emerald-500/10' : 'text-red-500 bg-red-500/10'} px-2 py-1 rounded-full`}>
               {kpis.revenueGrowth >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
               {Math.abs(kpis.revenueGrowth)}%
             </div>
           </div>
-          <div className="text-3xl font-mono font-black tracking-tighter text-white">Rp {kpis.totalRevenue.toLocaleString()}</div>
+          <div className="text-3xl font-mono font-black tracking-tighter text-foreground">Rp {kpis.totalRevenue.toLocaleString()}</div>
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Aggregate Revenue</div>
         </motion.div>
 
@@ -322,7 +322,7 @@ const Revenue = () => {
               <Activity size={20} className="text-primary" />
             </div>
           </div>
-          <div className="text-3xl font-mono font-black tracking-tighter text-white">{kpis.totalSessions.toLocaleString()}</div>
+          <div className="text-3xl font-mono font-black tracking-tighter text-foreground">{kpis.totalSessions.toLocaleString()}</div>
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Total Sessions</div>
         </motion.div>
 
@@ -332,7 +332,7 @@ const Revenue = () => {
               <Target size={20} className="text-primary" />
             </div>
           </div>
-          <div className="text-3xl font-mono font-black tracking-tighter text-white">Rp {kpis.avgRevenue.toLocaleString()}</div>
+          <div className="text-3xl font-mono font-black tracking-tighter text-foreground">Rp {kpis.avgRevenue.toLocaleString()}</div>
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Avg per Session</div>
         </motion.div>
 
@@ -342,17 +342,17 @@ const Revenue = () => {
               <TrendingUp size={20} className="text-primary" />
             </div>
           </div>
-          <div className="text-3xl font-mono font-black tracking-tighter text-white">{kpis.topPlatform}</div>
+          <div className="text-3xl font-mono font-black tracking-tighter text-foreground">{kpis.topPlatform}</div>
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Top Platform</div>
         </motion.div>
       </div>
 
-      {/* Revenue Trend Chart - AI Studio Glass Card */}
+      {/* Revenue Trend Chart - Theme Aware */}
       <div className="bg-card rounded-[2.5rem] border border-border p-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <BarChart3 size={18} className="text-primary" />
-            <h3 className="text-xs font-black uppercase tracking-widest text-white">Revenue Trend Analysis</h3>
+            <h3 className="text-xs font-black uppercase tracking-widest text-foreground">Revenue Trend Analysis</h3>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
@@ -376,18 +376,18 @@ const Revenue = () => {
                 dataKey="date" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fontSize: 10, fill: '#7B809A', fontWeight: 600 }} 
+                tick={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 600 }} 
                 dy={8}
                 interval={5}
               />
               <YAxis 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fontSize: 10, fill: '#7B809A', fontWeight: 600 }} 
+                tick={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 600 }} 
                 tickFormatter={v => `Rp ${(v / 1000).toFixed(0)}k`}
               />
               <Tooltip
-                contentStyle={{ background: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', backdropFilter: 'blur(10px)' }}
+                contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--foreground)', backdropFilter: 'blur(10px)' }}
                 formatter={(value) => [`Rp ${value.toLocaleString()}`, 'Revenue']}
                 labelFormatter={(label) => `Date: ${label}`}
               />
@@ -400,12 +400,12 @@ const Revenue = () => {
       {/* Platform + Session Table Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Platform Distribution - AI Studio Glass Card */}
+        {/* Platform Distribution - Theme Aware */}
         <div className="bg-card rounded-[2rem] border border-border overflow-hidden">
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-2">
               <PieChart size={16} className="text-primary" />
-              <h3 className="text-xs font-black uppercase tracking-widest text-white">Platform Contribution</h3>
+              <h3 className="text-xs font-black uppercase tracking-widest text-foreground">Platform Contribution</h3>
             </div>
           </div>
           <div className="p-6">
@@ -419,10 +419,10 @@ const Revenue = () => {
                     transition={{ delay: i * 0.1 }}
                   >
                     <div className="flex justify-between mb-2">
-                      <span className="text-sm font-bold text-white">{p.name}</span>
-                      <span className="text-xs font-mono font-bold text-white">Rp {p.revenue.toLocaleString()}</span>
+                      <span className="text-sm font-bold text-foreground">{p.name}</span>
+                      <span className="text-xs font-mono font-bold text-foreground">Rp {p.revenue.toLocaleString()}</span>
                     </div>
-                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-2 bg-border rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${p.pct}%` }}
@@ -445,12 +445,12 @@ const Revenue = () => {
           </div>
         </div>
 
-        {/* Session Intelligence Table - AI Studio Glass Card */}
+        {/* Session Intelligence Table - Theme Aware */}
         <div className="lg:col-span-2 bg-card rounded-[2rem] border border-border overflow-hidden">
           <div className="p-6 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock size={16} className="text-primary" />
-              <h3 className="text-xs font-black uppercase tracking-widest text-white">Session Intelligence</h3>
+              <h3 className="text-xs font-black uppercase tracking-widest text-foreground">Session Intelligence</h3>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -480,7 +480,7 @@ const Revenue = () => {
                 <tbody>
                   {sessionIntelligence.map((item, idx) => {
                     const platformInfo = platformStats.find(p => p.name === item.platform);
-                    const badgeColor = platformInfo?.color || '#7B809A';
+                    const badgeColor = platformInfo?.color || 'var(--primary)';
                     
                     return (
                       <motion.tr 
@@ -488,22 +488,22 @@ const Revenue = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: idx * 0.02 }}
-                        className="border-b border-border hover:bg-white/5 transition-colors"
+                        className="border-b border-border hover:bg-muted/5 transition-colors"
                       >
-                        <td className="py-3 px-4 text-xs font-mono text-white">
+                        <td className="py-3 px-4 text-xs font-mono text-foreground">
                           {(() => {
                             const parsed = parseRevenueDate(item.date);
                             return parsed ? format(parsed, 'MMM dd') : item.date;
                           })()}
                         </td>
-                        <td className="py-3 px-4 font-bold text-sm text-white">{item.brandName}</td>
+                        <td className="py-3 px-4 font-bold text-sm text-foreground">{item.brandName}</td>
                         <td className="py-3 px-4">
                           <span className="text-[9px] font-black px-2 py-1 rounded-full uppercase" style={{ backgroundColor: `${badgeColor}20`, color: badgeColor }}>
                             {item.platform}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-xs text-muted-foreground">{item.staffName}</td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-sm text-white">
+                        <td className="py-3 px-4 text-right font-mono font-bold text-sm text-foreground">
                           {item.totalRevenue > 0 ? `Rp ${item.totalRevenue.toLocaleString()}` : '—'}
                         </td>
                       </motion.tr>
@@ -521,7 +521,7 @@ const Revenue = () => {
       </div>
 
       {/* Footer Status */}
-      <div className="pt-8 border-t border-border/50">
+      <div className="pt-8 border-t border-border">
         <p className="text-[9px] text-center text-muted-foreground uppercase tracking-[0.3em] font-black">
           VidHelp Intelligence Hub • Real-time Analytics • {format(dateRange.start, 'MMM dd')} - {format(dateRange.end, 'MMM dd, yyyy')}
         </p>

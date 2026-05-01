@@ -195,7 +195,7 @@ export const AdminLayout = () => {
         <div className="font-serif font-black text-primary text-xl">VH</div>
         <button
           onClick={() => setIsSidebarOpen(false)}
-          className="p-2 rounded-lg transition-colors hover:bg-black/5 lg:hidden"
+          className="p-2 rounded-lg transition-colors hover:bg-black/5"
           style={{ color: '#7b809a' }}
         >
           <X size={20} />

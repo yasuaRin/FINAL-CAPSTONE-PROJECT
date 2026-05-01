@@ -7,7 +7,9 @@ import Revenue from './pages/admin/Revenue';
 import Brands from './pages/admin/Brands';
 import Team from './pages/admin/Team';
 import Profile from './pages/admin/Profile';
+import Map from './pages/admin/Leads';
 import AdminLogin from './pages/auth/AdminLogin';
+import Leads from './pages/admin/Leads';
 
 function App() {
   return (
@@ -25,6 +27,7 @@ function App() {
           <Route path="brands" element={<Brands />} />
           <Route path="team" element={<Team />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="leads" element={<Leads />} />
         </Route>
 
         <Route path="/" element={<Navigate to="/admin" replace />} />
