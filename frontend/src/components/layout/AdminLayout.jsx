@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef, useMemo } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../services/supabase';
@@ -6,7 +6,7 @@ import { usePageSearch } from '../../hooks/usePageSearch';
 import {
   LayoutDashboard, Users, LogOut, Search,
   TrendingUp, Menu, X, Briefcase, User, Radar,
-  FileText, Zap,
+  FileText, Zap, Sun, Moon, Server, Phone, Instagram, Mail, ArrowUp,
 } from 'lucide-react';
 
 // ─── TIER 1: Static index (pages + actions) ───────────────────────────────────
@@ -43,6 +43,19 @@ export const AdminLayout = () => {
   const [highlightQuery, setHighlightQuery] = useState('');   // committed query that drives highlights
   const searchRef                           = useRef(null);  // for click-outside
   const pageContentRef                      = useRef(null);  // page content container for highlight
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return localStorage.getItem('theme') === 'dark';
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
   // ───────────────────────────────────────────────────────────────────────────
 
   // Highlight engine — runs when user commits a search (Enter or dropdown click)
@@ -168,28 +181,21 @@ export const AdminLayout = () => {
     navigate('/admin/login', { replace: true });
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-[3px] border-muted border-t-foreground rounded-full animate-spin" />
-      </div>
-    );
-  }
+  // ── Derive breadcrumb segment from path ──────────────────────────────────
+  const pageSegment = useMemo(() => {
+    const path = location.pathname.split('/').pop();
+    if (!path || path === 'admin') return 'Dashboard';
+    return path.charAt(0).toUpperCase() + path.slice(1);
+  }, [location.pathname]);
 
-  const pageSegment = location.pathname.split('/').filter(Boolean).pop() || 'Dashboard';
-
+  // ── Sidebar content (reused by mobile overlay + desktop static bar) ─────
   const SidebarContent = () => (
-    <div className="flex flex-col h-[calc(100vh-1rem)] sm:h-[calc(100vh-2rem)] m-2 sm:m-4 rounded-xl bg-white shadow-xl overflow-hidden border border-black/10">
-      <div className="p-4 sm:p-6 flex items-center justify-between border-b border-black/10">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-black/5">
-            <LayoutDashboard size={18} style={{ color: '#344767' }} />
-          </div>
-          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#344767' }}>VidHelp</h1>
-        </div>
+    <>
+      <div className="p-4 sm:p-6 flex items-center justify-between border-b border-sidebar-border">
+        <div className="font-serif font-black text-primary text-xl">VH</div>
         <button
           onClick={() => setIsSidebarOpen(false)}
-          className="p-2 rounded-lg transition-colors hover:bg-black/5"
+          className="p-2 rounded-lg transition-colors hover:bg-black/5 lg:hidden"
           style={{ color: '#7b809a' }}
         >
           <X size={20} />
@@ -210,26 +216,45 @@ export const AdminLayout = () => {
             style={({ isActive }) => isActive ? {} : { color: '#7b809a' }}
           >
             <span className="shrink-0">{item.icon}</span>
-            <span className="text-sm font-light">{item.label}</span>
+            <span className="text-[10px] uppercase tracking-widest font-sans">{item.label}</span>
           </NavLink>
         ))}
       </nav>
 
-      <div className="p-4 border-t border-black/10">
+      <div className="p-4 border-t border-sidebar-border space-y-2">
+        <button
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all text-sm hover:bg-black/5"
+          style={{ color: '#7b809a' }}
+        >
+          {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+          <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+        </button>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all text-sm font-light hover:bg-black/5"
+          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all text-sm hover:bg-black/5"
           style={{ color: '#7b809a' }}
         >
           <LogOut size={18} />
           Sign Out
         </button>
       </div>
-    </div>
+    </>
   );
 
+  // ── Loading state ───────────────────────────────────────────────────────
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // ── Main render ─────────────────────────────────────────────────────────
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden relative">
+      {/* Mobile backdrop */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
@@ -237,8 +262,9 @@ export const AdminLayout = () => {
         />
       )}
 
+      {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 sm:w-72 flex flex-col transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 sm:w-72 flex flex-col bg-white dark:bg-card transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -246,123 +272,66 @@ export const AdminLayout = () => {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-
-        <header
-          className="shrink-0 z-30 px-4 sm:px-6 lg:px-8"
-          style={{ height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'nowrap' }}
-        >
+        {/* Header - Fixed with CSS variables for dark mode */}
+        <header className="shrink-0 z-30 px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between bg-background/80 backdrop-blur-md border-b border-border sticky top-0">
           {/* LEFT: hamburger + breadcrumb */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2 hover:bg-white/50 rounded-md"
-              style={{ color: '#344767' }}
+              className="p-2 text-foreground hover:bg-muted rounded-md transition-colors"
               aria-label="Open sidebar"
             >
               <Menu size={22} />
             </button>
-            <div>
-              <p style={{ fontSize: '11px', color: '#7b809a', margin: 0, fontWeight: 300 }}>
+            <div className="hidden sm:flex flex-col">
+              <p className="text-[11px] text-muted-foreground font-light">
                 Pages / {pageSegment}
               </p>
-              <h2 style={{ fontSize: '14px', fontWeight: 700, color: '#344767', margin: 0, textTransform: 'capitalize' }}>
+              <h2 className="text-sm font-bold capitalize text-foreground">
                 {pageSegment}
               </h2>
             </div>
           </div>
 
-          {/* RIGHT: glass pill */}
-          <div
-            style={{
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              background: 'white',
-              borderRadius: '16px',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-              border: '1px solid #f1f1f1',
-              padding: '8px 16px',
-            }}
-          >
-            {/* ── SEARCH (desktop only) with live dropdown ── */}
-            <div
-              ref={searchRef}
-              className="hidden lg:flex flex-col"
-              style={{ minWidth: '200px', position: 'relative' }}
-            >
-              {/* Input row */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Search size={16} style={{ color: '#7b809a', flexShrink: 0 }} />
+          {/* RIGHT: glass pill - Fully responsive to dark mode */}
+          <div className="flex items-center gap-3 bg-white dark:bg-card rounded-2xl shadow-md border border-border/50 px-4 py-2">
+            {/* Search (desktop) */}
+            <div ref={searchRef} className="hidden lg:flex flex-col min-w-[200px] relative">
+              <div className="flex items-center gap-2">
+                <Search size={16} className="text-muted-foreground flex-shrink-0" />
                 <input
                   type="text"
                   placeholder="Search..."
                   value={searchQuery}
                   onChange={e => { setSearchQuery(e.target.value); if (!e.target.value) { setHighlightQuery(''); clearHighlights(); } }}
                   onKeyDown={e => { if (e.key === 'Enter' && searchQuery.trim()) { setHighlightQuery(searchQuery.trim()); setSearchQuery(''); } }}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    fontSize: '14px',
-                    color: '#344767',
-                    width: '100%',
-                    padding: '2px 0',
-                  }}
+                  className="w-full bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground py-1"
                 />
-                {/* Clear button */}
                 {searchQuery && (
-                  <button onClick={() => { setSearchQuery(''); setHighlightQuery(''); clearHighlights(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
-                    <X size={14} style={{ color: '#7b809a' }} />
+                  <button onClick={() => { setSearchQuery(''); setHighlightQuery(''); clearHighlights(); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                    <X size={14} />
                   </button>
                 )}
               </div>
-              {/* Underline */}
-              <div style={{ height: '1px', background: searchQuery ? '#344767' : '#e2e8f0', marginTop: '4px', transition: 'background 0.2s' }} />
+              <div className={`h-px mt-1 transition-all duration-200 ${searchQuery ? 'bg-primary' : 'bg-border'}`} />
 
-
-              {/* ── DROPDOWN ── */}
+              {/* Dropdown */}
               {showDropdown && (
-                <div style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 12px)',
-                  left: '-16px',
-                  right: '-16px',
-                  background: 'white',
-                  borderRadius: '14px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-                  border: '1px solid #f1f1f1',
-                  overflow: 'hidden',
-                  zIndex: 100,
-                  padding: '6px 0',
-                }}>
+                <div className="absolute top-full left-0 right-0 mt-3 bg-white dark:bg-card border border-border rounded-xl shadow-xl overflow-hidden z-50 py-1">
                   {allResults.length > 0 ? allResults.map(result => (
                     <button
                       key={result.id}
                       onClick={() => { setHighlightQuery(searchQuery.trim()); navigate(result.path); setSearchQuery(''); }}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 16px',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: 'background 0.15s',
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                      className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-muted transition-colors text-left"
                     >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 500, color: '#344767' }}>{result.title}</span>
-                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#7b809a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{result.category}</span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-medium text-foreground">{result.title}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{result.category}</span>
                       </div>
                       <CategoryIcon category={result.category} />
                     </button>
                   )) : (
-                    <div style={{ padding: '24px 16px', textAlign: 'center', fontSize: '12px', color: '#7b809a' }}>
+                    <div className="px-4 py-6 text-center text-sm text-muted-foreground">
                       No results for "{searchQuery}"
                     </div>
                   )}
@@ -370,124 +339,56 @@ export const AdminLayout = () => {
               )}
             </div>
 
-            {/* Divider — desktop only */}
-            <div className="hidden lg:block" style={{ width: '1px', height: '28px', background: '#e2e8f0' }} />
+            {/* Divider */}
+            <div className="hidden lg:block w-px h-7 bg-border" />
 
-            {/* Avatar — always visible */}
+            {/* Avatar */}
             <div
               onClick={() => navigate('/admin/profile')}
               title={displayName}
-              style={{
-                width: '36px', height: '36px', borderRadius: '50%',
-                border: '1px solid #e2e8f0', overflow: 'hidden',
-                cursor: 'pointer', flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: '#f0f2f5', transition: 'transform 0.2s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+              className="relative w-9 h-9 rounded-full border border-border overflow-hidden cursor-pointer flex-shrink-0 bg-muted hover:border-primary hover:scale-105 transition-all duration-200"
             >
               {avatarUrl ? (
-                <img src={avatarUrl} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
               ) : (
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#344767', userSelect: 'none' }}>
-                  {initials}
-                </span>
+                <div className="w-full h-full flex items-center justify-center">
+                  <span className="text-sm font-bold text-foreground">{initials}</span>
+                </div>
               )}
             </div>
           </div>
         </header>
 
+        {/* Page content */}
         <section ref={pageContentRef} className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8" style={{ position: 'relative' }}>
           <div className="max-w-7xl mx-auto pt-4">
             <Outlet />
           </div>
         </section>
 
-
-        {/* ── FLOATING FIND BAR (Ctrl+F style) ─────────────────────────────
-            Appears at the bottom-right when highlightQuery is active.
-            Shows: query text | currentMatch/matchCount | prev | next | close
-        ──────────────────────────────────────────────────────────────────── */}
+        {/* Floating find bar */}
         {highlightQuery && (
-          <div
-            style={{
-              position: 'fixed',
-              top: '88px',
-              right: '24px',
-              zIndex: 200,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              background: '#1e293b',
-              borderRadius: '10px',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-              padding: '8px 12px',
-              color: 'white',
-              fontSize: '13px',
-              userSelect: 'none',
-            }}
-          >
-            {/* Query text */}
+          <div style={{
+            position: 'fixed', top: '88px', right: '24px', zIndex: 200,
+            display: 'flex', alignItems: 'center', gap: '4px', background: '#1e293b',
+            borderRadius: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+            padding: '8px 12px', color: 'white', fontSize: '13px', userSelect: 'none',
+          }}>
             <span style={{ color: '#94a3b8', marginRight: '4px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {highlightQuery}
             </span>
-
-            {/* Match counter */}
             <span style={{ color: '#FEF08A', fontWeight: 700, minWidth: '36px', textAlign: 'center' }}>
               {matchCount === 0 ? '0/0' : `${currentMatch}/${matchCount}`}
             </span>
-
-            {/* Divider */}
             <div style={{ width: '1px', height: '16px', background: '#334155', margin: '0 4px' }} />
-
-            {/* Prev ^ */}
-            <button
-              onClick={goPrev}
-              disabled={matchCount === 0}
-              title="Previous match"
-              style={{
-                background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed',
-                color: matchCount ? 'white' : '#475569', padding: '2px 6px', borderRadius: '4px',
-                fontSize: '14px', lineHeight: 1, transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => { if (matchCount) e.currentTarget.style.background = '#334155'; }}
-              onMouseLeave={e => e.currentTarget.style.background = 'none'}
-            >
+            <button onClick={goPrev} disabled={matchCount === 0} style={{ background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed', color: matchCount ? 'white' : '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', lineHeight: 1 }}>
               &#8743;
             </button>
-
-            {/* Next v */}
-            <button
-              onClick={goNext}
-              disabled={matchCount === 0}
-              title="Next match"
-              style={{
-                background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed',
-                color: matchCount ? 'white' : '#475569', padding: '2px 6px', borderRadius: '4px',
-                fontSize: '14px', lineHeight: 1, transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => { if (matchCount) e.currentTarget.style.background = '#334155'; }}
-              onMouseLeave={e => e.currentTarget.style.background = 'none'}
-            >
+            <button onClick={goNext} disabled={matchCount === 0} style={{ background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed', color: matchCount ? 'white' : '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', lineHeight: 1 }}>
               &#8744;
             </button>
-
-            {/* Divider */}
             <div style={{ width: '1px', height: '16px', background: '#334155', margin: '0 4px' }} />
-
-            {/* Close X */}
-            <button
-              onClick={() => { setHighlightQuery(''); clearHighlights(); }}
-              title="Close"
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: '#94a3b8', padding: '2px 6px', borderRadius: '4px',
-                fontSize: '16px', lineHeight: 1, transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = '#334155'}
-              onMouseLeave={e => e.currentTarget.style.background = 'none'}
-            >
+            <button onClick={() => { setHighlightQuery(''); clearHighlights(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontSize: '16px', lineHeight: 1 }}>
               &#x2715;
             </button>
           </div>
