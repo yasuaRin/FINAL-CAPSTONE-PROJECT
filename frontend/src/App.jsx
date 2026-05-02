@@ -9,12 +9,9 @@ import Team from './pages/admin/Team';
 import Profile from './pages/admin/Profile';
 import Map from './pages/admin/Leads';
 import AdminLogin from './pages/auth/AdminLogin';
-<<<<<<< HEAD
 import AdminResetPassword from './pages/auth/AdminResetPassword';
 import AdminAuthCallback from './pages/auth/AdminAuthCallback';
-=======
 import Leads from './pages/admin/Leads';
->>>>>>> dadia/admin
 
 function App() {
   return (
