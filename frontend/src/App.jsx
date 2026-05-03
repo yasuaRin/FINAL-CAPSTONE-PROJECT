@@ -12,11 +12,14 @@ import AdminLogin from './pages/auth/AdminLogin';
 import AdminResetPassword from './pages/auth/AdminResetPassword';
 import AdminAuthCallback from './pages/auth/AdminAuthCallback';
 import Leads from './pages/admin/Leads';
+import Landing from './pages/public/Landing'; 
 
 function App() {
   return (
     <HashRouter>
       <Routes>
+        <Route path="/" element={<Landing />} />
+
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/auth/reset-password" element={<AdminResetPassword />} />
         <Route path="/admin/auth/callback" element={<AdminAuthCallback />} />
@@ -34,8 +37,7 @@ function App() {
           <Route path="leads" element={<Leads />} />
         </Route>
 
-        <Route path="/" element={<Navigate to="/admin" replace />} />
-        <Route path="*" element={<Navigate to="/admin" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </HashRouter>
   );
