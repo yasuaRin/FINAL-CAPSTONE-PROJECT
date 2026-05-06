@@ -12,7 +12,6 @@ import AdminLogin from './pages/auth/AdminLogin';
 import AdminResetPassword from './pages/auth/AdminResetPassword';
 import AdminAuthCallback from './pages/auth/AdminAuthCallback';
 import Leads from './pages/admin/Leads';
-import AdminResetPassword from './pages/auth/AdminResetPassword';
 
 function App() {
   return (
