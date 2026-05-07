@@ -296,15 +296,18 @@ export default function Brands() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Globe size={14} className="text-primary" />
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">
+            {/* Intel Label - text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground */}
+            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
               Operational Intel
             </span>
           </div>
+          {/* Main Page Title - text-3xl font-bold tracking-tight */}
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Brand Portfolio</h1>
-          <p className="text-muted-foreground mt-1">Manage and monitor corporate asset intelligence.</p>
+          <p className="text-muted-foreground mt-1 font-light text-xs">Manage and monitor corporate asset intelligence.</p>
         </div>
         
         <div className="flex items-center gap-3">
+          {/* Sync Assets Button - text-[10px] font-bold uppercase tracking-widest */}
           <button 
             onClick={() => fileInputRef.current?.click()}
             className={`inline-flex items-center justify-center rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all h-10 px-4 gap-2 border border-border bg-card hover:border-primary/50 ${syncStatus === 'processing' ? 'animate-pulse' : ''}`}
@@ -313,6 +316,7 @@ export default function Brands() {
             {syncStatus === 'processing' ? 'Processing...' : syncStatus === 'success' ? 'Imported' : 'Sync Assets'}
           </button>
           <input type="file" ref={fileInputRef} onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])} className="hidden" accept=".json,.csv" />
+          {/* Onboard Button - text-xs font-black uppercase tracking-widest */}
           <button 
             onClick={() => openForm()} 
             className="inline-flex items-center justify-center rounded-xl text-xs font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90 transition-all h-10 px-6 shadow-lg shadow-primary/20 gap-2"
@@ -331,31 +335,34 @@ export default function Brands() {
             value={searchTerm} 
             onChange={(e) => setSearchTerm(e.target.value)} 
             placeholder="Search brands or sectors..." 
-            className="w-full bg-card border border-border rounded-2xl pl-12 pr-4 py-3 text-sm font-bold text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all" 
+            className="w-full bg-card border border-border rounded-2xl pl-12 pr-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all" 
           />
         </div>
         <div className="flex items-center gap-2 px-4 py-2 bg-card rounded-2xl border border-border">
           <Activity size={14} className="text-primary" />
-          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{brandMatrix.length} Monitored Assets</span>
+          {/* Small Metadata - text-[10px] font-bold uppercase tracking-widest */}
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{brandMatrix.length} Monitored Assets</span>
         </div>
       </div>
       
       {/* Intelligence Ledger Table */}
       <div className="mt-8 overflow-hidden rounded-[2rem] border border-border bg-card shadow-xl">
         <div className="p-6 border-b border-border bg-muted/20">
+          {/* Section Header - text-xl font-bold tracking-tight */}
           <h3 className="text-xl font-bold tracking-tight text-foreground">Intelligence Ledger</h3>
-          <p className="text-muted-foreground text-xs font-medium mt-1">Consolidated operational view of monitored assets.</p>
+          <p className="text-muted-foreground text-xs font-light mt-1">Consolidated operational view of monitored assets.</p>
         </div>
         
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-border bg-muted/10">
-                <th className="p-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Brand Information</th>
-                <th className="p-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Sales Performance</th>
-                <th className="p-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Risk Status</th>
-                <th className="p-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Platform Reach</th>
-                <th className="p-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground text-right">Management</th>
+                {/* Table Headers - text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60 */}
+                <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60">Brand Information</th>
+                <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60">Sales Performance</th>
+                <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60">Risk Status</th>
+                <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60">Platform Reach</th>
+                <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60 text-right">Management</th>
               </tr>
             </thead>
             <tbody>
@@ -369,8 +376,10 @@ export default function Brands() {
                         {(brand.brand_name || '?')[0]}
                       </div>
                       <div>
+                        {/* Brand Name - font-bold text-base tracking-tight */}
                         <p className="font-bold text-base tracking-tight text-foreground group-hover:text-primary transition-colors">{brand.brand_name}</p>
-                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-full border border-border/50">
+                        {/* Industry Badge - text-[10px] font-bold uppercase tracking-widest */}
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-full border border-border/50">
                           {brand.brand_category || 'General'}
                         </span>
                       </div>
@@ -380,8 +389,10 @@ export default function Brands() {
                   {/* Sales Performance */}
                   <td className="p-5">
                     <div className="flex items-center gap-3">
-                      <span className="text-base font-mono font-black tracking-tighter text-foreground">{formatRevenue(brand.totalRevenue)}</span>
-                      <div className={`flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full ${brand.growth >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                      {/* Revenue Value - text-lg font-bold font-mono tracking-tighter */}
+                      <span className="text-lg font-bold font-mono tracking-tighter text-foreground">{formatRevenue(brand.totalRevenue)}</span>
+                      {/* Growth Badge - text-[9px] font-bold uppercase tracking-widest */}
+                      <div className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${brand.growth >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
                         {brand.growth >= 0 ? <ArrowUpRight size={10} /> : <ArrowDown size={10} />}
                         {Math.abs(brand.growth)}%
                       </div>
@@ -393,7 +404,8 @@ export default function Brands() {
                   
                   {/* Risk Status */}
                   <td className="p-5">
-                    <span className={`inline-flex px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border ${
+                    {/* Risk Indicator - text-[9px] font-bold uppercase tracking-widest */}
+                    <span className={`inline-flex px-3 py-1 rounded-xl text-[9px] font-bold uppercase tracking-wider border ${
                       brand.riskLevel === 'High' 
                         ? 'bg-red-500/10 text-red-500 border-red-500/20' 
                         : brand.riskLevel === 'Medium' 
@@ -445,9 +457,9 @@ export default function Brands() {
         </div>
       </div>
       
-      {/* Footer */}
+      {/* Footer - text-[9px] font-bold uppercase tracking-[0.3em] */}
       <div className="pt-6 border-t border-border">
-        <p className="text-[9px] text-center text-muted-foreground uppercase tracking-[0.3em] font-black">
+        <p className="text-[9px] text-center text-muted-foreground uppercase tracking-[0.3em] font-bold">
           VidHelp Intelligence Hub • Real-time Analytics • {brandMatrix.length} Active Entities
         </p>
       </div>
@@ -475,7 +487,7 @@ export default function Brands() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-foreground">Offboard Entity?</h3>
-                  <p className="text-muted-foreground text-sm mt-1">This will remove the brand metrics permanently.</p>
+                  <p className="text-muted-foreground text-sm font-light mt-1">This will remove the brand metrics permanently.</p>
                 </div>
                 <div className="flex gap-3 w-full pt-2">
                   <button onClick={() => setDeleteId(null)} className="flex-1 px-4 py-2 bg-muted text-muted-foreground rounded-xl text-sm font-bold">Cancel</button>
@@ -514,21 +526,22 @@ export default function Brands() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Entity Name *</label>
+                    {/* Form Label - text-[10px] font-bold uppercase tracking-widest */}
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Entity Name *</label>
                     <input 
                       name="name" 
                       required 
                       defaultValue={editingBrand?.brand_name} 
                       placeholder="e.g. Aura Glow" 
-                      className="w-full bg-background border border-input rounded-xl py-3 px-4 text-sm font-bold text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all" 
+                      className="w-full bg-background border border-input rounded-xl py-3 px-4 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all" 
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Market Sector</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Market Sector</label>
                     <select 
                       name="industry" 
                       defaultValue={editingBrand?.brand_category || 'Beauty'} 
-                      className="w-full bg-background border border-input rounded-xl py-3 px-4 text-sm font-bold text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                      className="w-full bg-background border border-input rounded-xl py-3 px-4 text-sm font-medium text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                     >
                       <option value="Beauty">Beauty</option>
                       <option value="Gadgets">Gadgets</option>
@@ -542,22 +555,22 @@ export default function Brands() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Operational Base</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Operational Base</label>
                     <input 
                       name="location" 
                       defaultValue={editingBrand?.location || 'Global'} 
                       placeholder="e.g. New York, USA" 
-                      className="w-full bg-background border border-input rounded-xl py-3 px-4 text-sm font-bold text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all" 
+                      className="w-full bg-background border border-input rounded-xl py-3 px-4 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all" 
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Contact Email</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Contact Email</label>
                     <input 
                       name="email" 
                       type="email" 
                       defaultValue={editingBrand?.contactEmail || ''} 
                       placeholder="partnerships@brand.com" 
-                      className="w-full bg-background border border-input rounded-xl py-3 px-4 text-sm font-bold text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all" 
+                      className="w-full bg-background border border-input rounded-xl py-3 px-4 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all" 
                     />
                   </div>
                 </div>

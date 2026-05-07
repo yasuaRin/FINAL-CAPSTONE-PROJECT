@@ -1,5 +1,4 @@
-﻿// frontend/src/pages/admin/Profile.jsx
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -166,7 +165,7 @@ function Profile() {
             initial={{ opacity: 0, y: -20, x: '-50%' }}
             animate={{ opacity: 1, y: 20, x: '-50%' }}
             exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className="fixed top-4 left-1/2 z-[100] bg-[#1A1A1A] text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10"
+            className="fixed top-4 left-1/2 z-[100] bg-card backdrop-blur-xl text-foreground px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-border"
           >
             <div className="bg-emerald-500 rounded-full p-1">
               <CheckCircle2 size={16} />
@@ -181,8 +180,9 @@ function Profile() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter">Profile Settings</h1>
-        <p className="text-gray-500 text-sm mt-1">Manage your agency portal credentials and preferences.</p>
+        {/* Page Title - text-3xl font-bold tracking-tight */}
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Profile Settings</h1>
+        <p className="text-muted-foreground mt-2 font-light text-xs">Manage your agency portal credentials and preferences.</p>
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -193,10 +193,10 @@ function Profile() {
           transition={{ delay: 0.1 }}
           className="md:col-span-1"
         >
-          <div className="border border-white/5 bg-[#111111] rounded-2xl p-6 h-fit sticky top-24">
+          <div className="bg-card border border-border rounded-2xl p-6 h-fit sticky top-24">
             {/* Avatar */}
             <div className="relative w-32 h-32 mx-auto mb-4 group">
-              <div className="w-full h-full rounded-full overflow-hidden border-4 border-red-600/20 bg-gradient-to-tr from-red-600 to-orange-500 p-0.5">
+              <div className="w-full h-full rounded-full overflow-hidden border-4 border-primary/20 bg-gradient-to-tr from-primary to-orange-500 p-0.5">
                 {profile.avatar ? (
                   <img
                     src={profile.avatar}
@@ -204,8 +204,8 @@ function Profile() {
                     className="w-full h-full rounded-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full rounded-full bg-red-600/20 flex items-center justify-center">
-                    <span className="text-4xl font-bold text-red-500">{getInitials()}</span>
+                  <div className="w-full h-full rounded-full bg-primary/20 flex items-center justify-center">
+                    <span className="text-4xl font-bold text-primary">{getInitials()}</span>
                   </div>
                 )}
               </div>
@@ -213,7 +213,7 @@ function Profile() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isLoading}
-                className="absolute bottom-0 right-0 bg-red-600 text-white p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700 disabled:opacity-50"
+                className="absolute bottom-0 right-0 bg-primary text-white p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/80 disabled:opacity-50"
               >
                 <Camera size={16} />
               </button>
@@ -228,20 +228,24 @@ function Profile() {
 
             {/* Name & Role */}
             <div className="text-center">
-              <h2 className="text-xl font-bold text-white">{profile.name || 'Admin User'}</h2>
-              <p className="text-red-500 font-mono text-xs uppercase tracking-widest mt-1">{profile.role}</p>
+              {/* User Name - text-xl font-bold */}
+              <h2 className="text-xl font-bold text-foreground">{profile.name || 'Admin User'}</h2>
+              {/* Role Badge - text-[10px] font-bold uppercase tracking-wider */}
+              <p className="text-primary text-[10px] font-bold uppercase tracking-wider mt-1">{profile.role}</p>
             </div>
 
             {/* Stats */}
-            <div className="mt-6 pt-6 border-t border-white/5 flex justify-center gap-6">
+            <div className="mt-6 pt-6 border-t border-border flex justify-center gap-6">
               <div className="text-center">
-                <p className="text-2xl font-bold text-white">{stats.brandsManaged}</p>
-                <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Brands</p>
+                {/* Stat Value - text-2xl font-mono font-bold */}
+                <p className="text-2xl font-mono font-bold text-foreground">{stats.brandsManaged}</p>
+                {/* Stat Label - text-[10px] font-bold uppercase tracking-wider */}
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Brands</p>
               </div>
-              <div className="w-px h-8 bg-white/5" />
+              <div className="w-px h-8 bg-border" />
               <div className="text-center">
-                <p className="text-2xl font-bold text-white">{stats.teamMembers}</p>
-                <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Team</p>
+                <p className="text-2xl font-mono font-bold text-foreground">{stats.teamMembers}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Team</p>
               </div>
             </div>
 
@@ -249,7 +253,7 @@ function Profile() {
             <div className="mt-6 space-y-2">
               <button
                 onClick={() => setIsEditing(!isEditing)}
-                className="w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm font-bold text-white hover:bg-white/10 transition-colors"
+                className="w-full py-2.5 bg-muted/20 border border-border rounded-xl text-[10px] font-bold uppercase tracking-wider text-foreground hover:bg-muted/30 transition-colors"
               >
                 {isEditing ? 'Cancel Editing' : 'Edit Profile'}
               </button>
@@ -264,11 +268,12 @@ function Profile() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="border border-white/5 bg-[#111111] rounded-2xl overflow-hidden"
+            className="bg-card border border-border rounded-2xl overflow-hidden"
           >
-            <div className="p-5 border-b border-white/5 bg-white/5">
-              <h3 className="font-bold flex items-center gap-2 text-white">
-                <User size={18} className="text-red-500" />
+            <div className="p-5 border-b border-border bg-muted/20">
+              {/* Section Header - text-[10px] font-bold uppercase tracking-[0.3em] */}
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] flex items-center gap-2 text-muted-foreground">
+                <User size={18} className="text-primary" />
                 PERSONAL INFORMATION
               </h3>
             </div>
@@ -276,67 +281,68 @@ function Profile() {
             <form onSubmit={handleSave} className="p-6 space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-black">Full Name</label>
+                  {/* Form Label - text-[10px] font-bold uppercase tracking-wider */}
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Full Name</label>
                   <input
                     type="text"
                     value={profile.name}
                     onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                     disabled={!isEditing || isLoading}
-                    className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg text-sm px-4 py-2.5 text-white focus:ring-1 focus:ring-red-600 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-background border border-input rounded-lg text-sm font-medium px-4 py-2.5 text-foreground focus:ring-1 focus:ring-primary outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Enter your full name"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-black">Email Address</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Email Address</label>
                   <input
                     type="email"
                     value={profile.email}
                     disabled
-                    className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg text-sm px-4 py-2.5 text-white/50 cursor-not-allowed"
+                    className="w-full bg-background border border-input rounded-lg text-sm font-medium px-4 py-2.5 text-muted-foreground/50 cursor-not-allowed"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-black">Role</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Role</label>
                   <input
                     type="text"
                     value={profile.role}
                     onChange={(e) => setProfile({ ...profile, role: e.target.value })}
                     disabled={!isEditing || isLoading}
-                    className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg text-sm px-4 py-2.5 text-white focus:ring-1 focus:ring-red-600 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-background border border-input rounded-lg text-sm font-medium px-4 py-2.5 text-foreground focus:ring-1 focus:ring-primary outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-black">Member Since</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Member Since</label>
                   <input
                     type="text"
                     value={new Date(user?.created_at || Date.now()).toLocaleDateString()}
                     disabled
-                    className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg text-sm px-4 py-2.5 text-white/50 cursor-not-allowed"
+                    className="w-full bg-background border border-input rounded-lg text-sm font-medium px-4 py-2.5 text-muted-foreground/50 cursor-not-allowed"
                   />
                 </div>
 
                 <div className="md:col-span-2 space-y-1.5">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-black">Bio</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Bio</label>
                   <textarea
                     value={profile.bio}
                     onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
                     disabled={!isEditing || isLoading}
                     rows={3}
-                    className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg text-sm px-4 py-2.5 text-white focus:ring-1 focus:ring-red-600 outline-none transition-all resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-background border border-input rounded-lg text-sm font-medium px-4 py-2.5 text-foreground focus:ring-1 focus:ring-primary outline-none transition-all resize-none disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Tell us about yourself..."
                   />
                 </div>
               </div>
 
               {isEditing && (
-                <div className="flex justify-end pt-4 border-t border-white/5">
+                <div className="flex justify-end pt-4 border-t border-border">
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="inline-flex items-center justify-center rounded-xl text-sm font-bold transition-all bg-red-600 text-white hover:bg-red-700 h-11 px-8 py-2 gap-2 shadow-lg shadow-red-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center justify-center rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8 py-2 gap-2 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isLoading ? (
                       <>
@@ -360,64 +366,64 @@ function Profile() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="border border-white/5 bg-[#111111] rounded-2xl overflow-hidden"
+            className="bg-card border border-border rounded-2xl overflow-hidden"
           >
-            <div className="p-5 border-b border-white/5 bg-white/5">
-              <h3 className="font-bold flex items-center gap-2 text-white">
-                <Shield size={18} className="text-red-500" />
+            <div className="p-5 border-b border-border bg-muted/20">
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] flex items-center gap-2 text-muted-foreground">
+                <Shield size={18} className="text-primary" />
                 SECURITY SETTINGS
               </h3>
             </div>
             <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between p-4 bg-[#1A1A1A] rounded-xl border border-white/5 hover:border-red-600/30 transition-all group">
+              <div className="flex items-center justify-between p-4 bg-muted/10 rounded-xl border border-border hover:border-primary/30 transition-all group">
                 <div className="flex items-center gap-4">
-                  <div className="p-2 bg-red-600/10 rounded-lg">
-                    <Key size={18} className="text-red-500" />
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Key size={18} className="text-primary" />
                   </div>
                   <div>
-                    <p className="font-bold text-white text-sm">Change Password</p>
-                    <p className="text-xs text-gray-500">Update your account password</p>
+                    <p className="font-bold text-sm text-foreground">Change Password</p>
+                    <p className="text-xs font-light text-muted-foreground">Update your account password</p>
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-white hover:bg-red-600 hover:border-red-600 transition-all"
+                  className="px-4 py-2 bg-muted/20 border border-border rounded-lg text-[9px] font-bold uppercase tracking-wider text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
                 >
                   Change
                 </button>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-[#1A1A1A] rounded-xl border border-white/5 hover:border-red-600/30 transition-all group">
+              <div className="flex items-center justify-between p-4 bg-muted/10 rounded-xl border border-border hover:border-primary/30 transition-all group">
                 <div className="flex items-center gap-4">
-                  <div className="p-2 bg-red-600/10 rounded-lg">
-                    <Smartphone size={18} className="text-red-500" />
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Smartphone size={18} className="text-primary" />
                   </div>
                   <div>
-                    <p className="font-bold text-white text-sm">Two-Factor Authentication</p>
-                    <p className="text-xs text-gray-500">Add an extra layer of security</p>
+                    <p className="font-bold text-sm text-foreground">Two-Factor Authentication</p>
+                    <p className="text-xs font-light text-muted-foreground">Add an extra layer of security</p>
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-white hover:bg-red-600 hover:border-red-600 transition-all"
+                  className="px-4 py-2 bg-muted/20 border border-border rounded-lg text-[9px] font-bold uppercase tracking-wider text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
                 >
                   Enable 2FA
                 </button>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-[#1A1A1A] rounded-xl border border-white/5 hover:border-red-600/30 transition-all group">
+              <div className="flex items-center justify-between p-4 bg-muted/10 rounded-xl border border-border hover:border-primary/30 transition-all group">
                 <div className="flex items-center gap-4">
-                  <div className="p-2 bg-red-600/10 rounded-lg">
-                    <Bell size={18} className="text-red-500" />
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Bell size={18} className="text-primary" />
                   </div>
                   <div>
-                    <p className="font-bold text-white text-sm">Notification Preferences</p>
-                    <p className="text-xs text-gray-500">Manage email and push notifications</p>
+                    <p className="font-bold text-sm text-foreground">Notification Preferences</p>
+                    <p className="text-xs font-light text-muted-foreground">Manage email and push notifications</p>
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-white hover:bg-red-600 hover:border-red-600 transition-all"
+                  className="px-4 py-2 bg-muted/20 border border-border rounded-lg text-[9px] font-bold uppercase tracking-wider text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
                 >
                   Configure
                 </button>
@@ -430,24 +436,24 @@ function Profile() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="border border-white/5 bg-[#111111] rounded-2xl overflow-hidden"
+            className="bg-card border border-border rounded-2xl overflow-hidden"
           >
-            <div className="p-5 border-b border-white/5 bg-white/5">
-              <h3 className="font-bold flex items-center gap-2 text-white">
-                <Globe size={18} className="text-red-500" />
+            <div className="p-5 border-b border-border bg-muted/20">
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] flex items-center gap-2 text-muted-foreground">
+                <Globe size={18} className="text-primary" />
                 ACTIVE SESSIONS
               </h3>
             </div>
             <div className="p-6">
-              <div className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-lg border border-white/5">
+              <div className="flex items-center justify-between p-3 bg-muted/10 rounded-lg border border-border">
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                   <div>
-                    <p className="text-sm font-medium text-white">Current Session</p>
-                    <p className="text-[10px] text-gray-500">Chrome on Windows • {new Date().toLocaleString()}</p>
+                    <p className="text-sm font-bold text-foreground">Current Session</p>
+                    <p className="text-[9px] font-medium text-muted-foreground">Chrome on Windows • {new Date().toLocaleString()}</p>
                   </div>
                 </div>
-                <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded">Active</span>
+                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded">Active</span>
               </div>
             </div>
           </motion.div>

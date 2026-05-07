@@ -1,245 +1,560 @@
 ﻿// frontend/src/pages/admin/Dashboard.jsx
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  TrendingUp, Download, Activity, Sparkles,
+  TrendingUp, Download, Activity,
   ShieldAlert, CheckCircle2, ArrowUpRight,
-  PieChart as PieChartIcon, AlertCircle, Flame
+  PieChart as PieChartIcon, AlertCircle, Brain, RefreshCw, Sparkles, BarChart3
 } from 'lucide-react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { format, subDays, differenceInDays, parseISO, startOfDay, endOfDay } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay, parseISO, startOfYear, endOfYear } from 'date-fns';
 import { useRevenue } from '../../hooks/useRevenue';
 import { useBrands } from '../../hooks/useBrands';
 import { useTeam } from '../../hooks/useTeam';
-import { DateRangeSelector } from '../../components/DateRangeSelector';
+import { SortByButton } from '../../components/layout/SortByButton';
+import { usePredictions } from '../../hooks/usePredictions';
+import { supabase } from '../../services/supabase';
 
+// --- Helper Functions ---
+const parseRevenueDate = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+};
+
+const sumRevenue = (item) => (item.revenue_shopee || 0) + (item.revenue_tiktok || 0);
+
+// --- Format Currency for IDR ---
+const formatCurrency = (value) => {
+  if (!value && value !== 0) return 'Rp 0';
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value);
+};
+
+const formatCompactCurrency = (value) => {
+  if (!value) return 'Rp 0';
+  const billions = value / 1_000_000_000;
+  return `Rp ${billions.toFixed(1)}B`;
+};
+
+// --- KPI Card Component ---
+const KpiCard = ({ label, value, accent, icon: Icon, badge, badgeStyle, hint, action, onAction }) => (
+  <motion.div
+    whileHover={{ y: -4, scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    onClick={onAction}
+    className={`dashboard-card p-5 cursor-pointer border-l-4 border-l-${accent} group transition-all`}
+  >
+    <div className="flex justify-between items-start">
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-primary transition-colors">
+          {label}
+        </p>
+        <h3 className="text-2xl font-mono font-bold mt-1">{value}</h3>
+      </div>
+      <div className="p-2 bg-primary/10 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-all">
+        <Icon size={18} />
+      </div>
+    </div>
+    <div className="mt-4 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        {badge && (
+          <div className={`flex items-center font-bold text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded ${badgeStyle}`}>
+            {badge}
+          </div>
+        )}
+        {hint && <span className="text-[10px] font-medium text-muted-foreground">{hint}</span>}
+      </div>
+      {action && (
+        <span className="text-[9px] font-bold uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+          {action}
+        </span>
+      )}
+    </div>
+  </motion.div>
+);
+
+// --- Bar Chart Tooltip Component ---
+const BarChartTooltip = ({ active, payload, formatCurrency }) => {
+  if (!active || !payload?.length) return null;
+  
+  const dataPoint = payload[0]?.payload || {};
+  const label = dataPoint?.year;
+  const actualValue = dataPoint?.actual;
+  const forecastValue = dataPoint?.forecast;
+
+  return (
+    <div className="bg-card/95 backdrop-blur-md border border-border p-3 rounded-xl shadow-xl ring-1 ring-black/5 min-w-[180px]">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">{label}</p>
+      <div className="space-y-2">
+        {actualValue != null && actualValue > 0 && (
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-[10px] font-medium text-muted-foreground">Actual</span>
+            </div>
+            <span className="text-[10px] font-bold text-primary">
+              {formatCurrency(actualValue)}
+            </span>
+          </div>
+        )}
+        {forecastValue != null && forecastValue > 0 && (
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-blue-500" />
+              <span className="text-[10px] font-medium text-muted-foreground">Predicted</span>
+            </div>
+            <div className="text-right">
+              <span className="block text-[10px] font-bold text-blue-500">
+                {formatCurrency(forecastValue)}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- Critical Risk Monitor Component ---
+const CriticalRiskMonitor = ({ onBrandClick }) => {
+  const [riskData, setRiskData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchRiskData = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('risk_monitor')
+          .select(`
+            brand_id,
+            risk_level,
+            reasons,
+            sessions_count,
+            revenue_total
+          `)
+          .order('risk_level', { ascending: false });
+        
+        if (error) throw error;
+        
+        const { data: brands, error: brandsError } = await supabase
+          .from('brands')
+          .select('brand_id, brand_name');
+        
+        if (brandsError) throw brandsError;
+        
+        const brandMap = new Map(brands.map(b => [b.brand_id, b.brand_name]));
+        
+        const enrichedData = (data || []).map(item => ({
+          id: item.brand_id,
+          name: brandMap.get(item.brand_id) || 'Unknown',
+          risk: item.risk_level,
+          riskColor: item.risk_level === 'High' ? 'bg-destructive' : 
+                     item.risk_level === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500',
+          reasons: item.reasons || [],
+          sessions: item.sessions_count || 0,
+          revenue: item.revenue_total || 0
+        }));
+        
+        setRiskData(enrichedData);
+      } catch (error) {
+        console.error('Error fetching risk data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchRiskData();
+    
+    const subscription = supabase
+      .channel('risk_monitor_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'risk_monitor' }, 
+        () => fetchRiskData()
+      )
+      .subscribe();
+    
+    return () => subscription.unsubscribe();
+  }, []);
+  
+  const highRiskCount = riskData.filter(b => b.risk === 'High').length;
+  const mediumRiskCount = riskData.filter(b => b.risk === 'Medium').length;
+  const lowRiskCount = riskData.filter(b => b.risk === 'Low').length;
+  const totalCount = riskData.length;
+  
+  if (loading) {
+    return (
+      <div className="dashboard-card p-0 overflow-hidden">
+        <div className="p-4 border-b border-border bg-muted/20">
+          <div className="flex items-center gap-2">
+            <ShieldAlert size={16} className="text-destructive" />
+            <h3 className="text-xs font-bold uppercase tracking-widest">Critical Risk Monitor</h3>
+          </div>
+        </div>
+        <div className="p-8 text-center text-muted-foreground text-sm">
+          Loading risk data...
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="dashboard-card p-0 overflow-hidden">
+      <div className="p-4 border-b border-border bg-muted/20">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <ShieldAlert size={16} className="text-destructive" />
+            <h3 className="text-xs font-bold uppercase tracking-widest text-foreground">
+              Critical Risk Monitor
+            </h3>
+          </div>
+          <div className="flex items-center gap-2">
+            {highRiskCount > 0 && (
+              <span className="text-[9px] font-bold bg-destructive text-white px-2 py-0.5 rounded-full">
+                {highRiskCount} High
+              </span>
+            )}
+            {mediumRiskCount > 0 && (
+              <span className="text-[9px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-full">
+                {mediumRiskCount} Medium
+              </span>
+            )}
+            {lowRiskCount > 0 && (
+              <span className="text-[9px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full">
+                {lowRiskCount} Low
+              </span>
+            )}
+            <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+              {totalCount} Total
+            </span>
+          </div>
+        </div>
+        <p className="text-[9px] text-muted-foreground mt-2">
+          Click on any brand to filter the chart by that brand
+        </p>
+      </div>
+
+      <div className="p-4 space-y-4 max-h-[400px] overflow-y-auto">
+        {riskData.length > 0 ? (
+          riskData.map((brand) => (
+            <motion.div
+              key={brand.id}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={() => onBrandClick?.(brand.id)}
+              className="group p-3 rounded-lg border border-border/50 hover:border-destructive/30 hover:bg-destructive/5 transition-all cursor-pointer"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <h4 className="text-sm font-bold text-foreground group-hover:text-destructive transition-colors">
+                  {brand.name}
+                </h4>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                  brand.risk === 'High' 
+                    ? 'bg-destructive text-white' 
+                    : brand.risk === 'Medium'
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-emerald-500 text-white'
+                }`}>
+                  {brand.risk}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap gap-1">
+                {brand.reasons && brand.reasons.slice(0, 3).map((reason, idx) => (
+                  <span 
+                    key={idx} 
+                    className="text-[9px] font-medium bg-muted/80 px-2 py-0.5 rounded text-muted-foreground group-hover:bg-muted transition-colors"
+                  >
+                    {reason}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+          ))
+        ) : (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            No risk data available
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- Main Dashboard Component ---
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const riskSectionRef = useRef(null);
-  
+
   const [dateRange, setDateRange] = useState({
-    start: subDays(new Date(), 30),
+    start: subDays(new Date(), 730),
     end: new Date(),
-    preset: '30d'
+    preset: '2y',
   });
   const [notification, setNotification] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
-  const [filterBrand, setFilterBrand] = useState('All');
-  const [filterPlatform, setFilterPlatform] = useState('All');
+  const [timedOut, setTimedOut] = useState(false);
+  const [selectedBrand, setSelectedBrand] = useState(null);
 
   const { data: revenue, loading: revenueLoading } = useRevenue();
   const { brands, loading: brandsLoading } = useBrands();
   const { team, loading: teamLoading } = useTeam();
+  const {
+    futurePredictions,
+    retrainModels,
+    isRetraining,
+  } = usePredictions();
 
-  const [timedOut, setTimedOut] = useState(false);
+  // CSS Injection to fix white hover issue
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      /* Fix bar chart hover - remove white overlay */
+      .recharts-bar-rectangle:hover rect {
+        fill: #9A1212 !important;
+        transition: fill 0.2s ease !important;
+        cursor: pointer !important;
+      }
+      .recharts-bar-rectangle[data-name="ML Forecast"]:hover rect {
+        fill: #1e40af !important;
+      }
+      .recharts-bar-rectangle:hover {
+        filter: none !important;
+      }
+      .recharts-bar-rectangle:hover rect {
+        stroke: none !important;
+        opacity: 1 !important;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, []);
 
-  // ── Helpers ──
-  const parseRevenueDate = (value) => {
-    if (!value) return null;
-    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-    if (typeof value === 'string' || typeof value === 'number') {
-      const parsed = new Date(value);
-      return Number.isNaN(parsed.getTime()) ? null : parsed;
-    }
-    return null;
-  };
-
-  const normalizeDateKey = (dateValue) => {
-    const parsed = parseRevenueDate(dateValue);
-    return parsed ? format(parsed, 'yyyy-MM-dd') : null;
-  };
-
-  // Filter revenue by date range
-  const filteredRevenue = useMemo(() => {
-    if (!revenue) return [];
-    return revenue.filter(item => {
-      const itemDate = parseRevenueDate(item.date);
-      return itemDate && itemDate >= startOfDay(dateRange.start) && itemDate <= endOfDay(dateRange.end);
-    });
-  }, [revenue, dateRange]);
-
-  // ── KPIs from real Supabase data ──
-  const kpis = useMemo(() => {
-    const totalRevenue = filteredRevenue.reduce((s, i) =>
-      s + (i.revenue_shopee || 0) + (i.revenue_tiktok || 0), 0) || 0;
+  // Get available years
+  const availableYears = useMemo(() => {
+    const years = new Set();
     
-    const activeBrands = brands?.filter(b => b.brand_status === 'active').length || 0;
-    const atRisk = brands?.filter(b => b.brand_status !== 'active').length || 0;
+    if (revenue && revenue.length) {
+      revenue.forEach(item => {
+        if (item.date) {
+          const year = new Date(item.date).getFullYear();
+          if (!isNaN(year)) years.add(year);
+        }
+      });
+    }
+    
+    if (futurePredictions && futurePredictions.length) {
+      futurePredictions.forEach(pred => {
+        if (pred.date) {
+          const year = new Date(pred.date).getFullYear();
+          if (!isNaN(year)) years.add(year);
+        }
+      });
+    }
+    
+    const result = Array.from(years).sort();
+    return result.length ? result : [2024, 2025, 2026];
+  }, [revenue, futurePredictions]);
 
-    // Top performer: sum revenue per host_id
+  // Filter revenue by selected brand
+  const filteredByBrand = useMemo(() => {
+    if (!revenue) return [];
+    if (!selectedBrand) return revenue;
+    return revenue.filter(item => item.brand_id === selectedBrand);
+  }, [revenue, selectedBrand]);
+
+  // Filtered revenue by date range
+  const filteredRevenue = useMemo(() => {
+    if (!filteredByBrand) return [];
+    return filteredByBrand.filter(item => {
+      const d = parseRevenueDate(item.date);
+      return d && d >= startOfDay(dateRange.start) && d <= endOfDay(dateRange.end);
+    });
+  }, [filteredByBrand, dateRange]);
+
+  // KPI calculations
+  const kpis = useMemo(() => {
+    const totalRevenue = filteredRevenue.reduce((s, i) => s + sumRevenue(i), 0);
+    const activeBrands = brands?.filter(b => b.brand_status === 'active').length ?? 0;
+    const atRisk = brands?.filter(b => b.brand_status !== 'active').length ?? 0;
+
     const staffRev = {};
     filteredRevenue.forEach(item => {
       const id = item.host_id;
-      const amt = (item.revenue_shopee || 0) + (item.revenue_tiktok || 0);
-      staffRev[id] = (staffRev[id] || 0) + amt;
+      staffRev[id] = (staffRev[id] || 0) + sumRevenue(item);
     });
     let topName = 'N/A', topRev = 0;
     Object.entries(staffRev).forEach(([id, total]) => {
       if (total > topRev) {
         topRev = total;
-        topName = team?.find(s => s.id === parseInt(id))?.name || 'Unknown';
+        topName = team?.find(s => s.id === parseInt(id))?.name ?? 'Unknown';
       }
     });
 
-    // Calculate growth based on filtered date range
-    const sorted = [...filteredRevenue]
-      .map(item => ({ ...item, normalizedDate: normalizeDateKey(item.date) }))
-      .filter(item => item.normalizedDate)
-      .sort((a, b) => new Date(b.normalizedDate) - new Date(a.normalizedDate));
+    const sorted = filteredRevenue
+      .map(item => ({ ...item, date: parseRevenueDate(item.date) }))
+      .filter(item => item.date)
+      .sort((a, b) => b.date - a.date);
 
-    const uniqueDates = [...new Set(sorted.map(i => i.normalizedDate))];
+    const uniqueDates = [...new Set(sorted.map(i => format(i.date, 'yyyy-MM-dd')))];
     const recentDates = uniqueDates.slice(0, Math.min(7, uniqueDates.length));
     const previousDates = uniqueDates.slice(Math.min(7, uniqueDates.length), Math.min(14, uniqueDates.length));
 
-    const lastPeriod = filteredRevenue.filter(i => recentDates.includes(normalizeDateKey(i.date))) || [];
-    const prevPeriod = filteredRevenue.filter(i => previousDates.includes(normalizeDateKey(i.date))) || [];
+    const lastTotal = filteredRevenue
+      .filter(i => recentDates.includes(format(parseRevenueDate(i.date), 'yyyy-MM-dd')))
+      .reduce((s, i) => s + sumRevenue(i), 0);
+    const prevTotal = filteredRevenue
+      .filter(i => previousDates.includes(format(parseRevenueDate(i.date), 'yyyy-MM-dd')))
+      .reduce((s, i) => s + sumRevenue(i), 0);
 
-    const lastTotal = lastPeriod.reduce((s, i) => s + (i.revenue_shopee || 0) + (i.revenue_tiktok || 0), 0);
-    const prevTotal = prevPeriod.reduce((s, i) => s + (i.revenue_shopee || 0) + (i.revenue_tiktok || 0), 0);
     const growth = prevTotal > 0 ? ((lastTotal - prevTotal) / prevTotal * 100).toFixed(1) : 0;
-
     const riskIndicator = atRisk > 3 ? 'High' : atRisk > 0 ? 'Medium' : 'Low';
 
-    return { 
-      totalRevenue, 
-      activeBrands, 
-      atRisk, 
-      topName, 
-      topRev, 
+    return {
+      totalRevenue,
+      activeBrands,
+      atRisk,
+      topName,
       growth,
       riskIndicator,
-      reportingPeriod: `${format(dateRange.start, 'MMM dd')} - ${format(dateRange.end, 'MMM dd, yyyy')}`
+      reportingPeriod: `${format(dateRange.start, 'MMM yy')} - ${format(dateRange.end, 'MMM dd, yyyy')}`,
     };
   }, [filteredRevenue, brands, team, dateRange]);
 
-  // ── Chart data from real revenue ──
+  // YEARLY chart data - aggregates by YEAR instead of month
   const chartData = useMemo(() => {
-    if (!filteredRevenue.length) {
-      // Generate placeholder based on date range if no data
-      const days = Math.max(1, differenceInDays(dateRange.end, dateRange.start));
-      const points = Math.min(7, days);
-      const result = [];
-      for (let i = 0; i < points; i++) {
-        const date = new Date(dateRange.end);
-        date.setDate(date.getDate() - (points - 1 - i));
-        result.push({
-          date: format(date, 'MMM dd'),
-          actual: 0,
-          prediction: 0,
-        });
-      }
-      return result;
-    }
-
-    // Group revenue by date
-    const revenueByDate = {};
-    filteredRevenue.forEach(item => {
-      const dateKey = format(parseRevenueDate(item.date), 'yyyy-MM-dd');
-      const amount = (item.revenue_shopee || 0) + (item.revenue_tiktok || 0);
-      revenueByDate[dateKey] = (revenueByDate[dateKey] || 0) + amount;
-    });
-
-    // Get sorted dates
-    const sortedDates = Object.keys(revenueByDate).sort();
-    const displayDates = sortedDates.slice(-7); // Last 7 days
+    const yearMap = new Map();
     
-    return displayDates.map(date => ({
-      date: format(parseISO(date), 'MMM dd'),
-      actual: revenueByDate[date],
-      prediction: revenueByDate[date] * 1.05, // Simple prediction
-    }));
-  }, [filteredRevenue, dateRange]);
+    // Get all years from 2024 to 2026
+    const allYears = [2024, 2025, 2026];
+    allYears.forEach(year => {
+      yearMap.set(year, {
+        year: year.toString(),
+        actual: 0,
+        forecast: 0,
+      });
+    });
+    
+    // Add actual revenue by year
+    if (filteredRevenue.length > 0) {
+      filteredRevenue.forEach(item => {
+        if (item.date) {
+          const date = parseISO(item.date);
+          const year = date.getFullYear();
+          if (yearMap.has(year)) {
+            const existing = yearMap.get(year);
+            existing.actual += sumRevenue(item);
+            yearMap.set(year, existing);
+          }
+        }
+      });
+    }
+    
+    // Add forecast revenue by year
+    if (futurePredictions && futurePredictions.length > 0) {
+      futurePredictions.forEach(pred => {
+        if (pred.date) {
+          const date = parseISO(pred.date);
+          const year = date.getFullYear();
+          if (yearMap.has(year)) {
+            const existing = yearMap.get(year);
+            existing.forecast += pred.predicted || 0;
+            yearMap.set(year, existing);
+          }
+        }
+      });
+    }
+    
+    return Array.from(yearMap.values()).sort((a, b) => parseInt(a.year) - parseInt(b.year));
+  }, [filteredRevenue, futurePredictions]);
 
-  // ── Platform split from real data ──
+  // Platform contribution data
   const platformData = useMemo(() => {
     if (!filteredRevenue?.length) return [];
-    
-    let shopeeOnlyRev = 0;
-    let tiktokOnlyRev = 0;
-    let multiRev = 0;
-    
+
+    let shopeeOnly = 0, tiktokOnly = 0, multi = 0;
     filteredRevenue.forEach(item => {
       const hasShopee = (item.revenue_shopee || 0) > 0;
       const hasTiktok = (item.revenue_tiktok || 0) > 0;
-      
-      if (hasShopee && hasTiktok) {
-        multiRev += (item.revenue_shopee || 0) + (item.revenue_tiktok || 0);
-      } else if (hasShopee) {
-        shopeeOnlyRev += (item.revenue_shopee || 0);
-      } else if (hasTiktok) {
-        tiktokOnlyRev += (item.revenue_tiktok || 0);
-      }
+      if (hasShopee && hasTiktok) multi += sumRevenue(item);
+      else if (hasShopee) shopeeOnly += item.revenue_shopee;
+      else if (hasTiktok) tiktokOnly += item.revenue_tiktok;
     });
-    
-    const total = shopeeOnlyRev + tiktokOnlyRev + multiRev;
+
+    const total = shopeeOnly + tiktokOnly + multi;
     if (total === 0) return [];
-    
+
     const result = [];
-    
-    if (shopeeOnlyRev > 0) {
-      result.push({ 
-        name: 'Shopee', 
-        value: Math.round((shopeeOnlyRev / total) * 100),
-        color: '#ee4d2d'
-      });
-    }
-    
-    if (tiktokOnlyRev > 0) {
-      result.push({ 
-        name: 'TikTok', 
-        value: Math.round((tiktokOnlyRev / total) * 100),
-        color: '#DB1A1A'
-      });
-    }
-    
-    if (multiRev > 0) {
-      result.push({ 
-        name: 'Multi-Platform', 
-        value: Math.round((multiRev / total) * 100),
-        color: '#3b82f6'
-      });
-    }
-    
+    if (shopeeOnly > 0) result.push({ name: 'Shopee', value: Math.round((shopeeOnly / total) * 100), color: '#ee4d2d' });
+    if (tiktokOnly > 0) result.push({ name: 'TikTok', value: Math.round((tiktokOnly / total) * 100), color: '#DB1A1A' });
+    if (multi > 0) result.push({ name: 'Multi-Platform', value: Math.round((multi / total) * 100), color: '#3b82f6' });
     return result;
   }, [filteredRevenue]);
 
-  // ── At-risk brands from real data ──
-  const atRiskBrands = useMemo(() => {
-    return brands?.filter(b => b.brand_status !== 'active') || [];
-  }, [brands]);
+  const hasForecast = chartData.some(d => d.forecast > 0);
+  const avgConfidence = futurePredictions?.length > 0
+    ? (futurePredictions.reduce((sum, p) => sum + (p.model_r2 || 0), 0) / futurePredictions.length) * 100
+    : 0;
 
-  useEffect(() => {
-    if (!revenueLoading && !brandsLoading && !teamLoading) return;
-    const t = setTimeout(() => setTimedOut(true), 5000);
-    return () => clearTimeout(t);
-  }, [revenueLoading, brandsLoading, teamLoading]);
+  const notify = useCallback((msg, ms = 4000) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), ms);
+  }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => window.dispatchEvent(new Event('resize')), 200);
-    return () => clearTimeout(timer);
-  }, [chartData]);
+  const handleRerunModel = useCallback(async () => {
+    const result = await retrainModels();
+    notify(result.success
+      ? 'ML models retrained successfully! New predictions generated.'
+      : `Failed to retrain models: ${result.error ?? 'Unknown error'}`
+    );
+  }, [retrainModels, notify]);
 
-  const handleExportReport = () => {
+  const handleExportReport = useCallback(() => {
     setIsExporting(true);
     setTimeout(() => {
       setIsExporting(false);
-      setNotification('Report exported successfully');
-      setTimeout(() => setNotification(null), 3000);
+      notify('Report exported successfully');
     }, 1500);
-  };
+  }, [notify]);
 
-  const handleDateRangeChange = (newRange) => {
+  const handleDateRangeChange = useCallback((newRange) => {
     setDateRange(newRange);
-    setNotification('Dashboard data updated successfully');
-    setTimeout(() => setNotification(null), 3000);
-  };
+    notify('Dashboard data updated successfully');
+  }, [notify]);
+
+  const handleBrandClick = useCallback((brandId) => {
+    setSelectedBrand(brandId === selectedBrand ? null : brandId);
+    if (brandId === selectedBrand) {
+      notify('Cleared brand filter', 2000);
+    } else {
+      notify(`Filtering by ${brands?.find(b => b.brand_id === brandId)?.brand_name}`, 2000);
+    }
+  }, [selectedBrand, brands, notify]);
+
+  // Loading timeout
+  useEffect(() => {
+    if (!revenueLoading && !brandsLoading && !teamLoading) return;
+    const timeout = setTimeout(() => setTimedOut(true), 5000);
+    return () => clearTimeout(timeout);
+  }, [revenueLoading, brandsLoading, teamLoading]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => window.dispatchEvent(new Event('resize')), 200);
+    return () => clearTimeout(timeout);
+  }, [chartData]);
 
   const isLoading = (revenueLoading || brandsLoading || teamLoading) && !timedOut;
-
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
@@ -249,8 +564,11 @@ export const Dashboard = () => {
     );
   }
 
+  const selectedBrandName = brands?.find(b => b.brand_id === selectedBrand)?.brand_name;
+
   return (
     <div className="space-y-8 pb-12 relative">
+
       {/* Notification Toast */}
       <AnimatePresence>
         {notification && (
@@ -268,242 +586,262 @@ export const Dashboard = () => {
         )}
       </AnimatePresence>
 
-      {/* Dashboard Header */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
           <p className="text-muted-foreground mt-1">Welcome back, here's what's happening today.</p>
         </div>
         <div className="flex items-center gap-3">
-          <DateRangeSelector value={dateRange} onChange={handleDateRangeChange} />
-          <button 
+          <button
             onClick={handleExportReport}
             disabled={isExporting}
-            className="inline-flex items-center justify-center rounded-xl text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow-lg hover:shadow-primary/20 h-10 px-6 py-2 gap-2"
+            className="inline-flex items-center justify-center rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-primary text-primary-foreground shadow-lg hover:shadow-primary/20 h-10 px-6 py-2 gap-2"
           >
-            {isExporting ? <Activity className="animate-spin" size={16} /> : <Download size={16} />}
+            {isExporting ? <Activity className="animate-spin" size={16} /> : <Download size={14} />}
             Export Report
           </button>
+          
+          <button
+            onClick={handleRerunModel}
+            disabled={isRetraining}
+            className="inline-flex items-center justify-center gap-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-muted/20 border border-border text-foreground hover:border-primary/40 hover:text-primary h-10 px-4 py-2"
+          >
+            {isRetraining
+              ? <><Activity size={14} className="animate-spin" /> Training...</>
+              : <><RefreshCw size={14} /> Rerun ML Model</>
+            }
+          </button>
+          
+          <SortByButton
+            brands={brands}
+            onBrandChange={setSelectedBrand}
+            onDateRangeChange={setDateRange}
+            selectedBrand={selectedBrand}
+            selectedDateRange={dateRange}
+            availableYears={availableYears}
+          />
         </div>
       </div>
 
-      {/* KPI Grid - AI Studio Style */}
+      {/* Active Filters Display */}
+      {selectedBrand && selectedBrandName && (
+        <div className="flex items-center gap-2 flex-wrap bg-primary/5 border border-primary/20 rounded-lg px-4 py-2">
+          <span className="text-[9px] text-muted-foreground">Active filter:</span>
+          <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+            Brand: {selectedBrandName}
+          </span>
+          <button
+            onClick={() => setSelectedBrand(null)}
+            className="text-[9px] text-muted-foreground hover:text-primary transition-colors ml-auto"
+          >
+            Clear filter
+          </button>
+        </div>
+      )}
+
+      {/* KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <motion.div 
-          whileHover={{ y: -4, scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => navigate('/admin/revenue')}
-          className="dashboard-card p-5 cursor-pointer border-l-4 border-l-primary group transition-all"
-        >
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-primary transition-colors">Total Revenue</p>
-              <h3 className="text-2xl font-mono font-bold mt-1">
-                Rp {kpis.totalRevenue.toLocaleString()}
-              </h3>
-            </div>
-            <div className="p-2 bg-primary/10 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-all">
-              <ArrowUpRight size={18} />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className={`flex items-center font-bold text-[10px] px-1.5 py-0.5 rounded ${parseFloat(kpis.growth) >= 0 ? 'text-emerald-500 bg-emerald-500/10' : 'text-destructive bg-destructive/10'}`}>
-                <TrendingUp size={10} className="mr-1" />
-                {parseFloat(kpis.growth) >= 0 ? '+' : ''}{kpis.growth}%
-              </div>
-              <span className="text-[10px] text-muted-foreground font-medium">vs last period</span>
-            </div>
-            <span className="text-[9px] font-bold uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-              View Analysis →
+        <KpiCard
+          label="Total Revenue"
+          value={formatCurrency(kpis.totalRevenue)}
+          accent="primary"
+          icon={ArrowUpRight}
+          badge={
+            <span className="flex items-center gap-1">
+              <TrendingUp size={10} />
+              {parseFloat(kpis.growth) >= 0 ? '+' : ''}{kpis.growth}%
             </span>
-          </div>
-        </motion.div>
-
-        <motion.div 
-          whileHover={{ y: -4, scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => navigate('/admin/brands')}
-          className="dashboard-card p-5 cursor-pointer border-l-4 border-l-info group transition-all"
-        >
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-info transition-colors">Active Brands</p>
-              <h3 className="text-2xl font-mono font-bold mt-1">
-                {kpis.activeBrands}
-              </h3>
-            </div>
-            <div className="p-2 bg-info/10 rounded-lg text-info group-hover:bg-info group-hover:text-white transition-all">
-              <ArrowUpRight size={18} />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center text-info font-bold text-[10px] bg-info/10 px-1.5 py-0.5 rounded">
-                Live
-              </div>
-              <span className="text-[10px] text-muted-foreground font-medium">monitored nodes</span>
-            </div>
-            <span className="text-[9px] font-bold uppercase tracking-widest text-info opacity-0 group-hover:opacity-100 transition-opacity">
-              Manage Brands →
+          }
+          badgeStyle={parseFloat(kpis.growth) >= 0 ? 'text-emerald-500 bg-emerald-500/10' : 'text-destructive bg-destructive/10'}
+          hint="vs last period"
+          action="View Analysis →"
+          onAction={() => navigate('/admin/revenue')}
+        />
+        <KpiCard
+          label="Active Brands"
+          value={kpis.activeBrands}
+          accent="info"
+          icon={ArrowUpRight}
+          badge="Live"
+          badgeStyle="text-info bg-info/10"
+          hint="monitored nodes"
+          action="Manage Brands →"
+          onAction={() => navigate('/admin/brands')}
+        />
+        <KpiCard
+          label="At-Risk Brands"
+          value={kpis.atRisk}
+          accent="destructive"
+          icon={ArrowUpRight}
+          badge={
+            <span className="flex items-center gap-1">
+              <AlertCircle size={10} />
+              {kpis.riskIndicator}
             </span>
-          </div>
-        </motion.div>
-
-        <motion.div 
-          whileHover={{ y: -4, scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => navigate('/admin/brands')}
-          className="dashboard-card p-5 cursor-pointer border-l-4 border-l-destructive group transition-all"
-        >
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-destructive transition-colors">At-Risk Brands</p>
-              <h3 className="text-2xl font-mono font-bold mt-1">
-                {kpis.atRisk}
-              </h3>
-            </div>
-            <div className="p-2 bg-destructive/10 rounded-lg text-destructive group-hover:bg-destructive group-hover:text-white transition-all">
-              <ArrowUpRight size={18} />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className={`flex items-center font-bold text-[10px] px-1.5 py-0.5 rounded ${
-                kpis.riskIndicator === 'High' ? 'bg-destructive text-white' : 'bg-amber-500 text-white'
-              }`}>
-                <AlertCircle size={10} className="mr-1" />
-                {kpis.riskIndicator}
-              </div>
-              <span className="text-[10px] text-muted-foreground font-medium">priority nodes</span>
-            </div>
-            <span className="text-[9px] font-bold uppercase tracking-widest text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
-              Risk Analysis →
-            </span>
-          </div>
-        </motion.div>
-
-        <motion.div 
-          whileHover={{ y: -4, scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => navigate('/admin/team')}
-          className="dashboard-card p-5 cursor-pointer border-l-4 border-l-amber-500 group transition-all"
-        >
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-amber-500 transition-colors">Top Performer</p>
-              <h3 className="text-2xl font-mono font-bold mt-1">
-                {kpis.topName.split(' ')[0] || 'N/A'}
-              </h3>
-            </div>
-            <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all">
-              <ArrowUpRight size={18} />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center text-amber-600 font-bold text-[10px] bg-amber-500/10 px-1.5 py-0.5 rounded">
-                {kpis.topRev > 0 ? `Rp ${(kpis.topRev / 1000).toFixed(0)}k` : 'N/A'}
-              </div>
-              <span className="text-[10px] text-muted-foreground font-medium">top revenue</span>
-            </div>
-            <span className="text-[9px] font-bold uppercase tracking-widest text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity">
-              View Team →
-            </span>
-          </div>
-        </motion.div>
+          }
+          badgeStyle={kpis.riskIndicator === 'High' ? 'bg-destructive text-white' : 'bg-amber-500 text-white'}
+          hint="priority nodes"
+          action="Risk Analysis →"
+          onAction={() => navigate('/admin/brands')}
+        />
+        <KpiCard
+          label="ML Forecast"
+          value={`${futurePredictions?.length ?? 0} Periods`}
+          accent="primary"
+          icon={Brain}
+          badge={`${avgConfidence.toFixed(0)}% avg confidence`}
+          badgeStyle="bg-primary/10 text-primary"
+          hint="R² score"
+          onAction={handleRerunModel}
+        />
       </div>
 
-      {/* Main Content Grid */}
+      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Revenue Forecast & Trend Analysis */}
+
+        {/* Revenue Forecast Bar Chart - YEARLY */}
         <div className="lg:col-span-2 dashboard-card p-0 overflow-hidden">
-          <div className="p-4 border-b border-border flex items-center justify-between bg-muted/20">
-            <div className="flex items-center gap-2">
-              <Sparkles size={16} className="text-primary" />
-              <h3 className="text-xs font-bold uppercase tracking-widest">Revenue Forecast & Trend Analysis</h3>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-primary" />
-                <span className="text-[10px] font-medium">Actual</span>
+          <div className="p-4 border-b border-border bg-muted/20">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <BarChart3 size={16} className="text-primary" />
+                <h3 className="text-xs font-bold uppercase tracking-widest text-foreground">
+                  Revenue Forecast & Trend Analysis (Yearly)
+                  {selectedBrandName && (
+                    <span className="ml-2 text-[9px] font-normal text-muted-foreground">
+                      ({selectedBrandName})
+                    </span>
+                  )}
+                </h3>
+                {hasForecast && (
+                  <span className="text-[9px] font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    ML Powered
+                  </span>
+                )}
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-blue-500" />
-                <span className="text-[10px] font-medium">Predicted</span>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                  <span className="text-[10px] font-medium text-muted-foreground">Actual</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  <span className="text-[10px] font-medium text-muted-foreground">Predicted</span>
+                </div>
               </div>
             </div>
+            <p className="text-[10px] text-muted-foreground mt-2">
+              Total revenue by year (2024-2026) from all brands
+            </p>
           </div>
-          <div className="h-[400px] p-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.2} vertical={false} />
-                <XAxis 
-                  dataKey="date" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 600 }} 
-                  dy={10}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 600 }} 
-                  tickFormatter={(val) => `Rp ${(val/1000).toFixed(0)}k`}
-                />
-                <Tooltip 
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-card/95 backdrop-blur-md border border-border p-3 rounded-xl shadow-xl ring-1 ring-black/5">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">{payload[0].payload.date}</p>
-                          <div className="space-y-1.5">
-                            {payload.map((entry) => (
-                              <div key={entry.name} className="flex items-center justify-between gap-6">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: entry.color || entry.stroke }} />
-                                  <span className="text-[10px] font-medium text-muted-foreground capitalize">{entry.name}</span>
-                                </div>
-                                <span className="text-[10px] font-bold">Rp {entry.value.toLocaleString()}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
+
+          <div className="h-[400px] w-full p-4">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={chartData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
+                  barGap={8}
+                  barCategoryGap={30}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="var(--border)"
+                    strokeOpacity={0.2}
+                    vertical={false}
+                  />
+                  
+                  <XAxis
+                    dataKey="year"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: 'var(--muted-foreground)', fontWeight: 600 }}
+                    dy={10}
+                  />
+                  
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 500 }}
+                    tickFormatter={formatCompactCurrency}
+                    width={80}
+                  />
+                  
+                  <Tooltip content={<BarChartTooltip formatCurrency={formatCurrency} />} />
+                  
+                  <Legend wrapperStyle={{ fontSize: '10px' }} iconType="circle" />
+                  
+                  <Bar
+                    dataKey="actual"
+                    name="Actual Revenue"
+                    fill="var(--primary)"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={120}
+                    className="bar-actual"
+                  />
+
+                  <Bar
+                    dataKey="forecast"
+                    name="ML Forecast"
+                    fill="#3b82f6"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={120}
+                    className="bar-forecast"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center gap-4">
+                <Activity size={44} className="text-muted-foreground/25" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">No data available</p>
+                  <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                    {selectedBrand ? 'No revenue data for selected brand' : 'Run ML models to generate forecasts'}
+                  </p>
+                </div>
+                {!selectedBrand && (
+                  <button
+                    onClick={handleRerunModel}
+                    disabled={isRetraining}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold transition-all hover:bg-primary/90"
+                  >
+                    {isRetraining
+                      ? <><Activity size={13} className="animate-spin" /> Training…</>
+                      : <><Brain size={13} /> Run ML Models</>
                     }
-                    return null;
-                  }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="actual" 
-                  stroke="var(--primary)" 
-                  strokeWidth={3} 
-                  fillOpacity={1} 
-                  fill="url(#colorActual)" 
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="prediction" 
-                  stroke="#3b82f6" 
-                  strokeWidth={2} 
-                  strokeDasharray="5 5"
-                  fill="transparent" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
+
+          {hasForecast && (
+            <div className="px-6 py-3 border-t border-border/60 bg-muted/5 flex items-center justify-between flex-wrap gap-2">
+              <p className="text-[9px] text-muted-foreground">
+                ML Models: Linear Regression · Ridge · Random Forest · Gradient Boosting
+              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-[9px] text-muted-foreground">Best model selected via LOOCV per period</p>
+                <button
+                  onClick={handleRerunModel}
+                  disabled={isRetraining}
+                  className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-primary hover:text-primary/80 disabled:opacity-50 transition-opacity"
+                >
+                  {isRetraining
+                    ? <><Activity size={10} className="animate-spin" /> Training…</>
+                    : <><RefreshCw size={10} /> Rerun</>
+                  }
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Right Side */}
+        {/* Right Column */}
         <div className="space-y-8">
-          {/* Platform Contribution Chart */}
+
+          {/* Platform Contribution */}
           <div className="dashboard-card p-0 overflow-hidden">
             <div className="p-4 border-b border-border bg-muted/20">
               <div className="flex items-center gap-2">
@@ -527,103 +865,58 @@ export const Dashboard = () => {
                           dataKey="value"
                         >
                           {platformData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={entry.color}
+                              className="hover:opacity-80 transition-opacity cursor-pointer"
+                            />
                           ))}
                         </Pie>
-                        <Tooltip 
+                        <Tooltip
                           content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0];
-                              return (
-                                <div className="bg-card/95 backdrop-blur-md border border-border p-2 rounded-lg shadow-lg flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: data.payload.color }} />
-                                  <span className="text-[10px] font-bold text-foreground">{data.name}</span>
-                                  <span className="text-[10px] font-bold text-primary">{data.value}%</span>
-                                </div>
-                              );
-                            }
-                            return null;
+                            if (!active || !payload?.length) return null;
+                            const data = payload[0];
+                            return (
+                              <div className="bg-card/95 backdrop-blur-md border border-border p-2 rounded-lg shadow-lg flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: data.payload.color }} />
+                                <span className="text-[10px] font-bold text-foreground">{data.name}</span>
+                                <span className="text-[10px] font-bold text-primary">{data.value}%</span>
+                              </div>
+                            );
                           }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
                   <div className="flex flex-col gap-2">
-                    {platformData.map((p) => (
-                      <div key={p.name} className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
-                        <span className="text-[10px] font-bold text-muted-foreground">{p.name}</span>
+                    {platformData.map(p => (
+                      <div key={p.name} className="flex items-center gap-2 group cursor-pointer">
+                        <div 
+                          className="w-2 h-2 rounded-full transition-all group-hover:scale-125" 
+                          style={{ backgroundColor: p.color }} 
+                        />
+                        <span className="text-[10px] font-bold text-muted-foreground group-hover:text-foreground transition-colors">
+                          {p.name}
+                        </span>
                       </div>
                     ))}
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  No platform data available
-                </div>
+                <div className="text-center py-8 text-muted-foreground text-sm">No platform data available</div>
               )}
             </div>
           </div>
 
-          {/* Critical Risk Monitor - AI Studio Style */}
-          <div className="dashboard-card p-0 overflow-hidden">
-            <div className="p-4 border-b border-border bg-muted/20">
-              <div className="flex items-center gap-2">
-                <ShieldAlert size={16} className="text-destructive" />
-                <h3 className="text-xs font-bold uppercase tracking-widest">Critical Risk Monitor</h3>
-                <span className="text-[10px] font-bold bg-destructive text-white px-2 py-0.5 rounded-full ml-auto">
-                  {atRiskBrands.length} at risk
-                </span>
-              </div>
-            </div>
-            <div className="p-4 space-y-4">
-              {atRiskBrands.length > 0 ? atRiskBrands.map((brand) => {
-                const isHigh = brand.brand_status === 'churned';
-                const riskLabel = isHigh ? 'High' : 'Medium';
-                const riskColor = isHigh ? 'bg-destructive' : 'bg-amber-500';
-                
-                return (
-                  <motion.div 
-                    key={brand.brand_id}
-                    whileHover={{ x: 4 }}
-                    onClick={() => navigate('/admin/brands')}
-                    className="group p-3 rounded-lg border border-border/50 hover:border-destructive/30 hover:bg-destructive/5 transition-all cursor-pointer"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="text-sm font-bold">{brand.brand_name}</h4>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${riskColor} text-white`}>
-                        {riskLabel}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      <span className="text-[9px] font-medium bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                        {brand.brand_status}
-                      </span>
-                      {brand.brand_category && (
-                        <span className="text-[9px] font-medium bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                          {brand.brand_category}
-                        </span>
-                      )}
-                      <span className="text-[9px] font-medium bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                        {brand.brand_status === 'churned' ? 'Client Churned' : 'Revenue Decline'}
-                      </span>
-                    </div>
-                  </motion.div>
-                );
-              }) : (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  ✅ All brands are active — no risks detected
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Critical Risk Monitor */}
+          <CriticalRiskMonitor onBrandClick={handleBrandClick} />
         </div>
       </div>
 
-      {/* System Status Footer */}
+      {/* Footer */}
       <div className="pt-8 border-t border-border">
         <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest font-bold">
-          VidHelp Intelligence Hub • System Operational • {kpis.reportingPeriod}
+          VidHelp Intelligence Hub · System Operational · Revenue Period: 2024-2026
         </p>
       </div>
     </div>

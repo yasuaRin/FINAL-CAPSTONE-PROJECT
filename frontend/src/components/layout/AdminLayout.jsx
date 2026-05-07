@@ -192,7 +192,8 @@ export const AdminLayout = () => {
   const SidebarContent = () => (
     <>
       <div className="p-4 sm:p-6 flex items-center justify-between border-b border-sidebar-border">
-        <div className="font-serif font-black text-primary text-xl">VH</div>
+        {/* Logo/Brand Name - text-xl font-bold tracking-tight */}
+        <h1 className="text-xl font-bold tracking-tight text-sidebar-foreground">VidHelp</h1>
         <button
           onClick={() => setIsSidebarOpen(false)}
           className="p-2 rounded-lg transition-colors hover:bg-black/5"
@@ -216,7 +217,8 @@ export const AdminLayout = () => {
             style={({ isActive }) => isActive ? {} : { color: '#7b809a' }}
           >
             <span className="shrink-0">{item.icon}</span>
-            <span className="text-[10px] uppercase tracking-widest font-sans">{item.label}</span>
+            {/* Nav Link - text-sm font-light */}
+            <span className="text-sm font-light">{item.label}</span>
           </NavLink>
         ))}
       </nav>
@@ -284,9 +286,11 @@ export const AdminLayout = () => {
               <Menu size={22} />
             </button>
             <div className="hidden sm:flex flex-col">
-              <p className="text-[11px] text-muted-foreground font-light">
+              {/* Breadcrumb - text-xs text-muted-foreground font-light */}
+              <p className="text-xs text-muted-foreground font-light">
                 Pages / {pageSegment}
               </p>
+              {/* Page Title - text-sm font-bold capitalize */}
               <h2 className="text-sm font-bold capitalize text-foreground">
                 {pageSegment}
               </h2>
@@ -299,13 +303,14 @@ export const AdminLayout = () => {
             <div ref={searchRef} className="hidden lg:flex flex-col min-w-[200px] relative">
               <div className="flex items-center gap-2">
                 <Search size={16} className="text-muted-foreground flex-shrink-0" />
+                {/* Search Text - text-xs */}
                 <input
                   type="text"
                   placeholder="Search..."
                   value={searchQuery}
                   onChange={e => { setSearchQuery(e.target.value); if (!e.target.value) { setHighlightQuery(''); clearHighlights(); } }}
                   onKeyDown={e => { if (e.key === 'Enter' && searchQuery.trim()) { setHighlightQuery(searchQuery.trim()); setSearchQuery(''); } }}
-                  className="w-full bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground py-1"
+                  className="w-full bg-transparent border-none outline-none text-xs text-foreground placeholder:text-muted-foreground py-1"
                 />
                 {searchQuery && (
                   <button onClick={() => { setSearchQuery(''); setHighlightQuery(''); clearHighlights(); }} className="text-muted-foreground hover:text-foreground transition-colors">
@@ -366,29 +371,30 @@ export const AdminLayout = () => {
           </div>
         </section>
 
-        {/* Floating find bar */}
+        {/* Floating find bar - Premium Technical Footer styling */}
         {highlightQuery && (
           <div style={{
             position: 'fixed', top: '88px', right: '24px', zIndex: 200,
-            display: 'flex', alignItems: 'center', gap: '4px', background: '#1e293b',
-            borderRadius: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+            display: 'flex', alignItems: 'center', gap: '4px', background: '#0d0d0d',
+            borderRadius: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
             padding: '8px 12px', color: 'white', fontSize: '13px', userSelect: 'none',
+            borderLeft: '3px solid #DB1A1A'
           }}>
-            <span style={{ color: '#94a3b8', marginRight: '4px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ color: '#DB1A1A', fontWeight: 700, marginRight: '4px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
               {highlightQuery}
             </span>
-            <span style={{ color: '#FEF08A', fontWeight: 700, minWidth: '36px', textAlign: 'center' }}>
+            <span style={{ color: '#FEF08A', fontWeight: 700, minWidth: '36px', textAlign: 'center', fontSize: '10px' }}>
               {matchCount === 0 ? '0/0' : `${currentMatch}/${matchCount}`}
             </span>
             <div style={{ width: '1px', height: '16px', background: '#334155', margin: '0 4px' }} />
-            <button onClick={goPrev} disabled={matchCount === 0} style={{ background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed', color: matchCount ? 'white' : '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', lineHeight: 1 }}>
+            <button onClick={goPrev} disabled={matchCount === 0} style={{ background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed', color: matchCount ? '#DB1A1A' : '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', lineHeight: 1, fontWeight: 700 }}>
               &#8743;
             </button>
-            <button onClick={goNext} disabled={matchCount === 0} style={{ background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed', color: matchCount ? 'white' : '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', lineHeight: 1 }}>
+            <button onClick={goNext} disabled={matchCount === 0} style={{ background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed', color: matchCount ? '#DB1A1A' : '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', lineHeight: 1, fontWeight: 700 }}>
               &#8744;
             </button>
             <div style={{ width: '1px', height: '16px', background: '#334155', margin: '0 4px' }} />
-            <button onClick={() => { setHighlightQuery(''); clearHighlights(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontSize: '16px', lineHeight: 1 }}>
+            <button onClick={() => { setHighlightQuery(''); clearHighlights(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontSize: '12px', lineHeight: 1 }}>
               &#x2715;
             </button>
           </div>

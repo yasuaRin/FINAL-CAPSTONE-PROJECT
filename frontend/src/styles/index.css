@@ -383,6 +383,7 @@
     background-color: #1A73E8;
     color: white;
   }
+
 }
 
 @layer utilities {
@@ -486,4 +487,26 @@
   .dashboard-table td {
     padding: 0.75rem;
   }
+}
+/* Bar Chart Hover Effects - No White */
+.bar-actual:hover rect {
+  fill: #9A1212 !important;
+  transition: fill 0.2s ease;
+  cursor: pointer;
+}
+
+.bar-forecast:hover rect {
+  fill: #1e40af !important;
+  transition: fill 0.2s ease;
+  cursor: pointer;
+}
+
+/* Remove default Recharts hover white overlay */
+.recharts-bar-rectangle:hover {
+  filter: none !important;
+}
+
+.recharts-bar-rectangle:hover rect {
+  stroke: none !important;
+  opacity: 1 !important;
 }

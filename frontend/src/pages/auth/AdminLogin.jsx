@@ -1,4 +1,4 @@
-﻿// frontend/src/views/Admin/Auth/AdminLogin.jsx
+﻿// frontend/src/pages/auth/AdminLogin.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -36,8 +36,8 @@ export const AdminLogin = () => {
   // Show loading while checking auth
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-3 border-gray-200 border-t-black rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-3 border-muted border-t-primary rounded-full animate-spin" />
       </div>
     );
   }
@@ -48,26 +48,28 @@ export const AdminLogin = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="max-w-md w-full space-y-8 p-8 bg-card rounded-xl shadow-lg border border-border">
         <div>
-          <h2 className="text-center text-3xl font-bold text-gray-900">
+          {/* Page Title - text-3xl font-bold tracking-tight */}
+          <h2 className="text-center text-3xl font-bold tracking-tight text-foreground">
             VIDHELP Admin
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-xs font-light text-muted-foreground">
             Sign in to your account
           </p>
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
+            <div className="bg-destructive/10 text-destructive p-3 rounded-lg text-xs font-medium">
               {error}
             </div>
           )}
           
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          <div className="space-y-2">
+            {/* Form Label - text-[10px] font-bold uppercase tracking-wider */}
+            <label htmlFor="email" className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Email address
             </label>
             <input
@@ -76,12 +78,12 @@ export const AdminLogin = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black"
+              className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-lg text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
             />
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <div className="space-y-2">
+            <label htmlFor="password" className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Password
             </label>
             <input
@@ -90,14 +92,14 @@ export const AdminLogin = () => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black"
+              className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-lg text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-50"
+            className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-xs font-bold uppercase tracking-wider text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 transition-all"
           >
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
