@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 
 // ─── TIER 1: Static index (pages + actions) ───────────────────────────────────
-// These never change so there's zero latency — no DB call needed.
 const STATIC_ITEMS = [
   { id: 'p1', title: 'Dashboard',      category: 'Page',   path: '/admin',          keywords: 'home main overview stats' },
   { id: 'p2', title: 'Revenue',        category: 'Page',   path: '/admin/revenue',  keywords: 'money income profit analytics reports' },
@@ -22,7 +21,6 @@ const STATIC_ITEMS = [
   { id: 'a2', title: 'Add New Staff',  category: 'Action', path: '/admin/team',     keywords: 'create hire new member plus' },
 ];
 
-// Icon per category for the dropdown
 const CategoryIcon = ({ category }) => {
   const props = { size: 13, style: { flexShrink: 0 } };
   if (category === 'Page')   return <FileText {...props} style={{ ...props.style, color: '#1a73e8' }} />;
@@ -36,8 +34,9 @@ const CategoryIcon = ({ category }) => {
 
 export const AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
+  const avatarMenuRef = useRef(null);
 
-  // ── Search state ────────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery]       = useState('');
   const [supabaseItems, setSupabaseItems]   = useState([]);  // Tier 2: live DB results
   const [highlightQuery, setHighlightQuery] = useState('');   // committed query that drives highlights
@@ -58,29 +57,32 @@ export const AdminLayout = () => {
   }, [isDarkMode]);
   // ───────────────────────────────────────────────────────────────────────────
 
-  // Highlight engine — runs when user commits a search (Enter or dropdown click)
   const { matchCount, currentMatch, goNext, goPrev, clearHighlights } = usePageSearch(highlightQuery, pageContentRef);
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, loading: authLoading } = useAuth();
 
-  // Profile data from auth.users
+  // ── FIX: tambahkan adminProfile dari useAuth ──────────────────────────────
+  const { user, logout, loading: authLoading, adminProfile } = useAuth();
+
+  // Prioritaskan data dari tabel admins (adminProfile), fallback ke user_metadata
   const displayName =
+    adminProfile?.full_name ||
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
     user?.email?.split('@')[0] ||
     'Admin';
 
+  // ── FIX: avatarUrl sekarang diambil dari tabel admins lewat adminProfile ──
   const avatarUrl =
+    adminProfile?.avatar_url ||
     user?.user_metadata?.avatar_url ||
     user?.user_metadata?.picture ||
     null;
 
   const initials = displayName.charAt(0).toUpperCase();
 
-  // ── TIER 2: Supabase search (brands + staff) ────────────────────────────────
-  // Fires only when user has typed ≥ 2 characters to avoid hammering the DB.
+  // ── TIER 2: Supabase search ───────────────────────────────────────────────
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
       setSupabaseItems([]);
@@ -90,14 +92,12 @@ export const AdminLayout = () => {
     const fetchFromSupabase = async () => {
       const q = searchQuery.trim();
 
-      // Search brands table
       const { data: brands } = await supabase
         .from('brands')
         .select('brand_id, brand_name')
         .ilike('brand_name', `%${q}%`)
         .limit(3);
 
-      // Search team/staff table — adjust column name if yours differs
       const { data: staff } = await supabase
         .from('staff')
         .select('id, name')
@@ -123,13 +123,10 @@ export const AdminLayout = () => {
       setSupabaseItems([...brandItems, ...staffItems]);
     };
 
-    // Debounce 300ms so we don't fire on every keystroke
     const timer = setTimeout(fetchFromSupabase, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-  // ───────────────────────────────────────────────────────────────────────────
 
-  // ── Filter static items against query ──────────────────────────────────────
   const filteredStatic = searchQuery.trim() === '' ? [] : STATIC_ITEMS.filter(item => {
     const q = searchQuery.toLowerCase();
     return (
@@ -139,12 +136,9 @@ export const AdminLayout = () => {
     );
   });
 
-  // Merge Tier 1 + Tier 2, cap at 6 results
   const allResults = [...filteredStatic, ...supabaseItems].slice(0, 6);
   const showDropdown = searchQuery.trim().length > 0;
-  // ───────────────────────────────────────────────────────────────────────────
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e) => {
       if (searchRef.current && !searchRef.current.contains(e.target)) {
@@ -155,14 +149,22 @@ export const AdminLayout = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Auth guard
+  useEffect(() => {
+    const handler = (e) => {
+      if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target)) {
+        setIsAvatarMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/admin/login', { replace: true });
     }
   }, [authLoading, user, navigate]);
 
-  // Close sidebar on route change
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [location.pathname]);
