@@ -32,18 +32,27 @@ const Revenue = () => {
     const parsed = parseRevenueDate(dateValue);
     return parsed ? format(parsed, 'yyyy-MM-dd') : null;
   };
+
   const { data: revenue, loading: revenueLoading } = useRevenue();
   const { brands, loading: brandsLoading } = useBrands();
   const { team, loading: teamLoading } = useTeam();
 
   const [notification, setNotification] = useState(null);
   const [showRevenueOnly, setShowRevenueOnly] = useState(true);
+  const [sortCol, setSortCol] = useState('date');
+  const [sortDir, setSortDir] = useState('desc');
+  const [sortOpen, setSortOpen] = useState(false);
+  const [limitOpen, setLimitOpen] = useState(false);
+  const [rowLimit, setRowLimit] = useState(10);
+  const sortRef = useRef(null);
+  const limitRef = useRef(null);
   const [dateRange, setDateRange] = useState({
     start: subDays(new Date(), 30),
     end: new Date(),
     preset: '30d'
   });
 
+<<<<<<< HEAD
   // State for filter dropdown
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const filterRef = useRef(null);
@@ -64,6 +73,16 @@ const Revenue = () => {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+=======
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (sortRef.current && !sortRef.current.contains(e.target)) setSortOpen(false);
+      if (limitRef.current && !limitRef.current.contains(e.target)) setLimitOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+>>>>>>> 30358d859c78d0d1eb8c5cc4f280af5c0496d5d5
   }, []);
 
   const showNotification = (msg) => {
@@ -206,7 +225,11 @@ const Revenue = () => {
     return stats.sort((a, b) => b.revenue - a.revenue);
   }, [filteredRevenue]);
 
+<<<<<<< HEAD
   // Session Intelligence with Sorting
+=======
+  // Full sorted list (no slice here — slicing moved to render)
+>>>>>>> 30358d859c78d0d1eb8c5cc4f280af5c0496d5d5
   const sessionIntelligence = useMemo(() => {
     if (!filteredRevenue.length) return [];
     let sessions = [...filteredRevenue]
@@ -238,6 +261,7 @@ const Revenue = () => {
       sessions = sessions.filter(item => item.totalRevenue > 0);
     }
 
+<<<<<<< HEAD
     // Apply sorting
     sessions.sort((a, b) => {
       let aVal, bVal;
@@ -292,6 +316,31 @@ const Revenue = () => {
   const handleRowsChange = (rows) => {
     setRowsToShow(rows);
   };
+=======
+    sessions.sort((a, b) => {
+      let aVal, bVal;
+      if (sortCol === 'date') {
+        aVal = a.parsedDate?.getTime() ?? 0;
+        bVal = b.parsedDate?.getTime() ?? 0;
+      } else if (sortCol === 'revenue') {
+        aVal = a.totalRevenue;
+        bVal = b.totalRevenue;
+      } else if (sortCol === 'host') {
+        return sortDir === 'asc'
+          ? a.staffName.localeCompare(b.staffName)
+          : b.staffName.localeCompare(a.staffName);
+      }
+      return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+    });
+    
+    return sessions;
+  }, [filteredRevenue, brands, team, showRevenueOnly, sortCol, sortDir]);
+
+  // Sliced based on rowLimit (null = show all)
+  const visibleSessions = useMemo(() => {
+    return rowLimit === null ? sessionIntelligence : sessionIntelligence.slice(0, rowLimit);
+  }, [sessionIntelligence, rowLimit]);
+>>>>>>> 30358d859c78d0d1eb8c5cc4f280af5c0496d5d5
 
   const handleDateRangeChange = (newRange) => {
     setDateRange(newRange);
@@ -301,6 +350,43 @@ const Revenue = () => {
   const handleExport = () => {
     showNotification('Report exported successfully');
   };
+
+  // Sort options - simplified (removed brand and platform)
+  const sortGroups = [
+    {
+      label: 'Revenue',
+      options: [
+        { label: 'Highest first', col: 'revenue', dir: 'desc' },
+        { label: 'Lowest first',  col: 'revenue', dir: 'asc'  },
+      ]
+    },
+    {
+      label: 'Date',
+      options: [
+        { label: 'Newest first', col: 'date', dir: 'desc' },
+        { label: 'Oldest first', col: 'date', dir: 'asc'  },
+      ]
+    },
+    {
+      label: 'Host',
+      options: [
+        { label: 'A → Z', col: 'host', dir: 'asc'  },
+        { label: 'Z → A', col: 'host', dir: 'desc' },
+      ]
+    },
+  ];
+
+  // Row limit options
+  const limitOptions = [5, 10, 25, 50, null];
+
+  // Human-readable label for the active sort
+  const activeSortLabel = (() => {
+    for (const group of sortGroups) {
+      const match = group.options.find(o => o.col === sortCol && o.dir === sortDir);
+      if (match) return `${group.label}: ${match.label}`;
+    }
+    return 'Sort';
+  })();
 
   if (isLoading) {
     return (
@@ -376,10 +462,7 @@ const Revenue = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <motion.div 
-          whileHover={{ y: -4 }} 
-          className="bg-card rounded-3xl p-6 border border-border hover:border-primary/50 transition-all"
-        >
+        <motion.div whileHover={{ y: -4 }} className="bg-card rounded-3xl p-6 border border-border hover:border-primary/50 transition-all">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-primary/10 rounded-xl">
               <DollarSign size={20} className="text-primary" />
@@ -457,25 +540,9 @@ const Revenue = () => {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.2} vertical={false} />
-              <XAxis 
-                dataKey="date" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 600 }} 
-                dy={8}
-                interval={5}
-              />
-              <YAxis 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 600 }} 
-                tickFormatter={v => `Rp ${(v / 1000).toFixed(0)}k`}
-              />
-              <Tooltip
-                contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--foreground)', backdropFilter: 'blur(10px)' }}
-                formatter={(value) => [`Rp ${value.toLocaleString()}`, 'Revenue']}
-                labelFormatter={(label) => `Date: ${label}`}
-              />
+              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 600 }} dy={8} interval={5} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 600 }} tickFormatter={v => `Rp ${(v / 1000).toFixed(0)}k`} />
+              <Tooltip contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--foreground)', backdropFilter: 'blur(10px)' }} formatter={(value) => [`Rp ${value.toLocaleString()}`, 'Revenue']} labelFormatter={(label) => `Date: ${label}`} />
               <Area type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={4} fill="url(#revenueGradient)" />
             </AreaChart>
           </ResponsiveContainer>
@@ -497,24 +564,13 @@ const Revenue = () => {
             {platformStats.length > 0 ? (
               <div className="space-y-5">
                 {platformStats.map((p, i) => (
-                  <motion.div 
-                    key={i}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                  >
+                  <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}>
                     <div className="flex justify-between mb-2">
                       <span className="text-sm font-bold text-foreground">{p.name}</span>
                       <span className="text-xs font-mono font-bold text-foreground">Rp {p.revenue.toLocaleString()}</span>
                     </div>
                     <div className="h-2 bg-border rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${p.pct}%` }}
-                        transition={{ duration: 0.8, delay: i * 0.1 }}
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: p.color }}
-                      />
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${p.pct}%` }} transition={{ duration: 0.8, delay: i * 0.1 }} className="h-full rounded-full" style={{ backgroundColor: p.color }} />
                     </div>
                     <div className="flex justify-end mt-1">
                       <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{p.pct}%</span>
@@ -530,6 +586,7 @@ const Revenue = () => {
           </div>
         </div>
 
+<<<<<<< HEAD
         {/* Session Intelligence Table with Filter Dropdown */}
         <div className="lg:col-span-2 bg-card rounded-[2rem] border border-border overflow-hidden">
           <div className="p-6 border-b border-border">
@@ -694,11 +751,162 @@ const Revenue = () => {
                   {visibleSessions.length} of {sessionIntelligence.length} sessions
                 </span>
               </div>
+=======
+        {/* Session Intelligence Table */}
+        <div className="lg:col-span-2 bg-card rounded-[2rem] border border-border overflow-hidden">
+          
+          <div className="p-6 border-b border-border flex items-center justify-between gap-4">
+            {/* Left: title + session count */}
+            <div className="flex items-center gap-2">
+              <Clock size={16} className="text-primary" />
+              <h3 className="text-xs font-black uppercase tracking-widest text-foreground">Session Intelligence</h3>
+              <span className="ml-1 text-[9px] font-bold text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-full">
+                {visibleSessions.length}/{sessionIntelligence.length}
+              </span>
+>>>>>>> 30358d859c78d0d1eb8c5cc4f280af5c0496d5d5
+            </div>
+
+            {/* Right: controls */}
+            <div className="flex items-center gap-2">
+              {/* Show all toggle */}
+              <button
+                onClick={() => setShowRevenueOnly(!showRevenueOnly)}
+                className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-lg border border-border hover:border-primary/40 bg-background"
+              >
+                {showRevenueOnly ? 'Show All' : 'Revenue Only'}
+              </button>
+
+              {/* Row limit dropdown */}
+              <div className="relative" ref={limitRef}>
+                <button
+                  onClick={() => { setLimitOpen(prev => !prev); setSortOpen(false); }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-wider transition-all ${
+                    limitOpen
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-primary'
+                  }`}
+                >
+                  Show {rowLimit === null ? 'All' : rowLimit}
+                  <ChevronDown
+                    size={10}
+                    className={`transition-transform duration-200 ${limitOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                <AnimatePresence>
+                  {limitOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-2 z-50 w-36 bg-card border border-border rounded-2xl shadow-xl overflow-hidden"
+                    >
+                      <div className="px-4 pt-3 pb-1">
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                          Rows per view
+                        </span>
+                      </div>
+                      {limitOptions.map((opt, i) => {
+                        const isActive = rowLimit === opt;
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => { setRowLimit(opt); setLimitOpen(false); }}
+                            className={`w-full flex items-center justify-between px-4 py-2 text-left text-xs font-medium transition-colors ${
+                              isActive
+                                ? 'text-primary bg-primary/8'
+                                : 'text-foreground hover:bg-muted/10'
+                            }`}
+                          >
+                            <span>{opt === null ? 'All' : `Top ${opt}`}</span>
+                            {isActive && <Check size={11} className="text-primary shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Sort dropdown */}
+              <div className="relative" ref={sortRef}>
+                <button
+                  onClick={() => { setSortOpen(prev => !prev); setLimitOpen(false); }}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-wider transition-all ${
+                    sortOpen
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-primary'
+                  }`}
+                >
+                  <Filter size={10} />
+                  Sort by
+                  <ChevronDown
+                    size={10}
+                    className={`transition-transform duration-200 ${sortOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                <AnimatePresence>
+                  {sortOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-2 z-50 w-52 bg-card border border-border rounded-2xl shadow-xl overflow-hidden"
+                    >
+                      {sortGroups.map((group, gi) => (
+                        <div key={gi}>
+                          <div className="px-4 pt-3 pb-1">
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                              {group.label}
+                            </span>
+                          </div>
+                          {group.options.map((opt, oi) => {
+                            const isActive = sortCol === opt.col && sortDir === opt.dir;
+                            return (
+                              <button
+                                key={oi}
+                                onClick={() => {
+                                  setSortCol(opt.col);
+                                  setSortDir(opt.dir);
+                                  setSortOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-4 py-2 text-left text-xs font-medium transition-colors ${
+                                  isActive
+                                    ? 'text-primary bg-primary/8'
+                                    : 'text-foreground hover:bg-muted/10'
+                                }`}
+                              >
+                                <span>{opt.label}</span>
+                                {isActive && (
+                                  <Check size={11} className="text-primary shrink-0" />
+                                )}
+                              </button>
+                            );
+                          })}
+                          {gi < sortGroups.length - 1 && (
+                            <div className="mx-4 my-1 border-t border-border" />
+                          )}
+                        </div>
+                      ))}
+
+                      <div className="px-4 py-3 border-t border-border bg-muted/5">
+                        <p className="text-[9px] text-muted-foreground font-medium">
+                          Active: <span className="text-foreground font-bold">{activeSortLabel}</span>
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
-          
+
           <div className="overflow-x-auto">
             {visibleSessions.length > 0 ? (
+<<<<<<< HEAD
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
@@ -747,6 +955,63 @@ const Revenue = () => {
                   })}
                 </tbody>
               </table>
+=======
+              <>
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-4 px-4 text-[9px] font-black uppercase tracking-wider text-muted-foreground">Date</th>
+                      <th className="text-left py-4 px-4 text-[9px] font-black uppercase tracking-wider text-muted-foreground">Brand</th>
+                      <th className="text-left py-4 px-4 text-[9px] font-black uppercase tracking-wider text-muted-foreground">Platform</th>
+                      <th className="text-left py-4 px-4 text-[9px] font-black uppercase tracking-wider text-muted-foreground">Host</th>
+                      <th className="text-right py-4 px-4 text-[9px] font-black uppercase tracking-wider text-muted-foreground">Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleSessions.map((item, idx) => {
+                      const platformInfo = platformStats.find(p => p.name === item.platform);
+                      const badgeColor = platformInfo?.color || 'var(--primary)';
+                      
+                      return (
+                        <tr key={item.id || idx} className="border-b border-border hover:bg-muted/5 transition-colors">
+                          <td className="py-3 px-4 text-xs font-mono text-foreground">
+                            {(() => {
+                              const parsed = parseRevenueDate(item.date);
+                              return parsed ? format(parsed, 'MMM dd') : item.date;
+                            })()}
+                          </td>
+                          <td className="py-3 px-4 font-bold text-sm text-foreground">{item.brandName}</td>
+                          <td className="py-3 px-4">
+                            <span className="text-[9px] font-black px-2 py-1 rounded-full uppercase" style={{ backgroundColor: `${badgeColor}20`, color: badgeColor }}>
+                              {item.platform}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-xs text-muted-foreground">{item.staffName}</td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-sm text-foreground">
+                            {item.totalRevenue > 0 ? `Rp ${item.totalRevenue.toLocaleString()}` : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {/* Footer: showing X of Y */}
+                {rowLimit !== null && sessionIntelligence.length > rowLimit && (
+                  <div className="px-6 py-3 border-t border-border bg-muted/5 flex items-center justify-between">
+                    <p className="text-[9px] text-muted-foreground font-medium">
+                      Showing <span className="text-foreground font-bold">{visibleSessions.length}</span> of <span className="text-foreground font-bold">{sessionIntelligence.length}</span> sessions
+                    </p>
+                    <button
+                      onClick={() => setRowLimit(null)}
+                      className="text-[9px] font-bold uppercase tracking-wider text-primary hover:text-primary/70 transition-colors"
+                    >
+                      View all →
+                    </button>
+                  </div>
+                )}
+              </>
+>>>>>>> 30358d859c78d0d1eb8c5cc4f280af5c0496d5d5
             ) : (
               <div className="text-center py-12">
                 <p className="text-xs font-light text-muted-foreground">No sessions found for selected period</p>
