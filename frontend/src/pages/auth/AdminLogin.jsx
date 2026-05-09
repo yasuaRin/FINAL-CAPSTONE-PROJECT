@@ -1,11 +1,5 @@
-<<<<<<< HEAD
-﻿// frontend/src/pages/auth/AdminLogin.jsx
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-=======
 ﻿import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
->>>>>>> 30358d859c78d0d1eb8c5cc4f280af5c0496d5d5
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../services/supabase';
 
@@ -167,13 +161,8 @@ export const AdminLogin = () => {
 
   if (authLoading) {
     return (
-<<<<<<< HEAD
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-3 border-muted border-t-primary rounded-full animate-spin" />
-=======
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-gray-200 border-t-black rounded-full animate-spin" />
->>>>>>> 30358d859c78d0d1eb8c5cc4f280af5c0496d5d5
       </div>
     );
   }
@@ -240,30 +229,6 @@ export const AdminLogin = () => {
 
   // ─── Login View ────────────────────────────────────────────────────────────
   return (
-<<<<<<< HEAD
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="max-w-md w-full space-y-8 p-8 bg-card rounded-xl shadow-lg border border-border">
-        <div>
-          {/* Page Title - text-3xl font-bold tracking-tight */}
-          <h2 className="text-center text-3xl font-bold tracking-tight text-foreground">
-            VIDHELP Admin
-          </h2>
-          <p className="mt-2 text-center text-xs font-light text-muted-foreground">
-            Sign in to your account
-          </p>
-        </div>
-        
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-destructive/10 text-destructive p-3 rounded-lg text-xs font-medium">
-              {error}
-            </div>
-          )}
-          
-          <div className="space-y-2">
-            {/* Form Label - text-[10px] font-bold uppercase tracking-wider */}
-            <label htmlFor="email" className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-=======
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full space-y-6 p-8 bg-white rounded-xl shadow-lg">
 
@@ -309,7 +274,6 @@ export const AdminLogin = () => {
           {/* Email */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
->>>>>>> 30358d859c78d0d1eb8c5cc4f280af5c0496d5d5
               Email address
             </label>
             <input
@@ -318,24 +282,6 @@ export const AdminLogin = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-<<<<<<< HEAD
-              className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-lg text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="password" className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-lg text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
-            />
-=======
               placeholder="name@gmail.com"
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black text-sm"
             />
@@ -373,7 +319,6 @@ export const AdminLogin = () => {
                 {showPassword ? <EyeOffIcon /> : <EyeIcon />}
               </button>
             </div>
->>>>>>> 30358d859c78d0d1eb8c5cc4f280af5c0496d5d5
           </div>
 
           {/* Submit */}

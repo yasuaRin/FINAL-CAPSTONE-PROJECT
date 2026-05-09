@@ -13,7 +13,6 @@ export const usePredictions = () => {
 
   const fetchPredictions = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const { data, error: sbError } = await supabase
         .from('revenue_predictions')
@@ -25,16 +24,10 @@ export const usePredictions = () => {
       const future = (data || []).filter(p => p.is_future === true);
       const historical = (data || []).filter(p => p.is_future === false);
 
-      // Debug logs
-      console.log('=== USE PREDICTIONS DEBUG ===');
-      console.log('Total records:', data?.length);
-      console.log('Future predictions count:', future.length);
-      console.log('Future period_ids:', future.map(p => p.period_id));
-      console.log('Historical period_ids:', historical.slice(0, 10).map(p => p.period_id));
-      console.log('==============================');
-
+      console.log('📊 Future predictions:', future.length);
       setFuturePredictions(future);
       setHistoricalPredictions(historical);
+      
     } catch (err) {
       console.error('Fetch error:', err);
       setError(err.message);
@@ -47,55 +40,43 @@ export const usePredictions = () => {
     fetchPredictions();
   }, [fetchPredictions]);
 
-  const retrainModels = useCallback(async (brandId = null) => {
+  const retrainModels = useCallback(async () => {
     setIsRetraining(true);
+    setError(null);
+    
     try {
-      const startRes = await fetch(`${ML_API_URL}/api/ml/retrain`, {
+      // Step 1: Call ML API to retrain
+      console.log('🔄 Starting ML retraining...');
+      
+      const response = await fetch(`${ML_API_URL}/api/ml/retrain`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brand_id: brandId, n_future: 14 }),
+        body: JSON.stringify({ 
+          n_future: 12  // Predict next 12 periods
+        }),
       });
 
-      if (!startRes.ok) {
-        const err = await startRes.json();
-        throw new Error(err.detail || 'Failed to start training');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Retraining failed');
       }
 
-      await new Promise((resolve, reject) => {
-        const interval = setInterval(async () => {
-          try {
-            const statusRes = await fetch(`${ML_API_URL}/api/ml/status`);
-            const { is_running, last_result } = await statusRes.json();
+      const result = await response.json();
+      console.log('✅ ML retraining completed:', result);
 
-            if (!is_running) {
-              clearInterval(interval);
-              if (last_result?.error) {
-                reject(new Error(last_result.error));
-              } else {
-                resolve(last_result);
-              }
-            }
-          } catch (e) {
-            clearInterval(interval);
-            reject(e);
-          }
-        }, 3000);
-      });
-
+      // Step 2: Fetch updated predictions
       await fetchPredictions();
-      return { success: true };
-
+      
+      return { success: true, message: 'Models retrained successfully' };
+      
     } catch (err) {
+      console.error('❌ Retrain error:', err);
+      setError(err.message);
       return { success: false, error: err.message };
     } finally {
       setIsRetraining(false);
     }
   }, [fetchPredictions]);
-
-  const formatCurrency = (value) => {
-    if (!value && value !== 0) return 'Rp 0';
-    return `Rp ${value.toLocaleString('id-ID')}`;
-  };
 
   return {
     futurePredictions,
@@ -103,7 +84,6 @@ export const usePredictions = () => {
     loading,
     isRetraining,
     error,
-    formatCurrency,
     retrainModels,
     refetch: fetchPredictions,
   };
