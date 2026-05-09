@@ -139,7 +139,7 @@ export const AdminLogin = () => {
 
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/#/admin/auth/reset-password`,
+        redirectTo: `${window.location.origin}/#/admin/auth/reset-password`, // ← fix HashRouter
       });
 
       if (resetError) throw new Error(resetError.message);
@@ -157,8 +157,6 @@ export const AdminLogin = () => {
     setError('');
     setSuccess('');
     setEmail('');
-    setPassword('');
-    setShowPassword(false);
   };
 
   if (authLoading) {
