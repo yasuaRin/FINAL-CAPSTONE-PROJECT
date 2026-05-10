@@ -226,14 +226,30 @@ export default function Team() {
         }
       } else {
         if (role === 'staff') {
-          const { error } = await supabase.from('staff').insert({ name, email, phone: phone || null, role: roleDescription, status, avatar_url: formAvatar || null });
-          if (error) throw error;
+          const { data: { session } } = await supabase.auth.getSession();
+          const _res = await fetch(`${import.meta.env.VITE_API_URL}/team/create-staff`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`
+            },
+            body: JSON.stringify({ name, email, phone: phone || null, role: roleDescription, status, avatar_url: formAvatar || null })
+          });
+          const _result = await _res.json();
+          if (!_res.ok) throw new Error(_result.message);
         } else {
           if (!password) { setFormError('Password is required for Admin / Super Admin accounts.'); setSubmitting(false); return; }
-          const { data: authData, error: authError } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
-          if (authError) throw authError;
-          const { error: insertError } = await supabase.from('admins').insert({ id: authData.user.id, email, full_name: name, phone: phone || null, role, is_active: true, avatar_url: formAvatar || null });
-          if (insertError) throw insertError;
+          const { data: { session } } = await supabase.auth.getSession();
+          const _res = await fetch(`${import.meta.env.VITE_API_URL}/team/create-admin`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`
+            },
+            body: JSON.stringify({ email, password, name, phone, role, avatar_url: formAvatar || null })
+          });
+          const _result = await _res.json();
+          if (!_res.ok) throw new Error(_result.message);
         }
       }
       await fetchMembers();
@@ -249,11 +265,17 @@ export default function Team() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      if (deleteTarget._table === 'admins') {
-        await supabase.from('admins').delete().eq('id', deleteTarget._id);
-      } else {
-        await supabase.from('staff').delete().eq('id', deleteTarget._id);
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      const _res = await fetch(`${import.meta.env.VITE_API_URL}/team/delete-member`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({ id: deleteTarget._id, table: deleteTarget._table })
+      });
+      const _result = await _res.json();
+      if (!_res.ok) throw new Error(_result.message);
       await fetchMembers();
     } catch (err) {
       console.error('Delete error:', err);
