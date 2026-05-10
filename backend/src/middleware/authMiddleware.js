@@ -1,9 +1,8 @@
-﻿import { supabase } from '../utils/supabase.js';
+﻿import { supabase, supabaseAdmin } from '../utils/supabase.js';
 
 export const authenticateUser = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ 
         success: false, 
@@ -12,7 +11,6 @@ export const authenticateUser = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
@@ -36,7 +34,8 @@ export const authenticateUser = async (req, res, next) => {
 export const requireRole = (roles) => {
   return async (req, res, next) => {
     try {
-      const { data: admin, error } = await supabase
+      // Pakai supabaseAdmin biar ga kena RLS policy
+      const { data: admin, error } = await supabaseAdmin
         .from('admins')
         .select('role')
         .eq('id', req.user.id)
