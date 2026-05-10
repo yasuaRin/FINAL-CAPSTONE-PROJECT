@@ -18,7 +18,7 @@ import { useTeam } from '../../hooks/useTeam';
 import { SortByButton } from '../../components/layout/SortByButton';
 import { usePredictions } from '../../hooks/usePredictions';
 import { supabase } from '../../services/supabase';
-import { RevenueBarChart } from '../../components/charts/RevenueBarChart';
+import { RevenueBarChart } from '../../components/dashboard/RevenueBarChart';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -93,11 +93,11 @@ const KpiSkeleton = () => (
 );
 
 // ============================================================================
-// Churned Risk Monitor
+// CRITICAL RISK MONITOR
 // ============================================================================
 const CriticalRiskMonitor = ({ onBrandClick }) => {
   const [riskData, setRiskData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
     const fetchRiskData = async () => {
@@ -107,23 +107,18 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
             .from('risk_monitor')
             .select('brand_id, risk_level, reasons')
             .order('risk_level', { ascending: false }),
-
-          supabase
-            .from('brands')
-            .select('brand_id, brand_name'),
+          supabase.from('brands').select('brand_id, brand_name'),
         ]);
 
         if (error) throw error;
 
-        const brandMap = new Map(
-          brands?.map((b) => [b.brand_id, b.brand_name])
-        );
+        const brandMap = new Map(brands?.map((b) => [b.brand_id, b.brand_name]));
 
         setRiskData(
           (data || []).map((item) => ({
-            id: item.brand_id,
-            name: brandMap.get(item.brand_id) || 'Unknown',
-            risk: item.risk_level,
+            id:      item.brand_id,
+            name:    brandMap.get(item.brand_id) || 'Unknown',
+            risk:    item.risk_level,
             reasons: item.reasons || [],
           }))
         );
@@ -133,105 +128,72 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
         setLoading(false);
       }
     };
-
     fetchRiskData();
   }, []);
 
   const counts = { High: 0, Medium: 0, Low: 0 };
-
   riskData.forEach((b) => {
-    if (counts[b.risk] !== undefined) {
-      counts[b.risk]++;
-    }
+    if (counts[b.risk] !== undefined) counts[b.risk]++;
   });
 
   if (loading) {
     return (
-      <div className="dashboard-card h-[320px] overflow-hidden flex flex-col">
+      <div className="dashboard-card p-0 overflow-hidden">
         <div className="p-4 border-b">
           <div className="flex items-center gap-2">
             <ShieldAlert size={16} className="text-destructive" />
-            <h3 className="text-xs font-bold uppercase tracking-widest">
-              Churned Risk Monitor
-            </h3>
+            <h3 className="text-xs font-bold">Critical Risk Monitor</h3>
           </div>
         </div>
-
-        <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-          Loading risk data...
-        </div>
+        <div className="p-8 text-center text-sm">Loading risk data...</div>
       </div>
     );
   }
 
   return (
-    <div className="dashboard-card h-[320px] overflow-hidden flex flex-col">
-      {/* HEADER */}
-      <div className="p-4 border-b border-border bg-muted/20 shrink-0">
+    <div className="dashboard-card p-0 overflow-hidden">
+      <div className="p-4 border-b">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <ShieldAlert size={16} className="text-destructive" />
-
-            <h3 className="text-xs font-bold uppercase tracking-widest">
-              Churned Risk Monitor
-            </h3>
+            <h3 className="text-xs font-bold">Critical Risk Monitor</h3>
           </div>
-
+          <div className="flex gap-1">
+            {counts.High   > 0 && <span className="text-[9px] font-bold bg-destructive   text-white px-2 py-0.5 rounded-full">{counts.High} High</span>}
+            {counts.Medium > 0 && <span className="text-[9px] font-bold bg-amber-500     text-white px-2 py-0.5 rounded-full">{counts.Medium} Medium</span>}
+            {counts.Low    > 0 && <span className="text-[9px] font-bold bg-emerald-500   text-white px-2 py-0.5 rounded-full">{counts.Low} Low</span>}
+          </div>
         </div>
-
+        <p className="text-[9px] text-muted-foreground mt-2">Click on any brand to filter the chart</p>
       </div>
 
-      {/* SCROLL AREA */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
-        {riskData.length > 0 ? (
-          riskData.map((brand) => (
-            <motion.div
-              key={brand.id}
-              whileHover={{ x: 3 }}
-              whileTap={{ scale: 0.99 }}
-              onClick={() => onBrandClick?.(brand.id)}
-              className="p-3 rounded-xl border border-border hover:border-destructive/30 hover:bg-destructive/5 cursor-pointer transition-all"
-            >
-              <div className="flex justify-between items-start gap-2">
-                <h4 className="text-sm font-bold leading-tight">
-                  {brand.name}
-                </h4>
-
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase whitespace-nowrap ${
-                    brand.risk === 'High'
-                      ? 'bg-destructive text-white'
-                      : brand.risk === 'Medium'
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-emerald-500 text-white'
-                  }`}
-                >
-                  {brand.risk}
-                </span>
-              </div>
-
-              <div className="flex flex-wrap gap-1 mt-2">
-                {brand.reasons?.slice(0, 2).map((reason, i) => (
-                  <span
-                    key={i}
-                    className="text-[9px] bg-muted/80 px-2 py-0.5 rounded"
-                  >
-                    {reason}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-          ))
-        ) : (
-          <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-            No risk data available
-          </div>
-        )}
+      <div className="p-4 space-y-3 max-h-[400px] overflow-y-auto">
+        {riskData.map((brand) => (
+          <motion.div
+            key={brand.id}
+            whileHover={{ x: 4 }}
+            whileTap={{ scale: 0.99 }}
+            onClick={() => onBrandClick?.(brand.id)}
+            className="p-3 rounded-lg border hover:border-destructive/30 hover:bg-destructive/5 cursor-pointer transition-all"
+          >
+            <div className="flex justify-between items-start">
+              <h4 className="text-sm font-bold">{brand.name}</h4>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                brand.risk === 'High'   ? 'bg-destructive text-white' :
+                brand.risk === 'Medium' ? 'bg-amber-500 text-white'   : 'bg-emerald-500 text-white'
+              }`}>{brand.risk}</span>
+            </div>
+            <div className="flex flex-wrap gap-1 mt-2">
+              {brand.reasons?.slice(0, 2).map((r, i) => (
+                <span key={i} className="text-[9px] bg-muted/80 px-2 py-0.5 rounded">{r}</span>
+              ))}
+            </div>
+          </motion.div>
+        ))}
       </div>
     </div>
   );
 };
-
 
 // ============================================================================
 // MAIN DASHBOARD
@@ -244,8 +206,8 @@ export const Dashboard = () => {
   const [timedOut, setTimedOut]           = useState(false);
   const [forceShow, setForceShow]         = useState(false);
 
-  const { data: revenue, loading: revenueLoading, error: revenueError, totalRevenue: aggregatedTotal, yearlyData } = useRevenue();
-  const { brands, loading: brandsLoading }   = useBrands();
+  const { data: revenue, loading: revenueLoading, error: revenueError, totalRevenue: aggregatedTotal, brandTotals, yearlyData } = useRevenue();
+  const { brands, loading: brandsLoading }   = useBrands(brandTotals);
   const { team,   loading: teamLoading }     = useTeam();
   const { futurePredictions, retrainModels, isRetraining } = usePredictions();
 
@@ -276,12 +238,14 @@ export const Dashboard = () => {
   const selectedBrandName = brands?.find((b) => b.brand_id === selectedBrand)?.brand_name;
 
   // ── TOTAL REVENUE KPI ────────────────────────────────────────────────────
+  // Uses brandTotals Map from useRevenue — same integers that produced
+  // aggregatedTotal, so per-brand + all-brands always reconcile to Supabase.
   const totalRevenue = useMemo(() => {
     if (selectedBrand) {
-      return filteredRevenue.reduce((sum, item) => sum + sumRevenue(item), 0);
+      return brandTotals.get(selectedBrand) ?? 0;
     }
     return aggregatedTotal;
-  }, [selectedBrand, filteredRevenue, aggregatedTotal]);
+  }, [selectedBrand, brandTotals, aggregatedTotal]);
 
   // ── CHART DATA ───────────────────────────────────────────────────────────
   const chartData = useMemo(() => {
@@ -545,7 +509,7 @@ export const Dashboard = () => {
       </div>
 
       {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <RevenueBarChart
           chartData={chartData}
           hasForecast={hasForecast}
@@ -560,101 +524,67 @@ export const Dashboard = () => {
 
         <div className="space-y-8">
           {/* Platform Contribution */}
-          {/* Platform Contribution */}
-<div className="dashboard-card h-[280px] p-0 overflow-hidden flex flex-col">
-  {/* HEADER */}
-  <div className="p-4 border-b border-border bg-muted/20 shrink-0">
-    <div className="flex items-center gap-2">
-      <PieChartIcon size={16} className="text-primary" />
-
-      <h3 className="text-xs font-bold uppercase tracking-widest">
-        Platform Contribution
-      </h3>
-    </div>
-  </div>
-
-  {/* CONTENT */}
-  <div className="flex-1 p-4 flex items-center justify-between gap-4">
-    {platformData.length > 0 ? (
-      <>
-        {/* PIE CHART */}
-        <div className="h-[130px] w-[130px] shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={platformData}
-                cx="50%"
-                cy="50%"
-                innerRadius={30}
-                outerRadius={48}
-                paddingAngle={4}
-                dataKey="value"
-              >
-                {platformData.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-
-              <RechartsTooltip
-                content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null;
-
-                  const d = payload[0];
-
-                  return (
-                    <div className="bg-card/95 backdrop-blur-md border border-border p-2 rounded-lg shadow-lg flex items-center gap-2">
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: d.payload.color }}
-                      />
-
-                      <span className="text-[10px] font-bold">
-                        {d.name}
-                      </span>
-
-                      <span className="text-[10px] font-bold text-primary">
-                        {d.value}%
-                      </span>
-                    </div>
-                  );
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* LEGEND */}
-        <div className="flex flex-col gap-3 flex-1">
-          {platformData.map((p) => (
-            <div
-              key={p.name}
-              className="flex items-center justify-between gap-2"
-            >
+          <div className="dashboard-card p-0 overflow-hidden">
+            <div className="p-4 border-b border-border bg-muted/20">
               <div className="flex items-center gap-2">
-                <div
-                  className="w-2.5 h-2.5 rounded-full"
-                  style={{ backgroundColor: p.color }}
-                />
-
-                <span className="text-[11px] font-semibold text-muted-foreground">
-                  {p.name}
-                </span>
+                <PieChartIcon size={16} className="text-primary" />
+                <h3 className="text-xs font-bold uppercase tracking-widest">Platform Contribution</h3>
               </div>
-
-              <span className="text-[11px] font-bold text-foreground">
-                {p.value}%
-              </span>
             </div>
-          ))}
-        </div>
-      </>
-    ) : (
-      <div className="w-full flex items-center justify-center text-sm text-muted-foreground">
-        No platform data available
-      </div>
-    )}
-  </div>
-</div>
+            <div className="p-4">
+              {platformData.length > 0 ? (
+                <div className="flex items-center justify-between">
+                  <div className="h-[160px] w-[160px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={platformData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={40}
+                          outerRadius={60}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {platformData.map((entry, i) => (
+                            <Cell key={i} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0];
+                            return (
+                              <div className="bg-card/95 backdrop-blur-md border border-border p-2 rounded-lg shadow-lg flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.payload.color }} />
+                                <span className="text-[10px] font-bold">{d.name}</span>
+                                <span className="text-[10px] font-bold text-primary">{d.value}%</span>
+                              </div>
+                            );
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {platformData.map((p) => (
+                      <div key={p.name} className="flex items-center gap-2 group cursor-pointer">
+                        <div
+                          className="w-2 h-2 rounded-full transition-all group-hover:scale-125"
+                          style={{ backgroundColor: p.color }}
+                        />
+                        <span className="text-[10px] font-bold text-muted-foreground group-hover:text-foreground transition-colors">
+                          {p.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground text-sm">No platform data available</div>
+              )}
+            </div>
+          </div>
 
           <CriticalRiskMonitor onBrandClick={handleBrandClick} />
         </div>
