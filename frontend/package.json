@@ -14,7 +14,7 @@
     "@google/genai": "^1.52.0",
     "@hookform/resolvers": "^5.2.2",
     "@popperjs/core": "^2.11.8",
-    "@supabase/supabase-js": "^2.104.1",
+    "@supabase/supabase-js": "^2.105.4",
     "axios": "^1.13.6",
     "bootstrap": "^5.3.8",
     "date-fns": "^4.1.0",
