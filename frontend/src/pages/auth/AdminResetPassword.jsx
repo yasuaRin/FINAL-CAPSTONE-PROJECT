@@ -39,7 +39,6 @@ const AdminResetPassword = () => {
       if (data?.session) {
         setSessionReady(true);
       } else {
-        // Tunggu event dulu, jangan langsung error
         setTimeout(() => {
           if (!sessionReady) {
             setError('Link tidak valid atau sudah expired. Silakan request ulang.');
@@ -83,7 +82,6 @@ const AdminResetPassword = () => {
 
   return (
     <>
-      {/* ✅ Hide browser's built-in password manager icons */}
       <style>{`
         input::-ms-reveal,
         input::-ms-clear {
@@ -97,30 +95,30 @@ const AdminResetPassword = () => {
         }
       `}</style>
 
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full space-y-6 p-8 bg-white rounded-xl shadow-lg">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0A]">
+        <div className="max-w-md w-full space-y-6 p-8 bg-white dark:bg-[#141414] rounded-xl shadow-lg border border-transparent dark:border-[#262626]">
 
           <div>
-            <h2 className="text-center text-3xl font-bold text-gray-900">Set New Password</h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
+            <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white">Set New Password</h2>
+            <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
               Enter your new password below
             </p>
           </div>
 
           {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">{error}</div>
+            <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">{error}</div>
           )}
 
           {!sessionReady && !error && (
             <div className="flex justify-center py-4">
-              <div className="w-8 h-8 border-2 border-gray-200 border-t-black rounded-full animate-spin" />
+              <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-700 border-t-black dark:border-t-white rounded-full animate-spin" />
             </div>
           )}
 
           {sessionReady && (
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
-                <label className="block text-sm font-medium text-gray-700">New Password</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
                 <div className="relative mt-1">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -129,12 +127,12 @@ const AdminResetPassword = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     autoComplete="new-password"
-                    className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black text-sm"
+                    className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors z-10"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10"
                   >
                     {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
@@ -142,7 +140,7 @@ const AdminResetPassword = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</label>
                 <div className="relative mt-1">
                   <input
                     type={showConfirm ? 'text' : 'password'}
@@ -151,12 +149,12 @@ const AdminResetPassword = () => {
                     onChange={(e) => setConfirm(e.target.value)}
                     placeholder="••••••••"
                     autoComplete="new-password"
-                    className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black text-sm"
+                    className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors z-10"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10"
                   >
                     {showConfirm ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
@@ -166,7 +164,7 @@ const AdminResetPassword = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-50"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#DB1A1A] hover:bg-[#b81515] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DB1A1A] dark:focus:ring-offset-[#141414] disabled:opacity-50 transition-colors"
               >
                 {loading ? 'Saving...' : 'Save New Password'}
               </button>
@@ -176,7 +174,7 @@ const AdminResetPassword = () => {
           {error && (
             <button
               onClick={() => navigate('/admin/login', { replace: true })}
-              className="w-full text-center text-sm text-gray-500 hover:text-black transition-colors"
+              className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors"
             >
               ← Back to Sign in
             </button>
