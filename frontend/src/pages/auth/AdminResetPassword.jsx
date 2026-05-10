@@ -25,68 +25,142 @@ const AdminResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('EVENT:', event, 'SESSION:', session);
-      if (event === 'PASSWORD_RECOVERY') {
-        setSessionReady(true);
-      } else if (event === 'SIGNED_IN' && session) {
-        setSessionReady(true);
-      }
-    });
+  // MFA states
+  const [needsMfa, setNeedsMfa] = useState(false);
+  const [mfaCode, setMfaCode] = useState('');
+  const [factorId, setFactorId] = useState(null);
+  const [mfaLoading, setMfaLoading] = useState(false);
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (data?.session) {
-        setSessionReady(true);
-      } else {
-        setTimeout(() => {
-          if (!sessionReady) {
-            setError('Link tidak valid atau sudah expired. Silakan request ulang.');
-          }
-        }, 3000);
-      }
-    });
+useEffect(() => {
+  const href = window.location.href;
+  const codeMatch = href.match(/[?&]code=([^&#]+)/);
+  const code = codeMatch ? codeMatch[1] : sessionStorage.getItem('reset_code');
 
-    return () => subscription.unsubscribe();
-  }, []);
+  let exchanged = false;
+
+  // ✅ Cek session dulu — mungkin useAuth sudah exchange duluan
+  supabase.auth.getSession().then(({ data }) => {
+    if (data?.session) {
+      exchanged = true;
+      sessionStorage.removeItem('reset_code');
+      setSessionReady(true);
+      return;
+    }
+
+    // Kalau belum ada session, baru exchange code
+    if (code) {
+      sessionStorage.removeItem('reset_code');
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        if (data?.session) {
+          exchanged = true;
+          setSessionReady(true);
+          setError('');
+        } else {
+          setError('Session not found. Please request a new reset link.');
+        }
+      });
+    } else {
+      setTimeout(() => {
+        if (!exchanged) {
+          setError('Session not found. Please request a new reset link.');
+        }
+      }, 5000);
+    }
+  });
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+      exchanged = true;
+      setSessionReady(true);
+      setError('');
+    }
+  });
+
+  return () => subscription.unsubscribe();
+}, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     if (password !== confirm) {
-      setError('Password tidak cocok.');
+      setError('Passwords do not match.');
       return;
     }
     if (password.length < 8) {
-      setError('Password minimal 8 karakter.');
+      setError('Password must be at least 8 characters.');
       return;
     }
 
     setLoading(true);
     try {
-      const { error: updateError } = await supabase.auth.updateUser({ password });
-      if (updateError) throw new Error(updateError.message);
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      const currentLevel = aalData?.currentLevel;
+      const nextLevel = aalData?.nextLevel;
 
-      await supabase.auth.signOut();
-      navigate('/admin/login', {
-        replace: true,
-        state: { message: 'Password berhasil diubah. Silakan login.' },
-      });
+      if (currentLevel === 'aal2' || nextLevel === 'aal1') {
+        await updatePassword();
+        return;
+      }
+
+      const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+      if (factorsError) throw factorsError;
+
+      const totpFactor = factorsData?.totp?.[0];
+      if (!totpFactor) {
+        await updatePassword();
+        return;
+      }
+
+      setFactorId(totpFactor.id);
+      setNeedsMfa(true);
     } catch (err) {
-      setError(err.message || 'Gagal mengubah password.');
+      setError(err.message || 'Failed to verify session.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleMfaVerify = async (e) => {
+    e.preventDefault();
+    setError('');
+    setMfaLoading(true);
+
+    try {
+      const { data: freshChallenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+      if (challengeError) throw challengeError;
+
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: freshChallenge.id,
+        code: mfaCode.trim(),
+      });
+      if (verifyError) throw verifyError;
+
+      await updatePassword();
+    } catch (err) {
+      setError(err.message || 'Invalid or expired MFA code.');
+      setMfaCode('');
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const updatePassword = async () => {
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    if (updateError) throw new Error(updateError.message);
+
+    await supabase.auth.signOut();
+    navigate('/admin/login', {
+      replace: true,
+      state: { message: '✓ Password updated! Please sign in with your new password.' },
+    });
+  };
+
   return (
     <>
       <style>{`
-        input::-ms-reveal,
-        input::-ms-clear {
-          display: none;
-        }
+        input::-ms-reveal, input::-ms-clear { display: none; }
         input::-webkit-credentials-auto-fill-button,
         input::-webkit-strong-password-auto-fill-button {
           display: none !important;
@@ -99,14 +173,20 @@ const AdminResetPassword = () => {
         <div className="max-w-md w-full space-y-6 p-8 bg-white dark:bg-[#141414] rounded-xl shadow-lg border border-transparent dark:border-[#262626]">
 
           <div>
-            <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white">Set New Password</h2>
+            <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white">
+              {needsMfa ? 'Verify MFA' : 'Set New Password'}
+            </h2>
             <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-              Enter your new password below
+              {needsMfa
+                ? 'Enter the code from your authenticator app'
+                : 'Enter your new password below'}
             </p>
           </div>
 
           {error && (
-            <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">{error}</div>
+            <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">
+              {error}
+            </div>
           )}
 
           {!sessionReady && !error && (
@@ -115,7 +195,8 @@ const AdminResetPassword = () => {
             </div>
           )}
 
-          {sessionReady && (
+          {/* Password form */}
+          {sessionReady && !needsMfa && (
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
@@ -129,11 +210,8 @@ const AdminResetPassword = () => {
                     autoComplete="new-password"
                     className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10"
-                  >
+                  <button type="button" onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10">
                     {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
                 </div>
@@ -151,31 +229,55 @@ const AdminResetPassword = () => {
                     autoComplete="new-password"
                     className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10"
-                  >
+                  <button type="button" onClick={() => setShowConfirm(!showConfirm)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10">
                     {showConfirm ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#DB1A1A] hover:bg-[#b81515] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DB1A1A] dark:focus:ring-offset-[#141414] disabled:opacity-50 transition-colors"
-              >
-                {loading ? 'Saving...' : 'Save New Password'}
+              <button type="submit" disabled={loading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#DB1A1A] hover:bg-[#b81515] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DB1A1A] dark:focus:ring-offset-[#141414] disabled:opacity-50 transition-colors">
+                {loading ? 'Checking...' : 'Save New Password'}
               </button>
             </form>
           )}
 
-          {error && (
-            <button
-              onClick={() => navigate('/admin/login', { replace: true })}
-              className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors"
-            >
+          {/* MFA form */}
+          {sessionReady && needsMfa && (
+            <form className="space-y-4" onSubmit={handleMfaVerify}>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Authenticator Code (6 digits)
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  required
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="••••••"
+                  autoComplete="one-time-code"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 tracking-widest text-center text-lg"
+                />
+              </div>
+
+              <button type="submit" disabled={mfaLoading || mfaCode.length !== 6}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#DB1A1A] hover:bg-[#b81515] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DB1A1A] dark:focus:ring-offset-[#141414] disabled:opacity-50 transition-colors">
+                {mfaLoading ? 'Verifying...' : 'Verify & Save Password'}
+              </button>
+
+              <button type="button" onClick={() => { setNeedsMfa(false); setMfaCode(''); setError(''); }}
+                className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
+                ← Back
+              </button>
+            </form>
+          )}
+
+          {error && !needsMfa && (
+            <button onClick={() => navigate('/admin/login', { replace: true })}
+              className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
               ← Back to Sign in
             </button>
           )}
