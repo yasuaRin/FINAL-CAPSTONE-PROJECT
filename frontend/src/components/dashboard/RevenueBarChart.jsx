@@ -1,62 +1,50 @@
-/**
- * RevenueBarChart.jsx
- * 
- * Grouped bar chart for comparing actual revenue vs ML predictions
- * - Shows actual revenue (primary color) and predicted revenue (blue)
- * - X-axis shows date/month labels
- * - Tooltip shows detailed values with confidence score
- */
+// frontend/src/components/charts/RevenueBarChart.jsx
 
-import { Activity, Brain } from 'lucide-react';
+import { Activity, Brain, BarChart3 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend
+  ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 
-// Custom Tooltip Component
+// ── Tooltip ──────────────────────────────────────────────────────────────────
 const RevenueTooltip = ({ active, payload, formatCurrency }) => {
   if (!active || !payload?.length) return null;
-  
-  const dataPoint = payload[0]?.payload || {};
-  const dateLabel = dataPoint?.dateDisplay || dataPoint?.period;
-  const actualValue = dataPoint?.actual;
-  const forecastValue = dataPoint?.forecast;
-  const r2Score = dataPoint?.r2Score;
-  const isForecast = dataPoint?.isForecast || (actualValue == null && forecastValue != null);
+  const dp = payload[0]?.payload || {};
 
   return (
-    <div className="bg-card/95 backdrop-blur-md border border-border p-3 rounded-xl shadow-xl ring-1 ring-black/5 min-w-[180px]">
+    <div className="bg-card/95 backdrop-blur-md border border-border p-3 rounded-xl shadow-xl min-w-[180px]">
       <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">
-        {dateLabel}
+        {dp.year}
       </p>
+
       <div className="space-y-2">
-        {actualValue != null && actualValue > 0 && !isForecast && (
+        {dp.actual > 0 && (
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-primary" />
-              <span className="text-[10px] font-medium text-muted-foreground">Actual Revenue</span>
+              <span className="text-[10px] font-medium text-muted-foreground">
+                Actual Revenue
+              </span>
             </div>
+
             <span className="text-[10px] font-bold text-primary">
-              {formatCurrency(actualValue)}
+              {formatCurrency(dp.actual)}
             </span>
           </div>
         )}
-        {forecastValue != null && forecastValue > 0 && (
+
+        {dp.forecast > 0 && (
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-blue-500" />
-              <span className="text-[10px] font-medium text-muted-foreground">ML Forecast</span>
-            </div>
-            <div className="text-right">
-              <span className="block text-[10px] font-bold text-blue-500">
-                {formatCurrency(forecastValue)}
+              <span className="text-[10px] font-medium text-muted-foreground">
+                Predicted Revenue
               </span>
-              {r2Score != null && isForecast && (
-                <span className="text-[9px] text-muted-foreground">
-                  Confidence: {(r2Score * 100).toFixed(0)}%
-                </span>
-              )}
             </div>
+
+            <span className="text-[10px] font-bold text-blue-500">
+              {formatCurrency(dp.forecast)}
+            </span>
           </div>
         )}
       </div>
@@ -64,38 +52,78 @@ const RevenueTooltip = ({ active, payload, formatCurrency }) => {
   );
 };
 
-// Empty State Component
+// ── Skeleton ─────────────────────────────────────────────────────────────────
+const ChartSkeleton = () => (
+  <div className="flex items-end justify-around h-full px-8 pb-8 gap-6 animate-pulse">
+    {[70, 45, 85, 60, 90].map((h, i) => (
+      <div
+        key={i}
+        className="flex-1 bg-muted rounded-t"
+        style={{ height: `${h}%` }}
+      />
+    ))}
+  </div>
+);
+
+// ── Empty state ───────────────────────────────────────────────────────────────
 const EmptyChart = ({ onRerunModel, isRetraining, hasBrandFilter }) => (
   <div className="flex flex-col items-center justify-center h-full text-center gap-4">
-    <Activity size={44} className="text-muted-foreground/25" aria-hidden="true" />
+    <Activity size={44} className="text-muted-foreground/25" />
+
     <div>
-      <p className="text-sm font-medium text-muted-foreground">No revenue data available</p>
+      <p className="text-sm font-medium text-muted-foreground">
+        No revenue data available
+      </p>
+
       <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-        {hasBrandFilter 
-          ? 'No data for selected brand filter' 
-          : 'Run ML models to generate predictions'}
+        {hasBrandFilter
+          ? 'No data available for the selected brand.'
+          : 'Run the ML model to generate future revenue forecasts.'}
       </p>
     </div>
+
     {!hasBrandFilter && (
       <button
         onClick={onRerunModel}
         disabled={isRetraining}
-        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold transition-opacity disabled:opacity-60"
+        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold"
       >
-        {isRetraining
-          ? <><Activity size={13} className="animate-spin" /> Training…</>
-          : <><Brain size={13} /> Run ML Models</>
-        }
+        {isRetraining ? (
+          <>
+            <Activity size={13} className="animate-spin" />
+            Training…
+          </>
+        ) : (
+          <>
+            <Brain size={13} />
+            Run ML Models
+          </>
+        )}
       </button>
     )}
   </div>
 );
 
-// Main Component
+// ── Custom X-axis tick ────────────────────────────────────────────────────────
+const YearTick = ({ x, y, payload }) => (
+  <text
+    x={x}
+    y={y + 14}
+    textAnchor="middle"
+    fill="var(--muted-foreground)"
+    fontSize={12}
+    fontWeight={600}
+  >
+    {payload.value}
+  </text>
+);
+
+// ── Main component ────────────────────────────────────────────────────────────
 export const RevenueBarChart = ({
   chartData = [],
   hasForecast = false,
   isRetraining = false,
+  isLoading = false,
   onRerunModel,
   formatCompactCurrency,
   formatCurrency,
@@ -104,103 +132,142 @@ export const RevenueBarChart = ({
   const hasData = chartData.length > 0;
   const hasBrandFilter = !!selectedBrand;
 
+  const firstForecastYear = hasForecast
+    ? chartData.find((d) => d.forecast > 0)?.year
+    : null;
+
   return (
     <div className="lg:col-span-2 dashboard-card p-0 overflow-hidden">
-      {/* Card Header */}
+
+      {/* Header */}
       <div className="p-4 border-b border-border bg-muted/20">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <BarChart3 size={16} className="text-primary" />
+
             <h3 className="text-xs font-bold uppercase tracking-widest text-foreground">
-              Revenue Forecast &amp; Trend Analysis
+              Revenue Forecast & Trend Analysis
+              {selectedBrand && (
+                <span className="ml-2 text-[9px] font-normal text-muted-foreground">
+                  ({selectedBrand})
+                </span>
+              )}
             </h3>
+
             {hasForecast && (
               <span className="text-[9px] font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                 ML Powered
               </span>
             )}
           </div>
+
+          {/* Legend */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-              <span className="text-[10px] font-medium text-muted-foreground">Actual</span>
+              <div className="w-3 h-3 rounded-sm bg-primary" />
+              <span className="text-[10px] font-medium text-muted-foreground">
+                Actual
+              </span>
             </div>
+
             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-blue-500" />
-              <span className="text-[10px] font-medium text-muted-foreground">Predicted</span>
+              <div className="w-3 h-3 rounded-sm bg-blue-500" />
+              <span className="text-[10px] font-medium text-muted-foreground">
+                Forecast
+              </span>
             </div>
           </div>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-2">
-          Actual revenue vs ML-predicted revenue by period
+
+        <p className="text-[10px] text-muted-foreground mt-1">
+          Comparison between historical revenue performance and AI-generated future projections.
         </p>
       </div>
 
-      {/* Chart Area */}
-      <div className="h-[400px] w-full p-4">
-        {hasData ? (
+            {/* Chart */}
+      <div
+        className={`w-full px-4 pt-3 ${
+          hasData ? 'h-[300px]' : 'py-10'
+        }`}
+      >
+        {isLoading ? (
+          <ChartSkeleton />
+        ) : hasData ? (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={chartData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+              margin={{ top: 8, right: 10, left: 10, bottom: 0 }}
+              barCategoryGap="28%"
               barGap={4}
-              barCategoryGap={20}
             >
-              <CartesianGrid 
-                strokeDasharray="3 3" 
-                stroke="var(--border)" 
-                strokeOpacity={0.2} 
-                vertical={false} 
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="var(--border)"
+                horizontal={{ strokeOpacity: 0.25 }}
+                vertical={{ strokeOpacity: 0.12 }}
               />
-              
+
               <XAxis
-                dataKey="dateDisplay"
+                dataKey="year"
                 axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 500 }}
-                dy={10}
-                interval={0}
-                angle={-25}
-                textAnchor="end"
-                height={70}
+                tickLine={{ stroke: 'var(--border)', strokeOpacity: 0.4 }}
+                tick={<YearTick />}
+                padding={{ left: 20, right: 20 }}
               />
-              
+
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 500 }}
+                tick={{
+                  fontSize: 10,
+                  fill: 'var(--muted-foreground)',
+                  fontWeight: 500,
+                }}
                 tickFormatter={formatCompactCurrency}
                 width={70}
               />
-              
-              <Tooltip content={<RevenueTooltip formatCurrency={formatCurrency} />} />
-              
-              <Legend 
-                wrapperStyle={{ fontSize: '10px' }}
-                iconType="circle"
+
+              <Tooltip
+                content={<RevenueTooltip formatCurrency={formatCurrency} />}
+                cursor={{ fill: 'var(--muted)', opacity: 0.15 }}
               />
-              
-              {/* Actual Revenue Bar */}
+
+              {firstForecastYear && (
+                <ReferenceLine
+                  x={firstForecastYear}
+                  stroke="var(--border)"
+                  strokeDasharray="4 4"
+                  strokeWidth={1.5}
+                  label={{
+                    value: 'Forecast',
+                    position: 'insideTopRight',
+                    fontSize: 9,
+                    fill: 'var(--muted-foreground)',
+                    fontWeight: 600,
+                  }}
+                />
+              )}
+
               <Bar
                 dataKey="actual"
                 name="Actual Revenue"
                 fill="var(--primary)"
                 radius={[4, 4, 0, 0]}
-                maxBarSize={60}
+                maxBarSize={70}
               />
-              
-              {/* ML Forecast Bar */}
+
               <Bar
                 dataKey="forecast"
-                name="ML Forecast"
+                name="Forecast Revenue"
                 fill="#3b82f6"
                 radius={[4, 4, 0, 0]}
-                maxBarSize={60}
+                maxBarSize={70}
+                opacity={0.85}
               />
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <EmptyChart 
+          <EmptyChart
             onRerunModel={onRerunModel}
             isRetraining={isRetraining}
             hasBrandFilter={hasBrandFilter}
@@ -209,16 +276,34 @@ export const RevenueBarChart = ({
       </div>
 
       {/* Footer */}
-      {hasForecast && (
-        <div className="px-6 py-3 border-t border-border/60 bg-muted/5 flex items-center justify-between flex-wrap gap-2">
-          <p className="text-[9px] text-muted-foreground">
-            ML Models: Linear Regression · Ridge · Random Forest · Gradient Boosting
-          </p>
-          <p className="text-[9px] text-muted-foreground">
-            Best model selected via LOOCV per period
-          </p>
+{hasForecast && (
+  <div className="border-t border-border/60 bg-gradient-to-r from-muted/20 via-muted/10 to-transparent px-6 py-4">
+    <div className="flex items-start gap-3">
+      
+      <div className="shrink-0">
+        <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center">
+          <Brain size={14} className="text-primary" />
         </div>
-      )}
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="text-[11px] font-semibold tracking-wide text-foreground">
+          Machine Learning Forecast Analysis
+        </p>
+
+        <p className="text-[10px] leading-relaxed text-muted-foreground">
+          Forecasts are generated using multiple machine learning models including
+          <span className="font-medium text-foreground"> Linear Regression</span>,
+          <span className="font-medium text-foreground"> Ridge Regression</span>,
+          <span className="font-medium text-foreground"> Random Forest</span>, and
+          <span className="font-medium text-foreground"> Gradient Boosting</span>.
+          Results represent predictive estimates and should be interpreted as
+          analytical guidance rather than guaranteed outcomes.
+        </p>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };

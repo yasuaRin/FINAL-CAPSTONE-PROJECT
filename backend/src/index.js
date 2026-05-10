@@ -34,34 +34,24 @@ const supabase = createClient(
 import revenueRoutes from './routes/revenueRoutes.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MIDDLEWARE
+// MIDDLEWARE - FIXED CORS
 // ─────────────────────────────────────────────────────────────────────────────
-const allowedOrigins = [
-  /^http:\/\/localhost:\d+$/,
-  /^http:\/\/127\.0\.0\.1:\d+$/
-];
-
+// SIMPLE CORS - Allows all origins (for development)
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    const isAllowed = allowedOrigins.some(pattern => pattern.test(origin));
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS policy violation'));
-    }
-  },
-  credentials: true
+  origin: true,  // Allows any origin
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-app.use(helmet());
+
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(compression());
 app.use(express.json());
 app.use(morgan('dev'));
 app.use('/api/revenue', revenueRoutes);
-
-// ... rest of your code remains the same (ML endpoints, etc.)
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ML MODEL PATHS
@@ -69,6 +59,11 @@ app.use('/api/revenue', revenueRoutes);
 const ML_DIR = path.join(__dirname, 'ml');
 const TRAIN_SCRIPT = path.join(ML_DIR, 'trainer.py');
 const PREDICT_SCRIPT = path.join(ML_DIR, 'predictor.py');
+
+// Check if ML scripts exist
+import fs from 'fs';
+console.log('[ML] Train script exists:', fs.existsSync(TRAIN_SCRIPT));
+console.log('[ML] Predict script exists:', fs.existsSync(PREDICT_SCRIPT));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HEALTH CHECK
@@ -91,11 +86,11 @@ app.get('/health', (req, res) => {
  * Train all ML models and compare performance
  */
 app.post('/api/ml/train', async (req, res) => {
-  console.log('[ML]  Starting model training...');
+  console.log('[ML] Starting model training...');
   
   exec(`python "${TRAIN_SCRIPT}"`, (error, stdout, stderr) => {
     if (error) {
-      console.error('[ML]  Training error:', error.message);
+      console.error('[ML] Training error:', error.message);
       console.error('[ML] stderr:', stderr);
       return res.status(500).json({ 
         success: false, 
@@ -104,8 +99,8 @@ app.post('/api/ml/train', async (req, res) => {
       });
     }
     
-    console.log('[ML]  Training completed successfully');
-    console.log('[ML] Output:', stdout.slice(-500)); // Last 500 chars
+    console.log('[ML] Training completed successfully');
+    console.log('[ML] Output:', stdout.slice(-500));
     
     res.json({ 
       success: true, 
@@ -122,11 +117,11 @@ app.post('/api/ml/train', async (req, res) => {
  */
 app.post('/api/ml/predict', async (req, res) => {
   const { periods = 4 } = req.body;
-  console.log(`[ML]  Generating predictions for ${periods} future periods...`);
+  console.log(`[ML] Generating predictions for ${periods} future periods...`);
   
   exec(`python "${PREDICT_SCRIPT}" ${periods}`, (error, stdout, stderr) => {
     if (error) {
-      console.error('[ML]  Prediction error:', error.message);
+      console.error('[ML] Prediction error:', error.message);
       return res.status(500).json({ 
         success: false, 
         error: 'Prediction failed',
@@ -134,7 +129,7 @@ app.post('/api/ml/predict', async (req, res) => {
       });
     }
     
-    console.log('[ML]  Predictions generated');
+    console.log('[ML] Predictions generated');
     
     res.json({ 
       success: true, 
@@ -150,12 +145,12 @@ app.post('/api/ml/predict', async (req, res) => {
  * Full retrain + predict (one-click for dashboard)
  */
 app.post('/api/ml/retrain', async (req, res) => {
-  console.log('[ML]  Full retrain + predict workflow started...');
+  console.log('[ML] Full retrain + predict workflow started...');
   
   // First train the model
   exec(`python "${TRAIN_SCRIPT}"`, (trainError, trainStdout, trainStderr) => {
     if (trainError) {
-      console.error('[ML]  Training failed:', trainError.message);
+      console.error('[ML] Training failed:', trainError.message);
       return res.status(500).json({ 
         success: false, 
         error: 'Training failed',
@@ -163,12 +158,12 @@ app.post('/api/ml/retrain', async (req, res) => {
       });
     }
     
-    console.log('[ML]  Training complete, generating predictions...');
+    console.log('[ML] Training complete, generating predictions...');
     
     // Then generate predictions
     exec(`python "${PREDICT_SCRIPT}" 4`, (predError, predStdout, predStderr) => {
       if (predError) {
-        console.error('[ML]  Prediction failed:', predError.message);
+        console.error('[ML] Prediction failed:', predError.message);
         return res.status(500).json({ 
           success: false, 
           error: 'Training succeeded but prediction failed',
@@ -176,7 +171,7 @@ app.post('/api/ml/retrain', async (req, res) => {
         });
       }
       
-      console.log('[ML]  Full workflow completed successfully');
+      console.log('[ML] Full workflow completed successfully');
       
       res.json({ 
         success: true, 
@@ -234,8 +229,7 @@ app.get('/api/ml/status', async (req, res) => {
  */
 app.get('/api/ml/metrics', async (req, res) => {
   try {
-    const fs = await import('fs');
-    const metricsPath = path.join(ML_DIR, 'saved_models', 'model_comparison.json');
+    const metricsPath = path.join(ML_DIR, 'savedModels', 'model_comparison.json');
     
     if (fs.existsSync(metricsPath)) {
       const metrics = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
@@ -249,7 +243,7 @@ app.get('/api/ml/metrics', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// REVENUE ROUTES (Your existing ones)
+// REVENUE ROUTES
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -265,7 +259,6 @@ app.get('/api/revenue/predictions', async (req, res) => {
     
     if (error) throw error;
     
-    // Split into future and historical
     const futurePredictions = data.filter(p => p.is_future === true);
     const historicalPredictions = data.filter(p => p.is_future === false);
     
@@ -289,7 +282,7 @@ app.get('/api/revenue/predictions', async (req, res) => {
  */
 app.get('/api/revenue/historical', async (req, res) => {
   try {
-    const { brandId, days = 90 } = req.query;
+    const { brandId } = req.query;
     
     let query = supabase
       .from('live_sessions')
@@ -303,7 +296,6 @@ app.get('/api/revenue/historical', async (req, res) => {
     
     if (error) throw error;
     
-    // Aggregate by period_id
     const periodMap = new Map();
     data.forEach(session => {
       const periodId = session.period_id;
@@ -367,13 +359,9 @@ app.get('/api/revenue/summary', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BRANDS ROUTES (Basic CRUD)
+// BRANDS ROUTES
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * GET /api/brands
- * Get all brands
- */
 app.get('/api/brands', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -388,10 +376,6 @@ app.get('/api/brands', async (req, res) => {
   }
 });
 
-/**
- * GET /api/brands/:id
- * Get brand by ID
- */
 app.get('/api/brands/:id', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -407,10 +391,6 @@ app.get('/api/brands/:id', async (req, res) => {
   }
 });
 
-/**
- * POST /api/brands
- * Create new brand
- */
 app.post('/api/brands', async (req, res) => {
   try {
     const { brand_name, brand_category, brand_status } = req.body;
@@ -427,10 +407,6 @@ app.post('/api/brands', async (req, res) => {
   }
 });
 
-/**
- * PUT /api/brands/:id
- * Update brand
- */
 app.put('/api/brands/:id', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -447,10 +423,6 @@ app.put('/api/brands/:id', async (req, res) => {
   }
 });
 
-/**
- * DELETE /api/brands/:id
- * Delete brand
- */
 app.delete('/api/brands/:id', async (req, res) => {
   try {
     const { error } = await supabase
@@ -466,13 +438,9 @@ app.delete('/api/brands/:id', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TEAM ROUTES (Basic)
+// TEAM ROUTES
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * GET /api/team
- * Get all staff members
- */
 app.get('/api/team', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -488,11 +456,10 @@ app.get('/api/team', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AUTH ROUTES (Placeholder - implement your auth logic)
+// AUTH ROUTES
 // ─────────────────────────────────────────────────────────────────────────────
 
 app.post('/api/auth/login', async (req, res) => {
-  // Implement your auth logic here
   res.json({ success: true, message: 'Auth endpoint - implement your logic' });
 });
 
@@ -504,7 +471,6 @@ app.post('/api/auth/logout', async (req, res) => {
 // ERROR HANDLING
 // ─────────────────────────────────────────────────────────────────────────────
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({ 
     success: false, 
@@ -512,7 +478,6 @@ app.use((req, res) => {
   });
 });
 
-// Global error handler
 app.use((err, req, res, next) => {
   console.error('[Server] Error:', err.stack);
   res.status(500).json({ 

@@ -8,61 +8,104 @@ Make sure you have the following installed before starting:
 
 - Node.js v18 or higher
 - npm
+- Python 3.9+ (for ML modules)
 - Postman (for endpoint testing)
 - A Supabase account with a project created
 
-### Installation
+---
+
+## Installation
 
 ```bash
+# Backend setup
 cd backend
 npm install
+
+# ML module setup
+cd src/ml
+pip install -r requirements.txt
 ```
 
 ---
 
-## Project Structure
+# Project Structure
 
-```
+```text
 backend/
 ├── .env                    # Environment variables (Supabase keys, JWT secret, etc.)
-├── .env.example           # Template for environment variables
-├── node_modules/          # NPM dependencies
-├── package-lock.json      # NPM lock file
-├── package.json          # Project dependencies and scripts
-├── README.md             # API documentation and setup guide
-└── src/                  # Source code
-    ├── controllers/      # Business logic for each module
+├── .env.example            # Template for environment variables
+├── node_modules/           # NPM dependencies
+├── package-lock.json       # NPM lock file
+├── package.json            # Project dependencies and scripts
+├── README.md               # API documentation and setup guide
+└── src/                    # Source code
+    ├── controllers/        # Business logic for each module
     │   ├── authController.js     # Authentication logic
     │   ├── brandsController.js   # Brands CRUD operations
     │   ├── leadsController.js    # Leads management
     │   ├── revenueController.js  # Revenue/session data operations
     │   └── teamController.js     # Team member management
-    ├── index.js          # Main server file (Express app setup)
-    ├── middleware/       # Custom middleware
+    │
+    ├── index.js            # Main server file (Express app setup)
+    │
+    ├── middleware/         # Custom middleware
     │   └── authMiddleware.js     # JWT authentication middleware
-    ├── routes/           # API route definitions
+    │
+    ├── ml/                 # Machine Learning module (Dadia)
+    │   ├── api.py                # FastAPI endpoints for ML
+    │   ├── trainer.py            # Main training orchestrator
+    │   ├── models.py             # ML model definitions
+    │   ├── data_loader.py        # Fetches data from Supabase
+    │   ├── features.py           # Feature engineering
+    │   ├── predictor.py          # Future predictions generator
+    │   ├── check_data.py         # Data validation (optional)
+    │   ├── requirements.txt      # Python dependencies
+    │   └── savedModels/          # Trained model artifacts
+    │       ├── best_model_*.pkl
+    │       ├── best_model.json
+    │       ├── feature_names.json
+    │       ├── model_comparison.json
+    │       ├── model_type.json
+    │       └── scaler.json
+    │
+    ├── routes/             # API route definitions
     │   ├── authRoutes.js         # Authentication routes (/api/auth/*)
     │   ├── brandsRoutes.js       # Brands routes (/api/brands/*)
     │   ├── leadsRoutes.js        # Leads routes (/api/leads/*)
     │   ├── revenueRoutes.js      # Revenue routes (/api/revenue/*)
     │   └── teamRoutes.js         # Team routes (/api/team/*)
-    └── utils/            # Utility functions
+    │
+    └── utils/              # Utility functions
         └── supabase.js           # Supabase client configuration
 ```
 
-### Architecture Overview
+---
 
-- **Modular Structure**: Each feature (auth, brands, revenue, team, leads) has its own controller and routes file
-- **Separation of Concerns**: Controllers handle business logic, routes handle HTTP endpoints, middleware handles authentication
-- **Supabase Integration**: The `supabase.js` utility provides the database client
-- **Environment Config**: Sensitive data is stored in `.env` file
-- **Express.js Framework**: Main server setup in `index.js`
+# Architecture Overview
+
+- **Modular Structure**  
+  Each feature (auth, brands, revenue, team, leads) has its own controller and routes file.
+
+- **Separation of Concerns**  
+  Controllers handle business logic, routes handle HTTP endpoints, middleware handles authentication.
+
+- **Supabase Integration**  
+  The `supabase.js` utility provides the database client.
+
+- **Environment Config**  
+  Sensitive data is stored in the `.env` file.
+
+- **Express.js Framework**  
+  Main server setup in `index.js`.
+
+- **Machine Learning Integration**  
+  FastAPI server for revenue forecasting (separate from main backend).
 
 ---
 
-## Environment Configuration
+# Environment Configuration
 
-Create a `.env` file inside the `backend/` folder. Copy the structure below and fill in your actual values:
+Create a `.env` file inside the `backend/` folder and fill in the following:
 
 ```env
 PORT=5000
@@ -75,40 +118,69 @@ SUPABASE_SERVICE_KEY=your_supabase_service_role_key
 
 JWT_SECRET=your-secret-key
 JWT_EXPIRE=7d
+
+# ML Server Configuration
+ML_API_URL=http://localhost:5001
 ```
-
-### Where to find your Supabase credentials
-
-1. Go to https://supabase.com and open your project
-2. Click Settings on the left sidebar
-3. Click API
-4. Copy the values:
-
-| Variable | Where it is |
-|---|---|
-| SUPABASE_URL | Project URL |
-| SUPABASE_ANON_KEY | anon public under Project API keys |
-| SUPABASE_SERVICE_KEY | service_role under Project API keys |
 
 ---
 
-## Running the Server
+# Where to Find Supabase Credentials
+
+1. Go to https://supabase.com
+2. Open your project
+3. Click **Settings**
+4. Click **API**
+5. Copy the following values:
+
+| Variable | Location |
+|---|---|
+| `SUPABASE_URL` | Project URL |
+| `SUPABASE_ANON_KEY` | anon public under Project API keys |
+| `SUPABASE_SERVICE_KEY` | service_role under Project API keys |
+
+---
+
+# Running the Servers
+
+## Start Node.js Backend Server
 
 ```bash
 npm run dev
 ```
 
-Expected output in terminal:
+Expected output:
 
-```
+```text
 Server running on port 5000
 Environment: development
 ```
 
-To verify the server is alive, open your browser and go to:
+---
 
+## Start ML Server
+
+```bash
+cd src/ml
+python api.py
 ```
-http://localhost:5000/health
+
+Expected output:
+
+```text
+🚀 ML API running on http://localhost:5001
+📊 Connected to Supabase
+🧠 ML models ready for training
+```
+
+---
+
+# Health Check
+
+## Backend Health Check
+
+```http
+GET http://localhost:5000/health
 ```
 
 Expected response:
@@ -123,20 +195,37 @@ Expected response:
 
 ---
 
-## Authentication
+## ML Server Health Check
 
-All endpoints except `/health` and `/api/auth/login` require a Bearer token in the request header.
-
-### Step 1 - Get your token
-
-Send a POST request to login and copy the token from the response.
-
-```
-Method  : POST
-URL     : http://localhost:5000/api/auth/login
+```http
+GET http://localhost:5001/api/ml/status
 ```
 
-Body (raw JSON):
+Expected response:
+
+```json
+{
+  "status": "ready",
+  "is_running": false,
+  "last_training": null
+}
+```
+
+---
+
+# Authentication
+
+All endpoints except `/health` and `/api/auth/login` require a Bearer Token.
+
+---
+
+## Step 1 — Login
+
+```http
+POST http://localhost:5000/api/auth/login
+```
+
+Body:
 
 ```json
 {
@@ -159,83 +248,101 @@ Expected response:
 }
 ```
 
-### Step 2 - Add token to Postman
+---
 
-In Postman, go to the Authorization tab of any request, select Bearer Token, and paste your token. You only need to do this once per session. Tokens expire after some time, so repeat Step 1 if you get a 401 Invalid or expired token response.
+## Step 2 — Add Token to Postman
+
+1. Open Postman
+2. Go to the **Authorization** tab
+3. Select **Bearer Token**
+4. Paste the token
+
+If you receive a `401 Invalid or expired token`, repeat the login step.
 
 ---
 
-## Endpoint Testing Guide
+# Endpoint Testing Guide
 
-Base URL: `http://localhost:5000`
+Base URL:
 
-All endpoints below require the Bearer token from the Authentication section above unless stated otherwise.
+```text
+http://localhost:5000
+```
+
+All endpoints below require a Bearer Token unless stated otherwise.
 
 ---
 
-## Dashboard Module
+# Dashboard Module
 
-The Dashboard page pulls data from the Revenue and Brands endpoints. If both of these return 200, the Dashboard will load correctly.
-
-### Get All Revenue (Dashboard stat source)
-
-```
-Method  : GET
-URL     : http://localhost:5000/api/revenue/read
-Auth    : Bearer Token
-```
-
-Expected response: 200 with a `data` array. Each item contains `revenue_shopee` and `revenue_tiktok` fields.
-
-### Get All Brands (Dashboard stat source)
-
-```
-Method  : GET
-URL     : http://localhost:5000/api/brands/read
-Auth    : Bearer Token
-```
-
-Expected response: 200 with a `data` array of brand objects.
+The Dashboard page pulls data from the Revenue and Brands endpoints.
 
 ---
 
-## Revenue Module
+## Get All Revenue
 
-### 1. Get All Revenue
-
-Retrieves all live session records with joined brand, platform, and staff data.
-
-```
-Method  : GET
-URL     : http://localhost:5000/api/revenue/read
-Auth    : Bearer Token
+```http
+GET /api/revenue/read
 ```
 
-Expected response: 200
+Expected response:
 
-### 2. Get Revenue with Filters
+- `200 OK`
+- Returns revenue data including:
+  - `revenue_shopee`
+  - `revenue_tiktok`
 
-You can filter by date range or brand using query parameters.
+---
 
-```
-Method  : GET
-URL     : http://localhost:5000/api/revenue/read?startDate=2025-01-01&endDate=2025-12-31
-Auth    : Bearer Token
-```
+## Get All Brands
 
-Expected response: 200 with filtered results. An empty array is fine if no data matches the range.
-
-### 3. Create Revenue
-
-Creates a new live session record. All fields below are required by the database.
-
-```
-Method  : POST
-URL     : http://localhost:5000/api/revenue/create
-Auth    : Bearer Token
+```http
+GET /api/brands/read
 ```
 
-Body (raw JSON):
+Expected response:
+
+- `200 OK`
+- Returns all brand records
+
+---
+
+# Revenue Module
+
+## 1. Get All Revenue
+
+```http
+GET /api/revenue/read
+```
+
+Expected response:
+
+```text
+200 OK
+```
+
+---
+
+## 2. Get Revenue with Filters
+
+```http
+GET /api/revenue/read?startDate=2025-01-01&endDate=2025-12-31
+```
+
+Expected response:
+
+- Filtered revenue records
+- Empty array if no data exists
+
+---
+
+## 3. Create Revenue
+
+```http
+POST /api/revenue/create
+```
+
+Body:
 
 ```json
 {
@@ -250,23 +357,26 @@ Body (raw JSON):
 }
 ```
 
-Note: Use real IDs from your Supabase database. The `brand_id` and `platform_id` are UUIDs. The `period_id` and `host_id` are integers. You can find valid values by calling the GET revenue endpoint first and copying the IDs from any existing record.
+Notes:
 
-Expected response: 201 with the created record. Copy the `id` from the response to use in Update and Delete.
+- `brand_id` and `platform_id` are UUIDs
+- `period_id` and `host_id` are integers
 
-### 4. Update Revenue
+Expected response:
 
-Updates an existing revenue record by ID.
-
-```
-Method  : PUT
-URL     : http://localhost:5000/api/revenue/update/{id}
-Auth    : Bearer Token
+```text
+201 Created
 ```
 
-Replace `{id}` with the `id` value from the Create Revenue response.
+---
 
-Body (raw JSON):
+## 4. Update Revenue
+
+```http
+PUT /api/revenue/update/{id}
+```
+
+Body:
 
 ```json
 {
@@ -274,19 +384,19 @@ Body (raw JSON):
 }
 ```
 
-Expected response: 200 with the updated record.
+Expected response:
 
-### 5. Delete Revenue
-
-Deletes a revenue record by ID.
-
-```
-Method  : DELETE
-URL     : http://localhost:5000/api/revenue/delete/{id}
-Auth    : Bearer Token
+```text
+200 OK
 ```
 
-Replace `{id}` with the `id` of the record you want to delete.
+---
+
+## 5. Delete Revenue
+
+```http
+DELETE /api/revenue/delete/{id}
+```
 
 Expected response:
 
@@ -299,31 +409,29 @@ Expected response:
 
 ---
 
-## Brands Module
+# Brands Module
 
-### 1. Get All Brands
+## 1. Get All Brands
 
-Returns all brands ordered by name.
-
-```
-Method  : GET
-URL     : http://localhost:5000/api/brands/read
-Auth    : Bearer Token
+```http
+GET /api/brands/read
 ```
 
-Expected response: 200 with a `data` array.
+Expected response:
 
-### 2. Create Brand
-
-Creates a new brand record.
-
-```
-Method  : POST
-URL     : http://localhost:5000/api/brands/create
-Auth    : Bearer Token
+```text
+200 OK
 ```
 
-Body (raw JSON):
+---
+
+## 2. Create Brand
+
+```http
+POST /api/brands/create
+```
+
+Body:
 
 ```json
 {
@@ -333,21 +441,21 @@ Body (raw JSON):
 }
 ```
 
-Expected response: 201 with the new brand record. Copy the `brand_id` from the response to use in Update and Delete.
+Expected response:
 
-### 3. Update Brand
-
-Updates an existing brand by ID.
-
-```
-Method  : PUT
-URL     : http://localhost:5000/api/brands/update/{brand_id}
-Auth    : Bearer Token
+```text
+201 Created
 ```
 
-Replace `{brand_id}` with the UUID from the Create Brand response.
+---
 
-Body (raw JSON):
+## 3. Update Brand
+
+```http
+PUT /api/brands/update/{brand_id}
+```
+
+Body:
 
 ```json
 {
@@ -355,19 +463,19 @@ Body (raw JSON):
 }
 ```
 
-Expected response: 200 with the updated record.
+Expected response:
 
-### 4. Delete Brand
-
-Deletes a brand by ID.
-
-```
-Method  : DELETE
-URL     : http://localhost:5000/api/brands/delete/{brand_id}
-Auth    : Bearer Token
+```text
+200 OK
 ```
 
-Replace `{brand_id}` with the UUID of the brand you want to delete.
+---
+
+## 4. Delete Brand
+
+```http
+DELETE /api/brands/delete/{brand_id}
+```
 
 Expected response:
 
@@ -378,30 +486,30 @@ Expected response:
 }
 ```
 
-### 5. Risk Signals
+---
 
-Returns a risk level (low, medium, high) for each brand based on total revenue from their live sessions.
+## 5. Risk Signals
 
-```
-Method  : GET
-URL     : http://localhost:5000/api/brands/risk-signals
-Auth    : Bearer Token
+```http
+GET /api/brands/risk-signals
 ```
 
-Expected response: 200 with an array of objects containing `brand_id`, `brand_name`, `risk_level`, and `status`.
+Expected response:
+
+- Returns:
+  - `brand_id`
+  - `brand_name`
+  - `risk_level`
+  - `status`
 
 ---
 
-## Profile Module
+# Profile Module
 
-The Profile page uses this endpoint to display the currently logged-in user's details.
+## Get Current User Profile
 
-### Get Current User Profile
-
-```
-Method  : GET
-URL     : http://localhost:5000/api/auth/profile
-Auth    : Bearer Token
+```http
+GET /api/auth/profile
 ```
 
 Expected response:
@@ -418,34 +526,318 @@ Expected response:
 }
 ```
 
+---
 
-## Add Your Own Module Here
+# Machine Learning Module (Student 2)
 
-The sections above are Student 1's modules (Dashboard, Revenue, Brands, Profile). Each student must add their own endpoint module below this section.
-
-To create and register your own endpoint:
-
-1. Create `src/controllers/yourModuleController.js` and write your CRUD functions inside it
-2. Create `src/routes/yourModuleRoutes.js` and map each function to a route path
-3. Open `src/index.js` and add `app.use('/api/your-module', yourModuleRoutes)` alongside the existing routes
-4. Restart the server with `npm run dev`
-5. Test each endpoint in Postman using the same steps in the Authentication section above
-6. Add a new section below this line documenting your endpoints using the same format as the Revenue or Brands module above
+The ML module provides revenue forecasting capabilities using historical revenue data.
 
 ---
 
-## Notes for Team Members
+# ML Architecture
 
-**Tested endpoints (confirmed working — Student 1):**
+```text
+ML Training Pipeline
+        ↓
+1. data_loader.py   → Fetches records from Supabase
+        ↓
+2. features.py      → Feature engineering
+        ↓
+3. models.py        → ML model definitions
+        ↓
+4. trainer.py       → Trains and selects best model
+        ↓
+5. predictor.py     → Generates future predictions
+        ↓
+6. api.py           → Serves ML endpoints
+```
 
-- POST /api/auth/login
-- GET /api/auth/profile
-- GET /api/revenue/read
-- POST /api/revenue/create
-- PUT /api/revenue/update/:id
-- DELETE /api/revenue/delete/:id
-- GET /api/brands/read
-- POST /api/brands/create
-- PUT /api/brands/update/:id
-- DELETE /api/brands/delete/:id
-- GET /api/brands/risk-signals
+---
+
+# ML Endpoints
+
+## 1. Retrain Models
+
+```http
+POST http://localhost:5001/api/ml/retrain
+```
+
+Body:
+
+```json
+{
+  "brand_id": null,
+  "n_future": 12
+}
+```
+
+Expected response:
+
+```json
+{
+  "success": true,
+  "message": "Training started",
+  "train_id": "uuid"
+}
+```
+
+---
+
+## 2. Check Training Status
+
+```http
+GET http://localhost:5001/api/ml/status
+```
+
+Expected response:
+
+```json
+{
+  "is_running": false,
+  "last_result": {
+    "success": true,
+    "predictions_saved": 12,
+    "best_model": "RandomForest"
+  },
+  "last_run": "2025-05-09T10:30:00"
+}
+```
+
+---
+
+## 3. Get Predictions
+
+```http
+GET http://localhost:5001/api/ml/predictions
+```
+
+Expected response:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "period_id": 26,
+      "date": "2026-05-04",
+      "predicted": 20065108,
+      "is_future": true,
+      "model_r2": 0.84
+    }
+  ]
+}
+```
+
+---
+
+# ML File Descriptions
+
+| File | Purpose | Keep? |
+|---|---|---|
+| `api.py` | FastAPI server with ML endpoints | ✅ Required |
+| `trainer.py` | Main training orchestrator | ✅ Required |
+| `models.py` | ML model definitions | ✅ Required |
+| `data_loader.py` | Fetches data from Supabase | ✅ Required |
+| `features.py` | Feature engineering | ✅ Required |
+| `predictor.py` | Generates future predictions | ✅ Required |
+| `check_data.py` | Data validation/debugging | ⚠️ Optional |
+| `requirements.txt` | Python dependencies | ✅ Required |
+| `savedModels/` | Trained model artifacts | ✅ Auto-generated |
+
+---
+
+# Running the ML Server
+
+```bash
+cd backend/src/ml
+python api.py
+```
+
+Default URL:
+
+```text
+http://localhost:5001
+```
+
+---
+
+# ML Dependencies
+
+```txt
+fastapi==0.104.1
+uvicorn==0.24.0
+pandas==2.1.3
+numpy==1.24.3
+scikit-learn==1.3.2
+supabase==2.0.4
+python-dotenv==1.0.0
+joblib==1.3.2
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+# How ML Training Works
+
+1. **Data Loading**  
+   Fetches all revenue records from Supabase.
+
+2. **Feature Engineering**  
+   Creates features such as:
+   - Revenue trends
+   - Day-of-week patterns
+   - Period-over-period changes
+
+3. **Model Training**
+   - Linear Regression
+   - Random Forest
+   - Gradient Boosting
+   - Ridge Regression
+
+4. **Model Selection**  
+   Uses LOOCV and R² score.
+
+5. **Prediction**  
+   Forecasts future revenue.
+
+6. **Storage**  
+   Saves predictions into `revenue_predictions`.
+
+---
+
+# Testing ML Endpoints in Postman
+
+1. Ensure ML server runs on port `5001`
+2. Test:
+
+```http
+GET http://localhost:5001/api/ml/status
+```
+
+3. Trigger retraining:
+
+```http
+POST http://localhost:5001/api/ml/retrain
+```
+
+Body:
+
+```json
+{
+  "n_future": 12
+}
+```
+
+4. Check status until:
+
+```json
+"is_running": false
+```
+
+5. View predictions:
+
+```http
+GET http://localhost:5001/api/ml/predictions
+```
+
+---
+
+# Add Your Own Module
+
+To create and register a new endpoint module:
+
+1. Create:
+
+```text
+src/controllers/yourModuleController.js
+```
+
+2. Create:
+
+```text
+src/routes/yourModuleRoutes.js
+```
+
+3. Register route inside:
+
+```text
+src/index.js
+```
+
+Example:
+
+```js
+app.use('/api/your-module', yourModuleRoutes)
+```
+
+4. Restart server:
+
+```bash
+npm run dev
+```
+
+5. Test endpoints in Postman
+
+---
+
+# Notes for Team Members
+
+## Tested Endpoints — Student 1
+
+- POST `/api/auth/login`
+- GET `/api/auth/profile`
+- GET `/api/revenue/read`
+- POST `/api/revenue/create`
+- PUT `/api/revenue/update/:id`
+- DELETE `/api/revenue/delete/:id`
+- GET `/api/brands/read`
+- POST `/api/brands/create`
+- PUT `/api/brands/update/:id`
+- DELETE `/api/brands/delete/:id`
+- GET `/api/brands/risk-signals`
+
+---
+
+## Tested Endpoints — Student 2
+
+- GET `/api/ml/status`
+- POST `/api/ml/retrain`
+- GET `/api/ml/predictions`
+
+---
+
+# Active Servers
+
+| Server | Port | Purpose |
+|---|---|---|
+| Node.js Backend | 5000 | API endpoints, authentication, CRUD |
+| ML FastAPI | 5001 | ML training and predictions |
+
+---
+
+# Database Views Created
+
+| View | Purpose |
+|---|---|
+| `yearly_revenue` | Aggregates yearly revenue for dashboard loading |
+
+---
+
+# Features Included
+
+- ✅ Backend API Documentation
+- ✅ Authentication Flow
+- ✅ CRUD Endpoint Guide
+- ✅ ML Module Architecture
+- ✅ ML Training Pipeline
+- ✅ FastAPI Integration
+- ✅ Two-Server Architecture
+- ✅ Supabase Integration
+- ✅ Health Checks
+- ✅ Postman Testing Guide
+- ✅ Database View Documentation
