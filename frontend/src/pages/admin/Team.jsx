@@ -6,17 +6,11 @@ import {
   AlertTriangle, X, Upload, MoreVertical, Activity
 } from 'lucide-react';
 
-/* ─────────────────────────────────────────────
-   Only animation keyframes here — NO hardcoded
-   colors. All colors come from CSS variables
-   already defined in index.css / .dark {}
-───────────────────────────────────────────── */
 const BASE_STYLE = `
   @keyframes spin  { to { transform: rotate(360deg); } }
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
 `;
 
-/* ── Shared style objects using CSS variables ── */
 const inputStyle = {
   width: '100%', padding: '9px 12px',
   border: '1px solid var(--border)', borderRadius: 8,
@@ -46,7 +40,6 @@ const primaryBtn = {
   fontWeight: 700, fontSize: 13, cursor: 'pointer',
 };
 
-/* ── Sub-components ── */
 const Avatar = ({ src, name, size = 40 }) => (
   <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
     <img
@@ -95,7 +88,6 @@ const RoleBadge = ({ role }) => {
   );
 };
 
-/* ── Main Component ── */
 export default function Team() {
   const { user, role: currentRole } = useAuth();
   const formAvatarRef = useRef(null);
@@ -215,43 +207,54 @@ export default function Team() {
     const phone = fd.get('phone'), role = fd.get('role') || editingMember?.role || 'staff';
     const status = fd.get('status') || 'active', password = fd.get('password');
     const roleDescription = fd.get('roleDescription');
+
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`,
+      };
+
       if (editingMember) {
-        if (editingMember._table === 'admins') {
-          const { error } = await supabase.from('admins').update({ full_name: name, phone: phone || null, is_active: status === 'active', avatar_url: formAvatarRef.current }).eq('id', editingMember._id);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from('staff').update({ name, email, phone, role: roleDescription, status, avatar_url: formAvatarRef.current }).eq('id', editingMember._id);
-          if (error) throw error;
-        }
+        // ✅ Edit — lewat backend pakai service key
+        const _res = await fetch(`${import.meta.env.VITE_API_URL}/team/update-member`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            id: editingMember._id,
+            table: editingMember._table,
+            name,
+            phone: phone || null,
+            status,
+            avatar_url: formAvatarRef.current,
+            roleDescription,
+          }),
+        });
+        const _result = await _res.json();
+        if (!_res.ok) throw new Error(_result.message);
+
       } else {
+        // ✅ Create baru
         if (role === 'staff') {
-          const { data: { session } } = await supabase.auth.getSession();
           const _res = await fetch(`${import.meta.env.VITE_API_URL}/team/create-staff`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session?.access_token}`
-            },
-            body: JSON.stringify({ name, email, phone: phone || null, role: roleDescription, status, avatar_url: formAvatar || null })
+            headers,
+            body: JSON.stringify({ name, email, phone: phone || null, role: roleDescription, status, avatar_url: formAvatar || null }),
           });
           const _result = await _res.json();
           if (!_res.ok) throw new Error(_result.message);
         } else {
           if (!password) { setFormError('Password is required for Admin / Super Admin accounts.'); setSubmitting(false); return; }
-          const { data: { session } } = await supabase.auth.getSession();
           const _res = await fetch(`${import.meta.env.VITE_API_URL}/team/create-admin`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session?.access_token}`
-            },
-            body: JSON.stringify({ email, password, name, phone, role, avatar_url: formAvatar || null })
+            headers,
+            body: JSON.stringify({ email, password, name, phone, role, avatar_url: formAvatar || null }),
           });
           const _result = await _res.json();
           if (!_res.ok) throw new Error(_result.message);
         }
       }
+
       await fetchMembers();
       closeForm();
     } catch (err) {
@@ -270,9 +273,9 @@ export default function Team() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
+          'Authorization': `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({ id: deleteTarget._id, table: deleteTarget._table })
+        body: JSON.stringify({ id: deleteTarget._id, table: deleteTarget._table }),
       });
       const _result = await _res.json();
       if (!_res.ok) throw new Error(_result.message);
@@ -316,7 +319,6 @@ export default function Team() {
         borderRadius: 20, overflow: 'hidden',
         boxShadow: '0 1px 8px rgba(0,0,0,0.06)',
       }}>
-        {/* Card header bar */}
         <div style={{ padding: '16px 24px', background: 'var(--primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <p style={{ color: '#fff', fontWeight: 700, fontSize: 13, margin: 0 }}>Team Management</p>
@@ -325,7 +327,6 @@ export default function Team() {
           <MoreVertical size={16} style={{ color: 'rgba(255,255,255,0.5)' }} />
         </div>
 
-        {/* Search bar */}
         <div style={{
           padding: '16px 20px', borderBottom: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
@@ -349,7 +350,6 @@ export default function Team() {
           </div>
         </div>
 
-        {/* Table */}
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -478,7 +478,6 @@ export default function Team() {
             borderRadius: 20, maxWidth: 600, width: '100%', maxHeight: '90vh',
             boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden',
           }}>
-            {/* Modal header */}
             <div style={{ padding: '16px 24px', background: 'var(--primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: 15, fontWeight: 700, color: '#fff', margin: 0 }}>
                 {editingMember ? 'Edit Member' : 'Add Member'}
@@ -500,7 +499,6 @@ export default function Team() {
                 </div>
               )}
 
-              {/* Avatar upload */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 24 }}>
                 <div style={{ position: 'relative' }}>
                   <div
@@ -541,7 +539,6 @@ export default function Team() {
                 )}
               </div>
 
-              {/* Form fields */}
               <form onSubmit={handleSubmit}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                   <div>
