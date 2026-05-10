@@ -424,7 +424,7 @@ export default function ProfileSettings() {
     setPasswordLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
-        redirectTo: `${window.location.origin}/#/admin/auth/reset-password`,
+      redirectTo: `${window.location.origin}/`,
       });
       if (error) throw error;
       showToast(`Password reset email sent to ${profile.email}.`);
