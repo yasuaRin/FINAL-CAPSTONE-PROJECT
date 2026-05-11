@@ -13,12 +13,15 @@ import AdminResetPassword from './pages/auth/AdminResetPassword';
 import AdminAuthCallback from './pages/auth/AdminAuthCallback';
 import Leads from './pages/admin/Leads';
 import Landing from './pages/public/Landing'; 
+import PublicLayout from './components/layout/PublicLayout';
 
 function App() {
   return (
     <HashRouter>
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<Landing />} />
+        </Route>
 
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/auth/reset-password" element={<AdminResetPassword />} />
