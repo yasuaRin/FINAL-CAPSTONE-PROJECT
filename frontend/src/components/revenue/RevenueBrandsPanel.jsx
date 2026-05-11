@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Filter, ChevronDown, ChevronRight } from 'lucide-react';
+import { TrendingUp, Filter, ChevronRight, Calendar } from 'lucide-react';
 
 const RevenueBrandsPanel = ({
   brandsList = [],
@@ -21,22 +21,17 @@ const RevenueBrandsPanel = ({
           <div className="flex items-center gap-2">
             <TrendingUp size={16} className="text-primary" />
             <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">
-              Period Performance Peaks
+              Brand Performance Overview
             </h3>
           </div>
-
-          <span className="text-[8px] font-bold text-primary uppercase tracking-widest bg-primary/10 px-2.5 py-1 rounded-full">
-            {brandsList.length} Brands · All Time
-          </span>
         </div>
 
         <div className="relative group">
           <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary" size={12} />
-
           <select
             value={insightBrandId}
             onChange={(e) => setInsightBrandId(e.target.value)}
-            className="w-full bg-white/50 dark:bg-muted/40 border border-border rounded-xl py-2 pl-9 pr-4 text-[10px] font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full bg-white/50 dark:bg-muted/40 border border-border rounded-xl py-2 pl-9 pr-4 text-[10px] font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-primary/20 appearance-auto"
           >
             <option value="All">All Brands</option>
             {brandsList.map((b) => (
@@ -45,8 +40,6 @@ const RevenueBrandsPanel = ({
               </option>
             ))}
           </select>
-
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={12} />
         </div>
       </div>
 
@@ -86,17 +79,25 @@ const RevenueBrandsPanel = ({
               {insight.hasSessions ? (
                 <>
                   <div className="text-lg font-bold">
-                    {formatCurrency(insight.peakRevenue)}
+                    {formatCurrency(insight.totalRevenue)}
                   </div>
-
-                  <div className="mt-3 text-[9px] text-muted-foreground">
-                    <div>
-                      <strong>Peak:</strong> {insight.peakPeriod}
+                  
+                  <div className="mt-3 text-[9px] text-muted-foreground space-y-1">
+                    <div className="flex items-center gap-1">
+                      <Calendar size={8} className="text-primary" />
+                      <span>
+                        <strong>Active:</strong> {insight.overallRange}
+                      </span>
                     </div>
-                    <div>{insight.peakRange}</div>
+                    <div className="flex items-center gap-1">
+                      <TrendingUp size={8} className="text-primary" />
+                      <span>
+                        <strong>Peak Period {insight.peakPeriod?.replace('Period ', '') || 'N/A'}:</strong> {formatCurrency(insight.bestPeriodRevenue || insight.peakRevenue)}
+                      </span>
+                    </div>
                   </div>
 
-                  <ChevronRight className="mt-3 text-muted-foreground" size={12} />
+                  <ChevronRight className="mt-2 text-muted-foreground" size={12} />
                 </>
               ) : (
                 <p className="text-[9px] text-muted-foreground">

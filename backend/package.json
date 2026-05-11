@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon src/index.js",
+      "dev": "nodemon --ignore src/ml/ --ignore '*.pkl' --ignore '*.json' src/index.js",
     "start": "node src/index.js"
   },
   "keywords": [],
