@@ -1,10 +1,10 @@
 ﻿// frontend/src/pages/admin/Revenue.jsx
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, Activity, FileUp, CheckCircle2,
-  Filter, ChevronDown, X, AlertTriangle, Plus
+  Filter, ChevronDown, X, AlertTriangle, Plus, Users
 } from 'lucide-react';
 
 import DateRangeSelector from '../../components/ui/DateRangeSelector';
@@ -25,10 +25,8 @@ import RevenueSessionsTable from '../../components/revenue/RevenueSessionsTable'
 const formatCurrency = (value) =>
   `Rp ${(value || 0).toLocaleString('id-ID')}`;
 
-const getPeriodLabel = (dateStr) => {
-  const d = parseISO(dateStr);
-  return `Period ${(d.getFullYear() - 2024) * 12 + d.getMonth() + 1}`;
-};
+// Normalize UUID to string
+const sid = (v) => (v == null ? '' : String(v));
 
 // ---------------- MAIN ----------------
 const Revenue = () => {
@@ -52,152 +50,339 @@ const Revenue = () => {
   const [rowLimit, setRowLimit] = useState(25);
   const [sortOpen, setSortOpen] = useState(false);
   const [limitOpen, setLimitOpen] = useState(false);
+  const [periodsData, setPeriodsData] = useState([]);
   const sortRef = useRef(null);
   const limitRef = useRef(null);
-
   const fileInputRef = useRef(null);
 
-  const { data: revenueData, loading, refetch: refetchRevenue, totalRevenue: globalTotalRevenue, brandTotals } = useRevenue();
+  const { data: revenueData, loading, refetch: refetchRevenue, brandTotals } = useRevenue();
   const { brands } = useBrands(brandTotals);
   const { team } = useTeam();
 
-  const brandsList = useMemo(
-    () => (brands || []).map(b => ({
-      id: b.brand_id,
-      name: b.brand_name
-    })),
-    [brands]
-  );
+  // Fetch periods data from database
+  useEffect(() => {
+    const fetchPeriods = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('periods')
+          .select('period_id, period_name, period_start_date, period_end_date')
+          .order('period_id');
+        
+        if (!error && data) {
+          console.log('📅 Periods fetched:', data);
+          setPeriodsData(data);
+        } else if (error) {
+          console.error('Error fetching periods:', error);
+        }
+      } catch (err) {
+        console.error('Failed to fetch periods:', err);
+      }
+    };
+    
+    fetchPeriods();
+  }, []);
 
+  // Create period map for quick lookup
+  const periodMap = useMemo(() => {
+    const map = {};
+    periodsData.forEach(p => {
+      map[p.period_id] = {
+        id: p.period_id,
+        name: p.period_name || `Period ${p.period_id}`,
+        startDate: p.period_start_date,
+        endDate: p.period_end_date,
+      };
+    });
+    return map;
+  }, [periodsData]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 REVENUE PAGE DEBUG:');
+    console.log('brandTotals size:', brandTotals.size);
+    console.log('brands count:', brands?.length);
+    console.log('revenueData count:', revenueData?.length);
+    console.log('periodsData count:', periodsData.length);
+    console.log('periodMap:', periodMap);
+    
+    if (brandTotals.size > 0 && brands?.length > 0) {
+      console.log('💸 BRAND REVENUE MAPPING:');
+      brands.forEach(brand => {
+        const brandId = sid(brand.brand_id);
+        const revenue = brandTotals.get(brandId) || 0;
+        console.log(`  ${brand.brand_name}: Rp ${revenue.toLocaleString('id-ID')}`);
+      });
+    }
+  }, [brandTotals, brands, revenueData, periodsData, periodMap]);
+
+  // ── Normalize brandsList with total revenue from brandTotals ──
+  const brandsList = useMemo(() => {
+    if (!brands) return [];
+    
+    return brands
+      .map(b => ({ 
+        id: sid(b.brand_id), 
+        name: b.brand_name,
+        totalRevenue: brandTotals.get(sid(b.brand_id)) || 0
+      }))
+      .sort((a, b) => b.totalRevenue - a.totalRevenue);
+  }, [brands, brandTotals]);
+
+  // ── Normalize teamMap for fast lookup ──
+  const teamMap = useMemo(() => {
+    const m = {};
+    (team || []).forEach(t => { m[sid(t.id)] = t.name; });
+    return m;
+  }, [team]);
+
+  // ── raw logs – all IDs normalized to string ──
+  // log.revenue = revenue_shopee + revenue_tiktok — the correct full session total
+  // for ALL platform types including Multi. Never re-sum from revenueData.
   const revenueLogs = useMemo(() => {
     if (!revenueData) return [];
     return revenueData.map(i => ({
-      id: i.id,
-      brandId: i.brand_id,
+      id: sid(i.id),
+      brandId: sid(i.brand_id),
+      hostId: sid(i.host_id),
       date: i.date,
-      platform: (i.revenue_shopee > 0 && i.revenue_tiktok > 0)
-        ? 'Multi' : i.revenue_shopee > 0 ? 'Shopee' : 'TikTok',
-      revenue: (i.revenue_shopee || 0) + (i.revenue_tiktok || 0),
-      viewers: (i.viewers_shopee || 0) + (i.viewers_tiktok || 0),
-      host_id: i.host_id,
+      period_id: i.period_id,
+      platform:
+        i.revenue_shopee > 0 && i.revenue_tiktok > 0 ? 'Multi'
+        : i.revenue_shopee > 0 ? 'Shopee'
+        : 'TikTok',
+      revenue: (i.revenue_shopee ?? 0) + (i.revenue_tiktok ?? 0),
+      viewers: (i.viewers_shopee ?? 0) + (i.viewers_tiktok ?? 0),
     }));
   }, [revenueData]);
 
-  const dateFilteredLogs = useMemo(() =>
-    revenueLogs.filter(l =>
-      isWithinInterval(parseISO(l.date), {
-        start: startOfDay(dateRange.start),
-        end: endOfDay(dateRange.end),
-      })
-    ),
-    [revenueLogs, dateRange]
-  );
+  // ── brandMap for fast lookup ──
+  const brandMap = useMemo(() => {
+    const m = {};
+    brandsList.forEach(b => { m[b.id] = b.name; });
+    return m;
+  }, [brandsList]);
 
-  const totalRevenue = useMemo(
-    () => dateFilteredLogs.reduce((a, b) => a + b.revenue, 0),
-    [dateFilteredLogs]
-  );
+  // ── All-time revenue ──
+  const allTimeRevenue = useMemo(() => {
+    let total = 0;
+    brandTotals.forEach(val => { total += val; });
+    return total;
+  }, [brandTotals]);
 
-  const avgRevenue =
-    dateFilteredLogs.length === 0
-      ? 0
-      : totalRevenue / dateFilteredLogs.length;
+  const totalSessionsAllTime = revenueLogs.length;
+  const avgRevenueAllTime = totalSessionsAllTime === 0 ? 0 : allTimeRevenue / totalSessionsAllTime;
 
-  const revenueGrowth = useMemo(() => {
-    const today = new Date();
-    const l7 = dateFilteredLogs.filter((l) => { const d = (today - parseISO(l.date)) / 86400000; return d <= 7 && d > 0; });
-    const p7 = dateFilteredLogs.filter((l) => { const d = (today - parseISO(l.date)) / 86400000; return d <= 14 && d > 7; });
-    const lSum = l7.reduce((s, l) => s + l.revenue, 0);
-    const pSum = p7.reduce((s, l) => s + l.revenue, 0);
-    if (pSum === 0) return 0;
-    return ((lSum - pSum) / pSum * 100).toFixed(1);
-  }, [dateFilteredLogs]);
+  // ── Best staff per brand (ONE staff member per brand - the top earner) ──
+  const bestStaffPerBrand = useMemo(() => {
+    if (!team?.length) return [];
 
-  const topPlatform = useMemo(() => {
-    const stats = {};
-    dateFilteredLogs.forEach((log) => {
-      if (!stats[log.platform]) stats[log.platform] = { revenue: 0 };
-      stats[log.platform].revenue += log.revenue;
+    const staffBrandRevenue = {};
+    revenueLogs.forEach(log => {
+      if (!log.hostId) return;
+      const key = `${log.brandId}_${log.hostId}`;
+      if (!staffBrandRevenue[key]) {
+        staffBrandRevenue[key] = {
+          brandId: log.brandId,
+          brandName: brandMap[log.brandId] || 'Unknown',
+          staffId: log.hostId,
+          staffName: teamMap[log.hostId] || `Host ${log.hostId}`,
+          revenue: 0,
+        };
+      }
+      staffBrandRevenue[key].revenue += log.revenue;
     });
-    const entries = Object.entries(stats);
-    if (!entries.length) return 'N/A';
-    return entries.reduce((p, c) => p[1].revenue > c[1].revenue ? p : c)[0];
-  }, [dateFilteredLogs]);
 
+    const bestStaffPerBrandMap = {};
+    Object.values(staffBrandRevenue).forEach(item => {
+      const brandId = item.brandId;
+      if (!bestStaffPerBrandMap[brandId] || item.revenue > bestStaffPerBrandMap[brandId].revenue) {
+        bestStaffPerBrandMap[brandId] = item;
+      }
+    });
+
+    return Object.values(bestStaffPerBrandMap)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+  }, [revenueLogs, teamMap, brandMap]);
+
+  // ── Top platform by revenue in selected date range ──
+const topPlatformInRange = useMemo(() => {
+  const filtered = revenueLogs.filter(l =>
+    isWithinInterval(parseISO(l.date), {
+      start: startOfDay(dateRange.start),
+      end: endOfDay(dateRange.end),
+    })
+  );
+
+  const stats = { TikTok: 0, Shopee: 0, Multi: 0 };
+  filtered.forEach(log => {
+    stats[log.platform] += log.revenue;
+  });
+
+  const entries = Object.entries(stats).filter(([, rev]) => rev > 0);
+  if (!entries.length) return { name: 'N/A', revenue: 0 };
+
+  const [name, revenue] = entries.reduce((p, c) => (p[1] > c[1] ? p : c));
+  return { name, revenue };
+}, [revenueLogs, dateRange]);
+
+// ── Top platform by revenue (ALL TIME - matches SQL query) ──
+const topPlatformAllTime = useMemo(() => {
+  const stats = { TikTok: 0, Shopee: 0, Multi: 0 };
+  
+  revenueLogs.forEach(log => {
+    stats[log.platform] += log.revenue;
+  });
+
+  const entries = Object.entries(stats).filter(([, rev]) => rev > 0);
+  if (!entries.length) return { name: 'N/A', revenue: 0 };
+
+  const [name, revenue] = entries.reduce((p, c) => (p[1] > c[1] ? p : c));
+  return { name, revenue };
+}, [revenueLogs]);
+
+// Use the all-time version to match your SQL query
+const topPlatform = topPlatformAllTime;
+
+  // ── Brand performance insights - Shows TOTAL revenue and OVERALL date range ──
   const brandPerformanceInsights = useMemo(() => {
     const map = {};
-
+    
     brandsList.forEach(b => {
       map[b.id] = {
         id: b.id,
         name: b.name,
+        totalRevenue: b.totalRevenue,
         peakRevenue: 0,
         peakPeriod: '',
+        peakPeriodId: null,
         peakRange: '',
-        hasSessions: false,
+        overallStartDate: null,
+        overallEndDate: null,
+        overallRange: '',
+        hasSessions: b.totalRevenue > 0,
+        sessionCount: 0,
+        periodRevenue: {},
       };
     });
 
     revenueLogs.forEach(log => {
       const b = map[log.brandId];
       if (!b) return;
-
-      b.hasSessions = true;
-
-      const period = getPeriodLabel(log.date);
-      const date = parseISO(log.date);
-      const range = `${format(startOfMonth(date), 'MMM dd')} - ${format(endOfMonth(date), 'MMM dd, yyyy')}`;
-
+      
+      b.sessionCount++;
+      
+      const logDate = parseISO(log.date);
+      if (!b.overallStartDate || logDate < b.overallStartDate) {
+        b.overallStartDate = logDate;
+      }
+      if (!b.overallEndDate || logDate > b.overallEndDate) {
+        b.overallEndDate = logDate;
+      }
+      
+      const periodId = log.period_id;
+      const periodKey = `period_${periodId}`;
+      
+      if (!b.periodRevenue[periodKey]) {
+        b.periodRevenue[periodKey] = {
+          periodId: periodId,
+          revenue: 0,
+          sessions: [],
+        };
+      }
+      b.periodRevenue[periodKey].revenue += log.revenue;
+      b.periodRevenue[periodKey].sessions.push({
+        date: log.date,
+        revenue: log.revenue,
+      });
+      
       if (log.revenue > b.peakRevenue) {
         b.peakRevenue = log.revenue;
-        b.peakPeriod = period;
-        b.peakRange = range;
+      }
+    });
+
+    Object.values(map).forEach(b => {
+      if (b.hasSessions && b.overallStartDate && b.overallEndDate) {
+        b.overallRange = `${format(b.overallStartDate, 'dd MMM yyyy')} - ${format(b.overallEndDate, 'dd MMM yyyy')}`;
+      }
+      
+      if (b.hasSessions && Object.keys(b.periodRevenue).length > 0) {
+        let bestPeriod = null;
+        let bestPeriodRevenue = 0;
+        
+        Object.values(b.periodRevenue).forEach(period => {
+          if (period.revenue > bestPeriodRevenue) {
+            bestPeriodRevenue = period.revenue;
+            bestPeriod = period;
+          }
+        });
+        
+        if (bestPeriod) {
+          b.peakPeriodId = bestPeriod.periodId;
+          b.peakPeriod = `Period ${bestPeriod.periodId}`;
+          b.bestPeriodRevenue = bestPeriodRevenue;
+          
+          const periodInfo = periodMap[bestPeriod.periodId];
+          if (periodInfo && periodInfo.startDate && periodInfo.endDate) {
+            const startDate = parseISO(periodInfo.startDate);
+            const endDate = parseISO(periodInfo.endDate);
+            b.peakRange = `${format(startDate, 'dd MMM yyyy')} - ${format(endDate, 'dd MMM yyyy')}`;
+          } else {
+            const dates = bestPeriod.sessions.map(s => parseISO(s.date)).sort((a, b) => a - b);
+            b.peakRange = `${format(dates[0], 'dd MMM yyyy')} - ${format(dates[dates.length - 1], 'dd MMM yyyy')}`;
+          }
+        }
       }
     });
 
     let results = Object.values(map);
     if (insightBrandId !== 'All') results = results.filter(b => b.id === insightBrandId);
-    return results.sort((a, b) => b.peakRevenue - a.peakRevenue);
-  }, [revenueLogs, brandsList, insightBrandId]);
+    
+    return results.sort((a, b) => b.totalRevenue - a.totalRevenue);
+  }, [revenueLogs, brandsList, insightBrandId, periodMap]);
 
+  // ── Session intelligence (filtered + sorted table rows) ──
   const sessionIntelligence = useMemo(() => {
-    let rows = revenueLogs.map((log) => ({
+    let rows = revenueLogs.map(log => ({
       ...log,
-      brandName: brandsList.find((b) => b.id === log.brandId)?.name || 'Unknown Brand',
-      staffName: team?.find((t) => t.id === log.host_id)?.name || '—',
-      period: getPeriodLabel(log.date),
+      brandName: brandMap[log.brandId] || 'Unknown Brand',
+      staffName: teamMap[log.hostId] || '—',
+      period: `Period ${log.period_id}`,
     }));
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      rows = rows.filter((s) => s.brandName.toLowerCase().includes(term));
+      rows = rows.filter(s => s.brandName.toLowerCase().includes(term));
     }
 
-    if (tableFilter.brandId !== 'All') rows = rows.filter((s) => s.brandId === tableFilter.brandId);
-    if (tableFilter.period !== 'All') rows = rows.filter((s) => s.period === tableFilter.period);
+    if (tableFilter.brandId !== 'All') rows = rows.filter(s => s.brandId === tableFilter.brandId);
+    if (tableFilter.period !== 'All') rows = rows.filter(s => s.period === tableFilter.period);
 
     rows.sort((a, b) => {
       let aVal, bVal;
-      if (sortCol === 'date') {
-        aVal = new Date(a.date).getTime();
-        bVal = new Date(b.date).getTime();
-      } else if (sortCol === 'revenue') {
-        aVal = a.revenue;
-        bVal = b.revenue;
-      } else if (sortCol === 'viewers') {
-        aVal = a.viewers;
-        bVal = b.viewers;
-      }
+      if (sortCol === 'date') { aVal = new Date(a.date).getTime(); bVal = new Date(b.date).getTime(); }
+      else if (sortCol === 'revenue') { aVal = a.revenue; bVal = b.revenue; }
+      else if (sortCol === 'viewers') { aVal = a.viewers; bVal = b.viewers; }
       return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
     });
 
     return rows;
-  }, [revenueLogs, brandsList, team, searchTerm, tableFilter, sortCol, sortDir]);
+  }, [revenueLogs, brandMap, teamMap, searchTerm, tableFilter, sortCol, sortDir]);
 
   const visibleSessions = useMemo(
     () => rowLimit === null ? sessionIntelligence : sessionIntelligence.slice(0, rowLimit),
     [sessionIntelligence, rowLimit]
   );
+
+  const uniquePeriods = useMemo(() => {
+    const periods = new Set();
+    revenueLogs.forEach(log => periods.add(`Period ${log.period_id}`));
+    return Array.from(periods).sort((a, b) => {
+      const numA = parseInt(a.split(' ')[1]);
+      const numB = parseInt(b.split(' ')[1]);
+      return numA - numB;
+    });
+  }, [revenueLogs]);
 
   const sortGroups = [
     { label: 'Date', options: [{ label: 'Newest first', col: 'date', dir: 'desc' }, { label: 'Oldest first', col: 'date', dir: 'asc' }] },
@@ -209,20 +394,23 @@ const Revenue = () => {
 
   const activeSortLabel = (() => {
     for (const g of sortGroups) {
-      const m = g.options.find((o) => o.col === sortCol && o.dir === sortDir);
+      const m = g.options.find(o => o.col === sortCol && o.dir === sortDir);
       if (m) return `${g.label}: ${m.label}`;
     }
     return 'Sort';
   })();
 
-  const notify = (msg, isError = false) => {
+  const notify = (msg) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3000);
   };
 
   const resetForm = () => setSessionFormData({
-    date: format(new Date(), 'yyyy-MM-dd'), brandId: brandsList[0]?.id || '',
-    platform: 'TikTok', viewers: 0, revenue: 0,
+    date: format(new Date(), 'yyyy-MM-dd'),
+    brandId: brandsList[0]?.id || '',
+    platform: 'TikTok',
+    viewers: 0,
+    revenue: 0,
   });
 
   const handleCreateSession = async () => {
@@ -233,25 +421,23 @@ const Revenue = () => {
         .eq('platform_name', sessionFormData.platform === 'Multi' ? 'multi' : sessionFormData.platform.toLowerCase())
         .single();
 
-      const revenueShopee = sessionFormData.platform === 'Shopee' || sessionFormData.platform === 'Multi' ? sessionFormData.revenue : 0;
-      const revenueTiktok = sessionFormData.platform === 'TikTok' || sessionFormData.platform === 'Multi' ? sessionFormData.revenue : 0;
+      const isShopee = sessionFormData.platform === 'Shopee' || sessionFormData.platform === 'Multi';
+      const isTikTok = sessionFormData.platform === 'TikTok' || sessionFormData.platform === 'Multi';
 
-      const { error } = await supabase
-        .from('live_sessions')
-        .insert([{
-          date: sessionFormData.date,
-          time: '00:00',
-          revenue_shopee: revenueShopee,
-          revenue_tiktok: revenueTiktok,
-          viewers_shopee: sessionFormData.platform === 'Shopee' || sessionFormData.platform === 'Multi' ? sessionFormData.viewers : 0,
-          viewers_tiktok: sessionFormData.platform === 'TikTok' || sessionFormData.platform === 'Multi' ? sessionFormData.viewers : 0,
-          likes_shopee: 0,
-          likes_tiktok: 0,
-          period_id: 1,
-          host_id: 1,
-          brand_id: sessionFormData.brandId,
-          platform_id: platformData?.platform_id
-        }]);
+      const { error } = await supabase.from('live_sessions').insert([{
+        date: sessionFormData.date,
+        time: '00:00',
+        revenue_shopee: isShopee ? sessionFormData.revenue : 0,
+        revenue_tiktok: isTikTok ? sessionFormData.revenue : 0,
+        viewers_shopee: isShopee ? sessionFormData.viewers : 0,
+        viewers_tiktok: isTikTok ? sessionFormData.viewers : 0,
+        likes_shopee: 0,
+        likes_tiktok: 0,
+        period_id: 1,
+        host_id: 1,
+        brand_id: sessionFormData.brandId,
+        platform_id: platformData?.platform_id,
+      }]);
 
       if (error) throw error;
       notify('Session created successfully');
@@ -260,26 +446,23 @@ const Revenue = () => {
       refetchRevenue();
     } catch (err) {
       console.error('Create error:', err);
-      notify('Failed to create session', true);
+      notify('Failed to create session');
     }
   };
 
   const handleUpdateSession = async () => {
     try {
-      const revenueShopee = sessionFormData.platform === 'Shopee' || sessionFormData.platform === 'Multi' ? sessionFormData.revenue : 0;
-      const revenueTiktok = sessionFormData.platform === 'TikTok' || sessionFormData.platform === 'Multi' ? sessionFormData.revenue : 0;
+      const isShopee = sessionFormData.platform === 'Shopee' || sessionFormData.platform === 'Multi';
+      const isTikTok = sessionFormData.platform === 'TikTok' || sessionFormData.platform === 'Multi';
 
-      const { error } = await supabase
-        .from('live_sessions')
-        .update({
-          date: sessionFormData.date,
-          revenue_shopee: revenueShopee,
-          revenue_tiktok: revenueTiktok,
-          viewers_shopee: sessionFormData.platform === 'Shopee' || sessionFormData.platform === 'Multi' ? sessionFormData.viewers : 0,
-          viewers_tiktok: sessionFormData.platform === 'TikTok' || sessionFormData.platform === 'Multi' ? sessionFormData.viewers : 0,
-          brand_id: sessionFormData.brandId,
-        })
-        .eq('id', editingSession.id);
+      const { error } = await supabase.from('live_sessions').update({
+        date: sessionFormData.date,
+        revenue_shopee: isShopee ? sessionFormData.revenue : 0,
+        revenue_tiktok: isTikTok ? sessionFormData.revenue : 0,
+        viewers_shopee: isShopee ? sessionFormData.viewers : 0,
+        viewers_tiktok: isTikTok ? sessionFormData.viewers : 0,
+        brand_id: sessionFormData.brandId,
+      }).eq('id', editingSession.id);
 
       if (error) throw error;
       notify('Session updated successfully');
@@ -289,29 +472,25 @@ const Revenue = () => {
       refetchRevenue();
     } catch (err) {
       console.error('Update error:', err);
-      notify('Failed to update session', true);
+      notify('Failed to update session');
     }
   };
 
   const confirmDelete = async () => {
     try {
-      const { error } = await supabase
-        .from('live_sessions')
-        .delete()
-        .eq('id', sessionToDelete.id);
-
+      const { error } = await supabase.from('live_sessions').delete().eq('id', sessionToDelete.id);
       if (error) throw error;
       notify('Session deleted successfully');
       setSessionToDelete(null);
       refetchRevenue();
     } catch (err) {
       console.error('Delete error:', err);
-      notify('Failed to delete session', true);
+      notify('Failed to delete session');
     }
   };
 
   const handleDeleteSession = (id) => {
-    const session = sessionIntelligence.find((x) => x.id === id);
+    const session = sessionIntelligence.find(x => x.id === id);
     if (session) setSessionToDelete(session);
   };
 
@@ -336,7 +515,6 @@ const Revenue = () => {
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // TODO: Implement CSV upload
     console.log('File upload:', file);
   };
 
@@ -352,9 +530,7 @@ const Revenue = () => {
   }
 
   return (
-    <motion.div className="space-y-8 pb-16 relative">
-
-      {/* Toast */}
+    <motion.div className="space-y-6 pb-16 relative min-w-0 overflow-x-hidden">
       <AnimatePresence>
         {notification && (
           <motion.div
@@ -369,44 +545,82 @@ const Revenue = () => {
         )}
       </AnimatePresence>
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Revenue</h1>
-          <p className="text-muted-foreground mt-1">Track performance, analyze trends, and monitor platform distribution.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Revenue</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Track performance, analyze trends, and monitor platform distribution.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           <DateRangeSelector value={dateRange} onChange={setDateRange} />
-          <button onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center justify-center rounded-xl text-sm font-bold transition-all bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6 py-2 gap-2 shadow-lg">
-            <FileUp size={16} /> Import Data
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center justify-center rounded-xl text-sm font-bold transition-all bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 sm:px-6 py-2 gap-2 shadow-lg whitespace-nowrap"
+          >
+            <FileUp size={16} /> Import
           </button>
           <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".csv,.xlsx,.json" />
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { label: 'Total Revenue', value: formatCurrency(globalTotalRevenue), sub: `${revenueGrowth >= 0 ? '+' : ''}${revenueGrowth}% vs prev 7d` },
-          { label: 'Total Sessions', value: dateFilteredLogs.length.toLocaleString() || '0' },
-          { label: 'Avg Revenue / Session', value: formatCurrency(Math.round(avgRevenue)) },
-          { label: 'Top Platform', value: topPlatform },
-        ].map(({ label, value, sub }) => (
-          <div key={label} className="bg-card p-6 rounded-2xl border border-border shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">{label}</p>
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-2xl font-bold text-foreground">{value}</h3>
-              {sub && <span className={`text-xs font-bold ${String(sub).startsWith('-') ? 'text-red-500' : 'text-emerald-500'}`}>{sub}</span>}
-            </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 min-w-0">
+        <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Total Revenue</p>
+          <p className="text-xl sm:text-2xl font-bold text-foreground leading-tight break-all">
+            {formatCurrency(allTimeRevenue)}
+          </p>
+          <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Avg / session</span>
+            <span className="text-[11px] font-bold text-foreground">{formatCurrency(Math.round(avgRevenueAllTime))}</span>
           </div>
-        ))}
+        </div>
+
+        <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
+          <div className="flex items-center gap-2 mb-3">
+            <Users size={12} className="text-primary shrink-0" />
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Top Performers</p>
+          </div>
+          <div className="space-y-2">
+            {bestStaffPerBrand.length === 0 && (
+              <p className="text-xs text-muted-foreground">No data yet</p>
+            )}
+            {bestStaffPerBrand.slice(0, 5).map((staff, i) => (
+              <div key={`${staff.staffId}_${staff.brandId}`} className="flex items-center justify-between gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="text-[8px] font-black text-muted-foreground/50 w-3 shrink-0">{i + 1}</span>
+                  <span className="text-[11px] font-bold text-primary truncate">{staff.staffName}</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0 min-w-0">
+                  <span className="text-[9px] font-medium text-muted-foreground hidden sm:inline">Top:</span>
+                  <span className="text-[9px] font-bold text-foreground truncate max-w-[80px]">{staff.brandName}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+            Top Platform
+            <span className="ml-1 font-normal normal-case tracking-normal text-muted-foreground/50 text-[9px]">(range)</span>
+          </p>
+          <p className="text-xl sm:text-2xl font-bold text-foreground">{topPlatform.name}</p>
+          <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Revenue</span>
+            <span className="text-[11px] font-bold text-foreground break-all">{formatCurrency(topPlatform.revenue)}</span>
+          </div>
+        </div>
+
+        <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Total Live Sessions</p>
+          <p className="text-xl sm:text-2xl font-bold text-foreground">{totalSessionsAllTime.toLocaleString()}</p>
+          <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Brands</span>
+            <span className="text-[11px] font-bold text-foreground">{brandsList.length}</span>
+          </div>
+        </div>
       </div>
 
-      {/* Peaks + Table */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-        
-        {/* Period Performance Peaks Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12 min-w-0">
         <RevenueBrandsPanel
           brandsList={brandsList}
           insightBrandId={insightBrandId}
@@ -416,7 +630,6 @@ const Revenue = () => {
           formatCurrency={formatCurrency}
         />
 
-        {/* Session Intelligence Table */}
         <RevenueSessionsTable
           visibleSessions={visibleSessions}
           sessionIntelligence={sessionIntelligence}
@@ -446,41 +659,57 @@ const Revenue = () => {
           format={format}
           resetForm={resetForm}
           setShowSessionModal={setShowSessionModal}
+          uniquePeriods={uniquePeriods}
+          loading={loading}
         />
       </div>
 
-      {/* Add/Edit Modal */}
       <AnimatePresence>
         {showSessionModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-card w-full max-w-md rounded-3xl border border-border shadow-2xl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-card w-full max-w-md rounded-3xl border border-border shadow-2xl"
+            >
               <div className="px-6 py-4 border-b border-border bg-muted/20 flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-[0.2em]">{editingSession ? 'Edit Record' : 'Record New Session'}</h3>
-                <button onClick={() => setShowSessionModal(false)} className="p-2 hover:bg-muted rounded-full"><X size={16} /></button>
+                <h3 className="text-xs font-bold uppercase tracking-[0.2em]">
+                  {editingSession ? 'Edit Record' : 'Record New Session'}
+                </h3>
+                <button onClick={() => setShowSessionModal(false)} className="p-2 hover:bg-muted rounded-full">
+                  <X size={16} />
+                </button>
               </div>
               <div className="p-6 space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Target Date</label>
-                  <input type="date" value={sessionFormData.date}
-                    onChange={(e) => setSessionFormData({ ...sessionFormData, date: e.target.value })}
-                    className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs" />
+                  <input
+                    type="date"
+                    value={sessionFormData.date}
+                    onChange={e => setSessionFormData({ ...sessionFormData, date: e.target.value })}
+                    className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Brand</label>
-                    <select value={sessionFormData.brandId}
-                      onChange={(e) => setSessionFormData({ ...sessionFormData, brandId: e.target.value })}
-                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs">
+                    <select
+                      value={sessionFormData.brandId}
+                      onChange={e => setSessionFormData({ ...sessionFormData, brandId: e.target.value })}
+                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
+                    >
                       <option value="" disabled>Select Brand</option>
-                      {brandsList.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                      {brandsList.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Channel</label>
-                    <select value={sessionFormData.platform}
-                      onChange={(e) => setSessionFormData({ ...sessionFormData, platform: e.target.value })}
-                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs">
+                    <select
+                      value={sessionFormData.platform}
+                      onChange={e => setSessionFormData({ ...sessionFormData, platform: e.target.value })}
+                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
+                    >
                       <option value="TikTok">TikTok</option>
                       <option value="Shopee">Shopee</option>
                       <option value="Multi">Multi-Platform</option>
@@ -490,22 +719,35 @@ const Revenue = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Viewers</label>
-                    <input type="number" value={sessionFormData.viewers}
-                      onChange={(e) => setSessionFormData({ ...sessionFormData, viewers: parseInt(e.target.value) || 0 })}
-                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs" />
+                    <input
+                      type="number"
+                      value={sessionFormData.viewers}
+                      onChange={e => setSessionFormData({ ...sessionFormData, viewers: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Revenue (Rp)</label>
-                    <input type="number" value={sessionFormData.revenue}
-                      onChange={(e) => setSessionFormData({ ...sessionFormData, revenue: parseInt(e.target.value) || 0 })}
-                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs font-bold" />
+                    <input
+                      type="number"
+                      value={sessionFormData.revenue}
+                      onChange={e => setSessionFormData({ ...sessionFormData, revenue: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs font-bold"
+                    />
                   </div>
                 </div>
               </div>
               <div className="p-6 bg-muted/20 border-t border-border flex items-center justify-end gap-3">
-                <button onClick={() => setShowSessionModal(false)} className="px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase text-muted-foreground">Discard</button>
-                <button onClick={editingSession ? handleUpdateSession : handleCreateSession}
-                  className="px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase bg-primary text-white">
+                <button
+                  onClick={() => setShowSessionModal(false)}
+                  className="px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase text-muted-foreground"
+                >
+                  Discard
+                </button>
+                <button
+                  onClick={editingSession ? handleUpdateSession : handleCreateSession}
+                  className="px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase bg-primary text-white"
+                >
                   {editingSession ? 'Update' : 'Commit'}
                 </button>
               </div>
@@ -514,29 +756,42 @@ const Revenue = () => {
         )}
       </AnimatePresence>
 
-      {/* Delete Modal */}
       <AnimatePresence>
         {sessionToDelete && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-card w-full max-w-sm rounded-[32px] border border-border shadow-2xl p-8 text-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card w-full max-w-sm rounded-[32px] border border-border shadow-2xl p-8 text-center"
+            >
               <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
                 <AlertTriangle size={32} />
               </div>
               <h3 className="text-lg font-bold mb-2">Delete Session?</h3>
               <p className="text-xs text-muted-foreground mb-8">
-                This will permanently remove the record for <span className="text-foreground font-bold">{sessionToDelete.brandName}</span>.
+                This will permanently remove the record for{' '}
+                <span className="text-foreground font-bold">{sessionToDelete.brandName}</span>.
               </p>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setSessionToDelete(null)} className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase text-muted-foreground hover:bg-muted transition-all">Cancel</button>
-                <button onClick={confirmDelete} className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase bg-red-500 text-white hover:bg-red-600 transition-all">Delete</button>
+                <button
+                  onClick={() => setSessionToDelete(null)}
+                  className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase text-muted-foreground hover:bg-muted transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase bg-red-500 text-white hover:bg-red-600 transition-all"
+                >
+                  Delete
+                </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* Footer */}
       <div className="pt-8 border-t border-border">
         <p className="text-[9px] text-center text-muted-foreground uppercase tracking-[0.3em] font-bold">
           VidHelp Intelligence Hub • {revenueData?.length?.toLocaleString() || '0'} Total Sessions

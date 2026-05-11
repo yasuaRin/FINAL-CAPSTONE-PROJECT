@@ -4,6 +4,9 @@
 // 2. Call useRevenue() to get brandTotals — same source as Dashboard
 // 3. fetchData: query `brands` table directly (not `brand_revenue_summary`)
 // 4. brandMatrix: totalRevenue from brandTotals.get(), sessionCount from brandSessions.length
+// 5. [FIX] Revenue cell: removed break-all, max-w-[140px], whitespace-normal
+//         → replaced with whitespace-nowrap so the full number never splits mid-digit
+//         → table's existing overflow-x-auto handles split-screen by scrolling horizontally
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,9 +23,11 @@ import {
 import { format, subDays, startOfDay, endOfDay, isWithinInterval, parseISO } from 'date-fns';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../hooks/useAuth';
-// ── [CHANGE 1] Import useRevenue so revenue numbers come from the same source as Dashboard ──
 import { useRevenue } from '../../hooks/useRevenue';
 
+// ── formatRevenue: always returns the full number, no abbreviation (no "2.4B" etc.) ──
+// Uses Indonesian locale (id-ID) which adds dots as thousand separators.
+// Example: 7002511235 → "Rp 7.002.511.235"
 function formatRevenue(value) {
   if (!value && value !== 0) return "Rp 0";
   return `Rp ${Number(value).toLocaleString('id-ID')}`;
@@ -31,7 +36,7 @@ function formatRevenue(value) {
 export default function Brands() {
   const { user } = useAuth();
 
-  // ── [CHANGE 2] Single source of truth for revenue — matches Dashboard exactly ──
+  // Single source of truth for revenue — matches Dashboard exactly
   const { brandTotals, loading: revenueLoading } = useRevenue();
 
   const [userRole, setUserRole] = useState(null);
@@ -82,10 +87,7 @@ export default function Brands() {
     try {
       setIsLoading(true);
 
-      // ── [CHANGE 3] Query `brands` table directly — NOT `brand_revenue_summary` ──
-      // brand_revenue_summary is a separate view with its own aggregation logic
-      // that can differ from useRevenue's paginated fetch. Using `brands` directly
-      // ensures metadata is correct; revenue comes from brandTotals (useRevenue).
+      // Query `brands` table directly — NOT `brand_revenue_summary`
       const { data: brandsData, error: brandsErr } = await supabase
         .from("brands")
         .select("brand_id, brand_name, brand_category, brand_status")
@@ -148,10 +150,10 @@ export default function Brands() {
     return filteredBrands.map(brand => {
       const brandSessions = sessions.filter(s => s.brand_id === brand.brand_id);
 
-      // ── [CHANGE 4a] Revenue from useRevenue's brandTotals — same integers as Dashboard KPI ──
+      // Revenue from useRevenue's brandTotals — same integers as Dashboard KPI
       const totalRevenue = brandTotals.get(brand.brand_id) || 0;
 
-      // ── [CHANGE 4b] Session count from live query, not the view's cached column ──
+      // Session count from live query, not the view's cached column
       const sessionCount = brandSessions.length;
 
       const periods = [...new Set(brandSessions.map(s => s.period_id))].sort((a, b) => b - a);
@@ -199,7 +201,7 @@ export default function Brands() {
         latestSessions: brandSessions.slice(0, 3)
       };
     });
-  }, [filteredBrands, sessions, riskData, brandTotals]); // ← brandTotals added to deps
+  }, [filteredBrands, sessions, riskData, brandTotals]);
 
   const handleDelete = async () => {
     if (!isSuperAdmin) {
@@ -273,7 +275,6 @@ export default function Brands() {
     reader.readAsText(file);
   };
 
-  // ── [CHANGE 5] Include revenueLoading in the loading gate ──
   if (isLoading || isRoleLoading || revenueLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -287,7 +288,6 @@ export default function Brands() {
     );
   }
 
-  // ── Render (unchanged from original) ──────────────────────────────────────
   return (
     <div className="space-y-8 pb-12 relative">
       <div className="flex justify-end">
@@ -364,12 +364,28 @@ export default function Brands() {
           <h3 className="text-xl font-bold tracking-tight text-foreground">All Brands</h3>
           <p className="text-muted-foreground text-xs font-light mt-1">Complete overview of your brand performance and risk status.</p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+
+        {/*
+          ── OVERFLOW FIX EXPLANATION ──────────────────────────────────────────────────
+          This wrapper uses overflow-x-auto so the table scrolls horizontally on any
+          viewport narrower than min-w-[700px]. The table is never squeezed smaller
+          than 700px, which means each column always has enough breathing room.
+          On split-screen (~400-600px), the user swipes left/right instead of seeing
+          broken numbers. This is the standard, correct solution for data tables on
+          mobile/split-screen — identical to how Apple, Stripe, Vercel, etc. do it.
+          ─────────────────────────────────────────────────────────────────────────────
+        */}
+        <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-[700px] text-left border-collapse">
             <thead>
               <tr className="border-b border-border bg-muted/10">
-                <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60">Brand</th>
-                <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60">Revenue</th>
+                <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60 w-[220px]">Brand</th>
+                {/*
+                  ── Revenue column gets a fixed minimum width of 240px.
+                     This is the key: it guarantees the cell is always wide enough
+                     to display "Rp 7.002.511.235" on one line without wrapping.
+                */}
+                <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60 w-[240px]">Revenue</th>
                 <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60">Churned Level</th>
                 <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60">Status</th>
                 <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60 text-right">Actions</th>
@@ -380,7 +396,7 @@ export default function Brands() {
                 <tr key={brand.brand_id} className="group transition-all duration-300 border-b border-border/20 last:border-0 hover:bg-primary/5">
                   <td className="p-5">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center font-black text-white text-lg shadow-lg transform transition-transform group-hover:scale-110 duration-500">
+                      <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center font-black text-white text-lg shadow-lg transform transition-transform group-hover:scale-110 duration-500 flex-shrink-0">
                         {(brand.brand_name || '?')[0]}
                       </div>
                       <div>
@@ -391,20 +407,40 @@ export default function Brands() {
                       </div>
                     </div>
                   </td>
+
+                  {/*
+                    ── THE FIX: Revenue cell ─────────────────────────────────────────
+                    BEFORE (broken):
+                      className="... break-all whitespace-normal break-words max-w-[140px] sm:max-w-none"
+                      → break-all splits numbers mid-digit (e.g. "Rp 7.002.5" / "11.235")
+                      → max-w-[140px] squeezes the cell so it can never fit the full number
+                      → whitespace-normal allows browser to wrap at any space
+
+                    AFTER (fixed):
+                      className="... whitespace-nowrap"
+                      → whitespace-nowrap tells the browser: NEVER break this text
+                      → The column's w-[240px] header hint gives it enough room
+                      → If the screen is still too narrow, overflow-x-auto on the wrapper
+                        lets the whole table scroll — the number is ALWAYS complete
+                    ─────────────────────────────────────────────────────────────────
+                  */}
                   <td className="p-5">
                     <div className="flex items-center gap-3">
-                      <span className="font-medium font-mono tracking-tight text-foreground break-all leading-tight" style={{ fontSize: 'clamp(10px, 1.1vw, 14px)' }}>
+                      <span className="font-medium font-mono tracking-tight text-foreground whitespace-nowrap">
                         {formatRevenue(brand.totalRevenue)}
                       </span>
-                      <div className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${brand.growth >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                      <div className={`inline-flex items-center justify-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 ${
+                        brand.growth >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
+                      }`}>
                         {brand.growth >= 0 ? <ArrowUpRight size={10} /> : <ArrowDown size={10} />}
                         {Math.abs(brand.growth)}%
                       </div>
                     </div>
-                    <div className="mt-1 text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
+                    <div className="mt-1 text-[9px] text-muted-foreground font-bold uppercase tracking-widest whitespace-nowrap">
                       {brand.sessionCount} live sessions
                     </div>
                   </td>
+
                   <td className="p-5">
                     {brand.riskLevel ? (
                       <span className={`inline-flex px-3 py-1 rounded-xl text-[9px] font-bold uppercase tracking-wider border ${
@@ -419,11 +455,13 @@ export default function Brands() {
                       <div className="mt-1 text-[8px] text-muted-foreground max-w-[200px]">{brand.riskReasons[0]}</div>
                     )}
                   </td>
+
                   <td className="p-5">
                     <span className={`inline-flex px-3 py-1 rounded-xl text-[9px] font-bold uppercase tracking-wider border ${
                       brand.isActive ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'
                     }`}>{brand.isActive ? 'Active' : 'Inactive'}</span>
                   </td>
+
                   <td className="p-5 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button onClick={(e) => { e.stopPropagation(); openForm(brand); }} className="p-2 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-xl transition-all shadow-sm" title="Edit brand">

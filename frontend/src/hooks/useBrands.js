@@ -103,11 +103,11 @@ export function useBrands(brandTotals = new Map()) {
 
       // ── Cache — only when brandTotals is available ────────────────────────
       if (totalsMap.size > 0) {
-  sessionStorage.removeItem(CACHE_KEY); // evict stale entry before writing fresh one
-  sessionStorage.setItem(CACHE_KEY, JSON.stringify({
-    brands: enrichedBrands, kpis: newKpis, timestamp: Date.now(),
-  }));
-}
+        sessionStorage.removeItem(CACHE_KEY); // evict stale entry before writing fresh one
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+          brands: enrichedBrands, kpis: newKpis, timestamp: Date.now(),
+        }));
+      }
 
       if (isMounted.current) {
         setBrands(enrichedBrands);
