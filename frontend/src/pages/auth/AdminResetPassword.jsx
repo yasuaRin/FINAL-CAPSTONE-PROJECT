@@ -25,150 +25,266 @@ const AdminResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('EVENT:', event, 'SESSION:', session);
-      if (event === 'PASSWORD_RECOVERY') {
-        setSessionReady(true);
-      } else if (event === 'SIGNED_IN' && session) {
-        setSessionReady(true);
-      }
-    });
+  // MFA states
+  const [needsMfa, setNeedsMfa] = useState(false);
+  const [mfaCode, setMfaCode] = useState('');
+  const [factorId, setFactorId] = useState(null);
+  const [mfaLoading, setMfaLoading] = useState(false);
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (data?.session) {
-        setSessionReady(true);
-      } else {
-        setTimeout(() => {
-          setSessionReady((prev) => {
-            if (!prev) {
-              setError('Link tidak valid atau sudah expired. Silakan request ulang.');
-            }
-            return prev;
-          });
-        }, 3000);
-      }
-    });
+useEffect(() => {
+  const href = window.location.href;
+  const codeMatch = href.match(/[?&]code=([^&#]+)/);
+  const code = codeMatch ? codeMatch[1] : sessionStorage.getItem('reset_code');
 
-    return () => subscription.unsubscribe();
-  }, []);
+  let exchanged = false;
+
+  // ✅ Cek session dulu — mungkin useAuth sudah exchange duluan
+  supabase.auth.getSession().then(({ data }) => {
+    if (data?.session) {
+      exchanged = true;
+      sessionStorage.removeItem('reset_code');
+      setSessionReady(true);
+      return;
+    }
+
+    // Kalau belum ada session, baru exchange code
+    if (code) {
+      sessionStorage.removeItem('reset_code');
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        if (data?.session) {
+          exchanged = true;
+          setSessionReady(true);
+          setError('');
+        } else {
+          setError('Session not found. Please request a new reset link.');
+        }
+      });
+    } else {
+      setTimeout(() => {
+        if (!exchanged) {
+          setError('Session not found. Please request a new reset link.');
+        }
+      }, 5000);
+    }
+  });
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+      exchanged = true;
+      setSessionReady(true);
+      setError('');
+    }
+  });
+
+  return () => subscription.unsubscribe();
+}, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     if (password !== confirm) {
-      setError('Password tidak cocok.');
+      setError('Passwords do not match.');
       return;
     }
     if (password.length < 8) {
-      setError('Password minimal 8 karakter.');
+      setError('Password must be at least 8 characters.');
       return;
     }
 
     setLoading(true);
     try {
-      const { error: updateError } = await supabase.auth.updateUser({ password });
-      if (updateError) throw new Error(updateError.message);
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      const currentLevel = aalData?.currentLevel;
+      const nextLevel = aalData?.nextLevel;
 
-      await supabase.auth.signOut();
-      navigate('/admin/login', {
-        replace: true,
-        state: { message: 'Password berhasil diubah. Silakan login.' },
-      });
+      if (currentLevel === 'aal2' || nextLevel === 'aal1') {
+        await updatePassword();
+        return;
+      }
+
+      const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+      if (factorsError) throw factorsError;
+
+      const totpFactor = factorsData?.totp?.[0];
+      if (!totpFactor) {
+        await updatePassword();
+        return;
+      }
+
+      setFactorId(totpFactor.id);
+      setNeedsMfa(true);
     } catch (err) {
-      setError(err.message || 'Gagal mengubah password.');
+      setError(err.message || 'Failed to verify session.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleMfaVerify = async (e) => {
+    e.preventDefault();
+    setError('');
+    setMfaLoading(true);
+
+    try {
+      const { data: freshChallenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+      if (challengeError) throw challengeError;
+
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: freshChallenge.id,
+        code: mfaCode.trim(),
+      });
+      if (verifyError) throw verifyError;
+
+      await updatePassword();
+    } catch (err) {
+      setError(err.message || 'Invalid or expired MFA code.');
+      setMfaCode('');
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const updatePassword = async () => {
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    if (updateError) throw new Error(updateError.message);
+
+    await supabase.auth.signOut();
+    navigate('/admin/login', {
+      replace: true,
+      state: { message: '✓ Password updated! Please sign in with your new password.' },
+    });
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-6 p-8 bg-white rounded-xl shadow-lg">
+    <>
+      <style>{`
+        input::-ms-reveal, input::-ms-clear { display: none; }
+        input::-webkit-credentials-auto-fill-button,
+        input::-webkit-strong-password-auto-fill-button {
+          display: none !important;
+          visibility: hidden;
+          pointer-events: none;
+        }
+      `}</style>
 
-        <div>
-          <h2 className="text-center text-3xl font-bold text-gray-900">Set New Password</h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Enter your new password below
-          </p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0A]">
+        <div className="max-w-md w-full space-y-6 p-8 bg-white dark:bg-[#141414] rounded-xl shadow-lg border border-transparent dark:border-[#262626]">
 
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">{error}</div>
-        )}
-
-        {!sessionReady && !error && (
-          <div className="flex justify-center py-4">
-            <div className="w-8 h-8 border-2 border-gray-200 border-t-black rounded-full animate-spin" />
+          <div>
+            <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white">
+              {needsMfa ? 'Verify MFA' : 'Set New Password'}
+            </h2>
+            <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+              {needsMfa
+                ? 'Enter the code from your authenticator app'
+                : 'Enter your new password below'}
+            </p>
           </div>
-        )}
 
-        {sessionReady && (
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">New Password</label>
-              <div className="relative mt-1">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              </div>
+          {error && (
+            <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">
+              {error}
             </div>
+          )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
-              <div className="relative mt-1">
-                <input
-                  type={showConfirm ? 'text' : 'password'}
-                  required
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  placeholder="••••••••"
-                  className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm(!showConfirm)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  {showConfirm ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              </div>
+          {!sessionReady && !error && (
+            <div className="flex justify-center py-4">
+              <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-700 border-t-black dark:border-t-white rounded-full animate-spin" />
             </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-50"
-            >
-              {loading ? 'Saving...' : 'Save New Password'}
+          {/* Password form */}
+          {sessionReady && !needsMfa && (
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
+                <div className="relative mt-1">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10">
+                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</label>
+                <div className="relative mt-1">
+                  <input
+                    type={showConfirm ? 'text' : 'password'}
+                    required
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
+                  />
+                  <button type="button" onClick={() => setShowConfirm(!showConfirm)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10">
+                    {showConfirm ? <EyeOffIcon /> : <EyeIcon />}
+                  </button>
+                </div>
+              </div>
+
+              <button type="submit" disabled={loading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#DB1A1A] hover:bg-[#b81515] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DB1A1A] dark:focus:ring-offset-[#141414] disabled:opacity-50 transition-colors">
+                {loading ? 'Checking...' : 'Save New Password'}
+              </button>
+            </form>
+          )}
+
+          {/* MFA form */}
+          {sessionReady && needsMfa && (
+            <form className="space-y-4" onSubmit={handleMfaVerify}>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Authenticator Code (6 digits)
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  required
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="••••••"
+                  autoComplete="one-time-code"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 tracking-widest text-center text-lg"
+                />
+              </div>
+
+              <button type="submit" disabled={mfaLoading || mfaCode.length !== 6}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#DB1A1A] hover:bg-[#b81515] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DB1A1A] dark:focus:ring-offset-[#141414] disabled:opacity-50 transition-colors">
+                {mfaLoading ? 'Verifying...' : 'Verify & Save Password'}
+              </button>
+
+              <button type="button" onClick={() => { setNeedsMfa(false); setMfaCode(''); setError(''); }}
+                className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
+                ← Back
+              </button>
+            </form>
+          )}
+
+          {error && !needsMfa && (
+            <button onClick={() => navigate('/admin/login', { replace: true })}
+              className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
+              ← Back to Sign in
             </button>
-          </form>
-        )}
+          )}
 
-        {error && (
-          <button
-            onClick={() => navigate('/admin/login', { replace: true })}
-            className="w-full text-center text-sm text-gray-500 hover:text-black transition-colors"
-          >
-            ← Back to Sign in
-          </button>
-        )}
-
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
