@@ -20,21 +20,21 @@ const PALETTE_STYLE = `
     --surface-hover:rgba(0,0,0,0.07);
     --input-bg:     rgba(0,0,0,0.03);
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --accent:       #DB1A1A;
-      --bg:           #ffffff;
-      --fg:           #000000;
-      --sidebar-bg:   #ffffff;
-      --muted:        rgba(0,0,0,0.4);
-      --border:       rgba(0,0,0,0.1);
-      --surface:      rgba(0,0,0,0.04);
-      --surface-hover:rgba(0,0,0,0.07);
-      --input-bg:     rgba(0,0,0,0.03);
-    }
+  html.dark :root,
+  html.dark body {
+    --accent:       #DB1A1A;
+    --bg:           #0A0A0A;
+    --fg:           #ffffff;
+    --sidebar-bg:   #000000;
+    --muted:        rgba(255,255,255,0.4);
+    --border:       rgba(255,255,255,0.1);
+    --surface:      rgba(255,255,255,0.04);
+    --surface-hover:rgba(255,255,255,0.07);
+    --input-bg:     rgba(255,255,255,0.05);
   }
   * { box-sizing: border-box; }
-  body { color: var(--fg); }
+  body { color: var(--fg); background-color: var(--bg); }
+  @keyframes spin { to { transform: rotate(360deg); } }
 `;
 
 function Toast({ message, type, visible }) {
@@ -424,7 +424,7 @@ export default function ProfileSettings() {
     setPasswordLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
-        redirectTo: `${window.location.origin}/#/admin/auth/reset-password`,
+      redirectTo: `${window.location.origin}/`,
       });
       if (error) throw error;
       showToast(`Password reset email sent to ${profile.email}.`);
@@ -451,13 +451,7 @@ export default function ProfileSettings() {
 
   return (
     <>
-      <style>{`
-        ${PALETTE_STYLE}
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        * { font-family: 'Inter', sans-serif; }
-        button:hover { filter: brightness(0.92); }
-      `}</style>
+      <style>{PALETTE_STYLE}</style>
 
       <Toast {...toast} />
 
@@ -499,9 +493,7 @@ export default function ProfileSettings() {
                 borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', alignItems: 'center',
               }}>
                 {/* Avatar */}
-                <div style={{ position: 'relative', width: 112, height: 112, marginBottom: 20 }}
-                  className="avatar-wrap"
-                >
+                <div style={{ position: 'relative', width: 112, height: 112, marginBottom: 20 }}>
                   <div style={{
                     width: '100%', height: '100%', borderRadius: '50%',
                     background: 'var(--surface)', overflow: 'hidden',
