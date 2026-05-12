@@ -43,6 +43,13 @@ export const AdminLogin = () => {
 
   const successMessage = location.state?.message;
 
+  // Clear location state after reading so it doesn't persist on refresh
+  useEffect(() => {
+    if (successMessage) {
+      window.history.replaceState({}, document.title);
+    }
+  }, [successMessage]);
+
   useEffect(() => {
     if (!authLoading && user && validated) {
       navigate('/admin/dashboard', { replace: true });
@@ -139,7 +146,7 @@ export const AdminLogin = () => {
 
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/#/admin/auth/reset-password`, // ← fix HashRouter
+        redirectTo: `${window.location.origin}/`,
       });
 
       if (resetError) throw new Error(resetError.message);
@@ -241,8 +248,11 @@ export const AdminLogin = () => {
           <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">{error}</div>
         )}
 
+        {/* ✅ Success message after password reset — green banner */}
         {successMessage && !error && (
-          <div className="bg-green-50 text-green-600 p-3 rounded-lg text-sm">{successMessage}</div>
+          <div className="bg-green-50 border border-green-200 text-green-700 p-3 rounded-lg text-sm">
+            {successMessage}
+          </div>
         )}
 
         <form className="space-y-4" onSubmit={handleSubmit}>

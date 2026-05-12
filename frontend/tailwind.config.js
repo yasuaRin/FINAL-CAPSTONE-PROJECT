@@ -1,5 +1,6 @@
 ﻿/** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -8,27 +9,27 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#1a1a1a',
-          foreground: '#ffffff',
-          50: '#f5f5f5',
-          100: '#e8e8e8',
-          500: '#1a1a1a',
-          600: '#111111',
-          700: '#000000',
+          DEFAULT: 'var(--primary)',
+          foreground: 'var(--primary-foreground)',
+          50: '#fef2f2',
+          100: '#fee2e2',
+          500: '#DB1A1A',
+          600: '#b81515',
+          700: '#8b0000',
         },
         secondary: {
-          DEFAULT: '#7b809a',
+          DEFAULT: 'var(--secondary)',
         },
         muted: {
-          DEFAULT: '#f0f2f5',
-          foreground: '#7b809a',
+          DEFAULT: 'var(--muted)',
+          foreground: 'var(--muted-foreground)',
         },
-        border: '#d2d6da',
-        background: '#f0f2f5',
-        foreground: '#344767',
+        border: 'var(--border)',
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
         card: {
-          DEFAULT: '#ffffff',
-          foreground: '#344767',
+          DEFAULT: 'var(--card)',
+          foreground: 'var(--card-foreground)',
         },
         destructive: {
           DEFAULT: '#ea0606',
