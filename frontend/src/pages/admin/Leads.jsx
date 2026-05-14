@@ -604,10 +604,8 @@ Be direct. No fluff. No percentages.`;
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
-
-
-
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                
                 {/* Rating row */}
                 {selectedLead.rating && (
                   <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-3 rounded-lg">
@@ -737,26 +735,6 @@ Be direct. No fluff. No percentages.`;
                     </button>
                   )}
 
-                  {isPartner(selectedLead.id) && (
-                    <div className="bg-muted/50 p-3 rounded-lg border border-border">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Partnership Status</p>
-                      <div className="flex items-center justify-between gap-2">
-                        {['In Progress', 'Dealing', 'Partner'].map(s => {
-                          const cur      = getPartner(selectedLead.id)?.status;
-                          const isActive = cur === s;
-                          return (
-                            <button key={s} onClick={() => updateStatus(selectedLead.id, s)}
-                              className={`flex-1 py-1.5 rounded text-[9px] font-bold transition-all ${
-                                isActive
-                                  ? s === 'Partner' ? 'bg-blue-500 text-white' : s === 'Dealing' ? 'bg-purple-500 text-white' : 'bg-slate-500 text-white'
-                                  : 'bg-background text-muted-foreground hover:bg-muted'
-                              }`}
-                            >{s.toUpperCase()}</button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             </motion.div>
@@ -1023,10 +1001,10 @@ Be direct. No fluff. No percentages.`;
                     <div className="relative flex-1">
                       <input
                         type="email"
-                        placeholder={websiteVisited || !contactModal.website ? 'Paste their email here...' : '🔒 Visit website first...'}
+                        placeholder={!contactModal.website ? 'No website — email unavailable' : !websiteVisited ? 'Visit website first...' : 'Paste their email here...'}
                         value={emailInput}
                         onChange={e => setEmailInput(e.target.value)}
-                        disabled={!websiteVisited && !!contactModal.website}
+                       disabled={!contactModal.website || !websiteVisited}
                         className="w-full px-3 py-2 text-sm border border-border rounded-md bg-background outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-muted/50"
                       />
                     </div>
