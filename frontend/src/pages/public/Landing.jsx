@@ -36,7 +36,6 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-
 function AnimatedNumber({ value, suffix = '' }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true });
@@ -55,7 +54,7 @@ function AnimatedNumber({ value, suffix = '' }) {
   return <span ref={ref}>{count}{suffix}</span>;
 }
 
-const LandingPage = () => {
+const Landing = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [previewSlide, setPreviewSlide] = useState(0);
 
@@ -379,15 +378,15 @@ const LandingPage = () => {
           </motion.h2>
         </div>
 
-        <div className="max-w-6xl mx-auto relative group overflow-hidden" style={{ maskImage: 'linear-gradient(to right, transparent, black 5%, black 95%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 5%, black 95%, transparent)' }}>
+        <div className="max-w-6xl mx-auto relative group overflow-hidden" style={{ maskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)' }}>
           <div className="marquee-slower flex py-6">
             <div className="flex gap-4 shrink-0">
                {[...Array(6)].map((_, i) => (
-                <div key={i} className="flex gap-4 shrink-0">
+                <div key={i} className="flex gap-8 shrink-0 px-2">
                   {[16, 22, 25].map((imgNum) => (
                     <div 
                       key={`${i}-${imgNum}`}
-                      className="w-[18rem] md:w-[24rem] aspect-[16/9] rounded-md overflow-hidden shadow-2xl border border-black/5"
+                      className="w-[18rem] md:w-[24rem] rounded-md overflow-hidden shadow-2xl border border-black/5"
                     >
                       <img 
                         src={`/img${imgNum}.png`} 
@@ -434,7 +433,7 @@ const LandingPage = () => {
               <img src="/tsp.png" alt="TSP" className="w-full rounded-xl" />
               <div 
                 className="absolute -bottom-4 -right-4 lg:-bottom-8 lg:-right-8 bg-gradient-to-r from-orange-600 via-amber-500 to-orange-600 hover:from-white hover:via-white hover:to-white bg-[length:200%_auto] animate-gradient-slow hover:scale-105 p-4 rounded-xl shadow-2xl transition-all duration-300 cursor-pointer group"
-                onClick={() => window.open('https://wa.me/6285121057706?text=Hi%20Admin!%20Mau%20Konsultasi%20TSP!', '_blank')}
+                onClick={() => window.open('https://wa.me/6285121057706?text=Hi%20Admin!%20Mau%20Konsultasi%20Brand%20aku%20dong!', '_blank')}
               >
                 <div className="flex items-center justify-center">
                   <p className="text-white group-hover:text-black font-bold text-xs lg:text-base uppercase tracking-tighter transition-colors">FREE CONSULTATION!</p>
@@ -590,4 +589,4 @@ const LandingPage = () => {
   );
 };
 
-export default LandingPage;
+export default Landing;
