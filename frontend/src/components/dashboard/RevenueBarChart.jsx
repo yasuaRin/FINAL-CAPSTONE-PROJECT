@@ -137,7 +137,7 @@ export const RevenueBarChart = ({
     : null;
 
   return (
-    <div className="lg:col-span-2 dashboard-card p-0 overflow-hidden">
+    <div className="lg:col-span-2 dashboard-card p-0 overflow-hidden h-fit">
 
       {/* Header */}
       <div className="p-4 border-b border-border bg-muted/20">
