@@ -8,6 +8,7 @@ import {
   TrendingUp, Menu, X, Briefcase, User, Radar,
   FileText, Zap, Sun, Moon,
 } from 'lucide-react';
+import Footer from './Footer';
 
 const STATIC_ITEMS = [
   { id: 'p1', title: 'Dashboard',      category: 'Page',   path: '/admin',          keywords: 'home main overview stats' },
@@ -312,10 +313,12 @@ export const  AdminLayout = () => {
           </div>
         </header>
 
+      
         <section ref={pageContentRef} className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8" style={{ position: 'relative' }}>
           <div className="max-w-7xl mx-auto pt-4">
             <Outlet />
           </div>
+          <Footer /> 
         </section>
 
         {highlightQuery && (
