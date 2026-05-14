@@ -1,256 +1,300 @@
-/**
- * SortByButton.jsx - Date Range Picker with From/To inputs
- */
-
-import { useState, useRef, useEffect } from 'react';
-import { Calendar, ChevronDown, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+// frontend/src/components/layout/SortByButton.jsx
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, subDays, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, parseISO } from 'date-fns';
-import { DayPicker } from 'react-day-picker';
+import { Filter, ChevronDown, Calendar, X } from 'lucide-react';
+import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { supabase } from '../../services/supabase';
 
-const DATE_PRESETS = [
-  { label: 'Last 7 Days', value: '7d' },
-  { label: 'Last 30 Days', value: '30d' },
-  { label: 'Last 90 Days', value: '90d' },
-  { label: 'This Month', value: 'thisMonth' },
-  { label: 'Last Month', value: 'lastMonth' },
-  { label: 'Custom Range', value: 'custom' },
-];
+const parseLocalDate = (str) => {
+  if (!str) return null;
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
 
-export const SortByButton = ({
+const toInputValue = (date) => {
+  if (!date) return '';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+export const SortByButton = ({ 
+  brands, 
+  onBrandChange, 
+  selectedBrand,
   onDateRangeChange,
-  selectedDateRange,
+  dateRange: externalDateRange
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [tempFromDate, setTempFromDate] = useState('');
-  const [tempToDate, setTempToDate] = useState('');
   const dropdownRef = useRef(null);
+  const [dateBounds, setDateBounds] = useState({ min: null, max: null });
+  const [localDateRange, setLocalDateRange] = useState({
+    start: null,
+    end: null,
+    preset: 'allData'
+  });
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+
+  useEffect(() => {
+    const fetchBounds = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('live_sessions')
+          .select('date')
+          .order('date', { ascending: true })
+          .limit(1);
+
+        const { data: dataMax, error: errorMax } = await supabase
+          .from('live_sessions')
+          .select('date')
+          .order('date', { ascending: false })
+          .limit(1);
+
+        if (!error && !errorMax && data?.length && dataMax?.length) {
+          const minDate = data[0].date;
+          const maxDate = dataMax[0].date;
+          setDateBounds({ min: minDate, max: maxDate });
+          
+          if (!localDateRange.start && !localDateRange.end) {
+            const newRange = {
+              start: parseLocalDate(minDate),
+              end: parseLocalDate(maxDate),
+              preset: 'allData'
+            };
+            setLocalDateRange(newRange);
+            onDateRangeChange?.(newRange);
+          }
+        }
+      } catch (err) {
+        // Silent fail
+      }
+    };
+    fetchBounds();
+  }, []);
+
+  useEffect(() => {
+    if (externalDateRange) {
+      setLocalDateRange(externalDateRange);
+      if (externalDateRange.preset === 'custom' && externalDateRange.start && externalDateRange.end) {
+        setCustomStart(toInputValue(externalDateRange.start));
+        setCustomEnd(toInputValue(externalDateRange.end));
+      }
+    }
+  }, [externalDateRange]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
-        setShowCalendar(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Initialize temp dates when calendar opens
-  useEffect(() => {
-    if (showCalendar && selectedDateRange?.start && selectedDateRange?.end) {
-      setTempFromDate(format(selectedDateRange.start, 'yyyy-MM-dd'));
-      setTempToDate(format(selectedDateRange.end, 'yyyy-MM-dd'));
-    }
-  }, [showCalendar, selectedDateRange]);
+  const datePresets = [
+    {
+      label: 'All Data',
+      value: 'allData',
+      getRange: () => ({
+        start: parseLocalDate(dateBounds.min),
+        end: parseLocalDate(dateBounds.max),
+        preset: 'allData',
+      }),
+    },
+    {
+      label: 'Last 7 Days',
+      value: 'last7',
+      getRange: () => ({
+        start: startOfDay(subDays(new Date(), 7)),
+        end: endOfDay(new Date()),
+        preset: 'last7',
+      }),
+    },
+    {
+      label: 'Last 30 Days',
+      value: 'last30',
+      getRange: () => ({
+        start: startOfDay(subDays(new Date(), 30)),
+        end: endOfDay(new Date()),
+        preset: 'last30',
+      }),
+    },
+  ];
 
-  const handleDatePreset = (presetValue) => {
-    if (presetValue === 'custom') {
-      setShowCalendar(true);
-      return;
-    }
-
-    const now = new Date();
-    let start = now;
-    let end = now;
-
-    switch (presetValue) {
-      case '7d':
-        start = subDays(now, 7);
-        break;
-      case '30d':
-        start = subDays(now, 30);
-        break;
-      case '90d':
-        start = subDays(now, 90);
-        break;
-      case 'thisMonth':
-        start = startOfMonth(now);
-        end = endOfMonth(now);
-        break;
-      case 'lastMonth':
-        const lastMonth = subMonths(now, 1);
-        start = startOfMonth(lastMonth);
-        end = endOfMonth(lastMonth);
-        break;
-      default:
-        break;
-    }
-
-    onDateRangeChange({ 
-      start: startOfDay(start), 
-      end: endOfDay(end), 
-      preset: presetValue 
-    });
-    setShowCalendar(false);
+  const handleDatePreset = (preset) => {
+    const range = preset.getRange();
+    setLocalDateRange(range);
+    onDateRangeChange?.(range);
     setIsOpen(false);
   };
 
-  const handleApplyCustomRange = () => {
-    if (tempFromDate && tempToDate) {
-      const fromDate = parseISO(tempFromDate);
-      const toDate = parseISO(tempToDate);
-      
-      if (fromDate && toDate && fromDate <= toDate) {
-        onDateRangeChange({
-          start: startOfDay(fromDate),
-          end: endOfDay(toDate),
-          preset: 'custom'
-        });
-        setIsOpen(false);
-        setShowCalendar(false);
+  const handleCustomApply = () => {
+    if (!customStart || !customEnd) return;
+    const start = parseLocalDate(customStart);
+    const end = parseLocalDate(customEnd);
+    if (!start || !end || start > end) return;
+    const range = { start: startOfDay(start), end: endOfDay(end), preset: 'custom' };
+    setLocalDateRange(range);
+    onDateRangeChange?.(range);
+    setIsOpen(false);
+  };
+
+  const getDisplayText = () => {
+    if (selectedBrand) {
+      const brand = brands?.find(b => b.brand_id === selectedBrand);
+      if (localDateRange.preset === 'allData') {
+        return `${brand?.brand_name || 'Brand'} · All Data`;
+      } else if (localDateRange.preset === 'last7') {
+        return `${brand?.brand_name || 'Brand'} · Last 7D`;
+      } else if (localDateRange.preset === 'last30') {
+        return `${brand?.brand_name || 'Brand'} · Last 30D`;
+      } else if (localDateRange.start && localDateRange.end) {
+        return `${brand?.brand_name || 'Brand'} · ${format(localDateRange.start, 'MMM dd')} - ${format(localDateRange.end, 'MMM dd')}`;
       }
+      return brand?.brand_name || 'Brand';
     }
+    
+    if (localDateRange.preset === 'allData') {
+      return 'All Data';
+    } else if (localDateRange.preset === 'last7') {
+      return 'Last 7 Days';
+    } else if (localDateRange.preset === 'last30') {
+      return 'Last 30 Days';
+    } else if (localDateRange.start && localDateRange.end) {
+      return `${format(localDateRange.start, 'MMM dd')} - ${format(localDateRange.end, 'MMM dd')}`;
+    }
+    return 'All Filters';
   };
 
-  const handleFromDateChange = (e) => {
-    setTempFromDate(e.target.value);
-  };
+  const activeCount = (selectedBrand ? 1 : 0) + (localDateRange.preset !== 'allData' ? 1 : 0);
 
-  const handleToDateChange = (e) => {
-    setTempToDate(e.target.value);
-  };
-
-  const getLabel = () => {
-    if (selectedDateRange?.preset && selectedDateRange.preset !== 'custom') {
-      const preset = DATE_PRESETS.find(p => p.value === selectedDateRange.preset);
-      return preset?.label || 'Select dates';
-    }
-    if (selectedDateRange?.start && selectedDateRange?.end) {
-      return `${format(selectedDateRange.start, 'dd MMM yyyy')} - ${format(selectedDateRange.end, 'dd MMM yyyy')}`;
-    }
-    return 'Select dates';
+  const resetAllFilters = () => {
+    onBrandChange?.(null);
+    const allDataRange = {
+      start: parseLocalDate(dateBounds.min),
+      end: parseLocalDate(dateBounds.max),
+      preset: 'allData'
+    };
+    setLocalDateRange(allDataRange);
+    onDateRangeChange?.(allDataRange);
+    setIsOpen(false);
   };
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-muted/20 border border-border text-foreground hover:border-primary/40 hover:text-primary h-10 px-4 py-2"
+        className={`relative flex items-center gap-2 h-10 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
+          isOpen
+            ? 'border-primary bg-primary/5 text-primary'
+            : 'border-border bg-muted/20 text-foreground hover:border-primary/40'
+        }`}
       >
-        <Calendar size={14} />
-        {getLabel()}
+        <Filter size={14} />
+        {getDisplayText()}
+        {activeCount > 0 && (
+          <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-white text-[9px] font-black flex items-center justify-center">
+            {activeCount}
+          </span>
+        )}
         <ChevronDown size={12} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute right-0 mt-2 w-[380px] bg-card border border-border rounded-2xl shadow-2xl z-50 overflow-hidden"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            transition={{ duration: 0.14 }}
+            className="absolute left-0 top-full  origin0-top min-w-[320px] mt-2 z-50 w-80 bg-card border border-border rounded-2xl shadow-xl max-h-[500px] overflow-y-auto"
           >
-            <div className="p-4">
-              {!showCalendar ? (
+            <div className="p-4 space-y-4">
+              {/* Date Range Section */}
+              <div>
+                <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-2">
+                  <Calendar size={10} /> Date Range
+                </label>
                 <div className="space-y-1">
-                  {DATE_PRESETS.map((preset) => (
+                  {datePresets.map((preset) => (
                     <button
                       key={preset.value}
-                      onClick={() => handleDatePreset(preset.value)}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors ${
-                        selectedDateRange?.preset === preset.value && preset.value !== 'custom'
+                      onClick={() => handleDatePreset(preset)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left text-xs transition-colors ${
+                        localDateRange.preset === preset.value
                           ? 'bg-primary/10 text-primary font-bold'
-                          : 'hover:bg-muted text-foreground'
+                          : 'hover:bg-muted/10 text-foreground'
                       }`}
                     >
                       <span>{preset.label}</span>
-                      {selectedDateRange?.preset === preset.value && preset.value !== 'custom' && (
-                        <Check size={14} className="text-primary" />
+                      {localDateRange.preset === preset.value && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                       )}
                     </button>
                   ))}
-                </div>
-              ) : (
-                <div>
-                  <button
-                    onClick={() => setShowCalendar(false)}
-                    className="mb-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-                  >
-                    <ChevronLeft size={12} /> Back to presets
-                  </button>
                   
-                  {/* From/To Date Inputs */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div>
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                        From Date
-                      </label>
+                  {/* Custom Range */}
+                  <div className="pt-2 border-t border-border/60 mt-2">
+                    <p className="text-[8px] text-muted-foreground mb-2">Custom Range</p>
+                    <div className="grid grid-cols-2 gap-2 mb-2">
                       <input
                         type="date"
-                        value={tempFromDate}
-                        onChange={handleFromDateChange}
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        value={customStart}
+                        max={customEnd || undefined}
+                        onChange={(e) => setCustomStart(e.target.value)}
+                        className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-[10px]"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                        To Date
-                      </label>
                       <input
                         type="date"
-                        value={tempToDate}
-                        onChange={handleToDateChange}
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        value={customEnd}
+                        min={customStart || undefined}
+                        onChange={(e) => setCustomEnd(e.target.value)}
+                        className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-[10px]"
                       />
                     </div>
+                    <button
+                      onClick={handleCustomApply}
+                      disabled={!customStart || !customEnd}
+                      className="w-full py-1.5 rounded-lg bg-primary/10 text-primary text-[9px] font-bold uppercase tracking-wider hover:bg-primary/20 transition-all disabled:opacity-40"
+                    >
+                      Apply Custom Range
+                    </button>
                   </div>
-                  
-                  {/* Calendar for visual selection */}
-                  <DayPicker
-                    mode="range"
-                    required
-                    selected={{ from: tempFromDate ? parseISO(tempFromDate) : undefined, to: tempToDate ? parseISO(tempToDate) : undefined }}
-                    onSelect={(range) => {
-                      if (range?.from) {
-                        setTempFromDate(format(range.from, 'yyyy-MM-dd'));
-                      }
-                      if (range?.to) {
-                        setTempToDate(format(range.to, 'yyyy-MM-dd'));
-                      }
-                    }}
-                    numberOfMonths={2}
-                    className="rdp-custom mb-4"
-                    classNames={{
-                      months: 'flex flex-col sm:flex-row gap-4',
-                      month: 'space-y-3',
-                      month_caption: 'flex justify-center pt-1 relative items-center',
-                      caption_label: 'text-sm font-bold',
-                      nav: 'space-x-1 flex items-center',
-                      button_previous: 'absolute left-1 h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 transition-opacity flex items-center justify-center rounded-md hover:bg-muted',
-                      button_next: 'absolute right-1 h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 transition-opacity flex items-center justify-center rounded-md hover:bg-muted',
-                      month_grid: 'w-full border-collapse',
-                      weekdays: 'flex',
-                      weekday: 'text-muted-foreground rounded-md w-9 font-bold text-[10px] uppercase text-center py-1',
-                      week: 'flex w-full mt-1',
-                      day: 'h-9 w-9 text-center text-sm p-0 relative',
-                      day_button: 'h-9 w-9 p-0 font-medium hover:bg-muted rounded-md transition-colors flex items-center justify-center w-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                      range_start: 'bg-primary text-primary-foreground font-bold rounded-l-md',
-                      range_end: 'bg-primary text-primary-foreground font-bold rounded-r-md',
-                      range_middle: 'bg-primary/10 text-primary font-medium rounded-none',
-                      selected: 'bg-primary text-primary-foreground rounded-md',
-                      today: 'bg-accent text-accent-foreground border border-primary/30 rounded-md',
-                      outside: 'text-muted-foreground opacity-40',
-                      disabled: 'text-muted-foreground opacity-30 cursor-not-allowed',
-                      hidden: 'invisible',
-                    }}
-                    components={{
-                      Chevron: ({ orientation }) =>
-                        orientation === 'left' ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />,
-                    }}
-                  />
-                  
-                  {/* Apply Button */}
-                  <button
-                    onClick={handleApplyCustomRange}
-                    disabled={!tempFromDate || !tempToDate}
-                    className="w-full mt-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
-                  >
-                    Apply Range
-                  </button>
                 </div>
+              </div>
+
+              <div className="border-t border-border/60" />
+
+              {/* Brand Filter */}
+              <div>
+                <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">
+                  Brand
+                </label>
+                <select
+                  value={selectedBrand || ''}
+                  onChange={(e) => onBrandChange?.(e.target.value || null)}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary/20"
+                >
+                  <option value="">All Brands</option>
+                  {brands?.map((brand) => (
+                    <option key={brand.brand_id} value={brand.brand_id}>
+                      {brand.brand_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Reset button */}
+              {activeCount > 0 && (
+                <button
+                  onClick={resetAllFilters}
+                  className="w-full py-2 rounded-lg border border-border/60 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted/20 transition-all mt-2 flex items-center justify-center gap-1"
+                >
+                  <X size={10} /> Reset All Filters
+                </button>
               )}
             </div>
           </motion.div>

@@ -44,27 +44,30 @@ export default function Brands() {
 
   useEffect(() => {
     const fetchUserRole = async () => {
-      try {
-        setIsRoleLoading(true);
-        const {
-          data: { user: authUser },
-          error: authError,
-        } = await supabase.auth.getUser();
-        if (authError) { console.error("Auth Error:", authError); return; }
-        if (!authUser?.email) { console.error("No authenticated email found"); return; }
-        const { data, error } = await supabase
-          .from("admins")
-          .select("role")
-          .eq("email", authUser.email)
-          .single();
-        if (error) { console.error("Role Fetch Error:", error); return; }
-        setUserRole(data.role);
-      } catch (err) {
-        console.error("fetchUserRole Error:", err);
-      } finally {
-        setIsRoleLoading(false);
-      }
-    };
+  try {
+    setIsRoleLoading(true);
+    const {
+      data: { user: authUser },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError) { console.error("Auth Error:", authError); return; }
+    if (!authUser?.email) { console.error("No authenticated email found"); return; }
+    
+    // ✅ Change this - query 'team_members' instead of 'admins'
+    const { data, error } = await supabase
+      .from("team_members")  // ← Fixed: use team_members table
+      .select("role")
+      .eq("auth_user_id", authUser.id)  // ← Fixed: use auth_user_id, not email
+      .single();
+      
+    if (error) { console.error("Role Fetch Error:", error); return; }
+    setUserRole(data.role);
+  } catch (err) {
+    console.error("fetchUserRole Error:", err);
+  } finally {
+    setIsRoleLoading(false);
+  }
+};
     fetchUserRole();
   }, []);
 
@@ -276,7 +279,8 @@ export default function Brands() {
   };
 
   if (isLoading || isRoleLoading || revenueLoading) {
-    return (
+  return (
+    <div id="brands-report-container">
       <div className="flex items-center justify-center h-96">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
@@ -285,12 +289,13 @@ export default function Brands() {
           </p>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  return (
+return (
+  <div id="brands-report-container">
     <div className="space-y-8 pb-12 relative">
-      <div className="flex justify-end">
         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
           isSuperAdmin
             ? 'bg-primary/10 text-primary border border-primary/20'
@@ -327,14 +332,6 @@ export default function Brands() {
           <p className="text-muted-foreground mt-1 font-light text-xs">Track and manage all your brands in one place.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className={`inline-flex items-center justify-center rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all h-10 px-4 gap-2 border border-border bg-card hover:border-primary/50 ${syncStatus === 'processing' ? 'animate-pulse' : ''}`}
-          >
-            {syncStatus === 'success' ? <CheckCircle2 size={14} className="text-emerald-500" /> : <FileUp size={14} />}
-            {syncStatus === 'processing' ? 'Importing...' : syncStatus === 'success' ? 'Imported' : 'Import Brands'}
-          </button>
-          <input type="file" ref={fileInputRef} onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])} className="hidden" accept=".json,.csv" />
           <button
             onClick={() => openForm()}
             className="inline-flex items-center justify-center rounded-xl text-xs font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90 transition-all h-10 px-6 shadow-lg shadow-primary/20 gap-2"

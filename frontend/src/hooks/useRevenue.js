@@ -30,7 +30,7 @@ const fetchAllRows = async () => {
         viewers_tiktok,
         likes_shopee,
         likes_tiktok,
-        host_id,
+        host_team_member_id,
         brand_id,
         period_id
       `)
@@ -122,7 +122,7 @@ export const useRevenue = () => {
           id: item.id,
           date: item.date,
           period_id: item.period_id,
-          host_id: item.host_id,
+          host_team_member_id: item.host_team_member_id,
           brand_id: String(item.brand_id), // Convert UUID to string
           revenue_shopee: item.revenue_shopee ?? 0,
           revenue_tiktok: item.revenue_tiktok ?? 0,
