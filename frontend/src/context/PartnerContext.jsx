@@ -29,15 +29,16 @@ export function PartnerProvider({ children }) {
       if (error) {
         console.error('Supabase fetch error:', error);
       } else {
-        // Map snake_case from DB to camelCase for the app
         setPartneredBrands(data.map(row => ({
-          id:            row.id,
-          name:          row.name,
-          industry:      row.industry,
-          location:      row.location,
-          status:        row.status,
+          id:             row.id,
+          name:           row.name,
+          industry:       row.industry,
+          location:       row.location,
+          status:         row.status,
           outreachMethod: row.outreach_method,
-          datePartnered: row.date_partnered,
+          datePartnered:  row.date_partnered,
+          lat:            row.lat,
+          lng:            row.lng,
         })));
       }
       setLoading(false);
@@ -48,17 +49,18 @@ export function PartnerProvider({ children }) {
 
   // ── Add partner ──────────────────────────────────────────────────────────
   const addPartner = async (lead, status = 'In Progress') => {
-    // Prevent duplicates
     if (partneredBrands.find(b => b.id === lead.id)) return;
 
     const newPartner = {
-      id:             lead.id,
-      name:           lead.name,
-      industry:       lead.industry,
-      location:       lead.location,
+      id:              lead.id,
+      name:            lead.name,
+      industry:        lead.industry,
+      location:        lead.location,
       status,
       outreach_method: lead.outreachMethod || null,
-      date_partnered: new Date().toISOString(),
+      date_partnered:  new Date().toISOString(),
+      lat:             lead.lat ?? null,
+      lng:             lead.lng ?? null,
     };
 
     const { error } = await supabase.from('partners').insert([newPartner]);
@@ -69,13 +71,15 @@ export function PartnerProvider({ children }) {
     }
 
     setPartneredBrands(prev => [{
-      id:            newPartner.id,
-      name:          newPartner.name,
-      industry:      newPartner.industry,
-      location:      newPartner.location,
-      status:        newPartner.status,
+      id:             newPartner.id,
+      name:           newPartner.name,
+      industry:       newPartner.industry,
+      location:       newPartner.location,
+      status:         newPartner.status,
       outreachMethod: newPartner.outreach_method,
-      datePartnered: newPartner.date_partnered,
+      datePartnered:  newPartner.date_partnered,
+      lat:            newPartner.lat,
+      lng:            newPartner.lng,
     }, ...prev]);
   };
 
@@ -86,10 +90,7 @@ export function PartnerProvider({ children }) {
       .update({ status })
       .eq('id', id);
 
-    if (error) {
-      console.error('Supabase update error:', error);
-      return;
-    }
+    if (error) { console.error('Supabase update error:', error); return; }
 
     setPartneredBrands(prev =>
       prev.map(b => b.id === id ? { ...b, status } : b)
@@ -103,10 +104,7 @@ export function PartnerProvider({ children }) {
       .update({ outreach_method: method })
       .eq('id', id);
 
-    if (error) {
-      console.error('Supabase update outreach error:', error);
-      return;
-    }
+    if (error) { console.error('Supabase update outreach error:', error); return; }
 
     setPartneredBrands(prev =>
       prev.map(b => b.id === id ? { ...b, outreachMethod: method } : b)
@@ -120,10 +118,7 @@ export function PartnerProvider({ children }) {
       .delete()
       .eq('id', id);
 
-    if (error) {
-      console.error('Supabase delete error:', error);
-      return;
-    }
+    if (error) { console.error('Supabase delete error:', error); return; }
 
     setPartneredBrands(prev => prev.filter(b => b.id !== id));
   };
