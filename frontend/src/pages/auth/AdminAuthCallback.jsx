@@ -8,7 +8,6 @@ const AdminAuthCallback = () => {
   useEffect(() => {
     const handleCallback = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
-
       if (error || !session) {
         navigate('/admin/login', { replace: true });
         return;
@@ -17,7 +16,7 @@ const AdminAuthCallback = () => {
       try {
         const user = session.user;
 
-        // Validasi domain
+        // Validate domain
         const allowedDomains = ['gmail.com', 'vidhelp.com'];
         const domain = user.email.split('@')[1];
         if (!allowedDomains.includes(domain)) {
@@ -29,14 +28,14 @@ const AdminAuthCallback = () => {
           return;
         }
 
-        // Validasi di tabel admins
-        const { data: adminData, error: dbError } = await supabase
-          .from('admins')
-          .select('role, is_active')
-          .eq('id', user.id)
+        // Validate in team_members table
+        const { data: memberData, error: dbError } = await supabase
+          .from('team_members')
+          .select('role, status, auth_user_id')
+          .eq('auth_user_id', user.id)
           .single();
 
-        if (dbError || !adminData) {
+        if (dbError || !memberData) {
           await supabase.auth.signOut();
           navigate('/admin/login', {
             replace: true,
@@ -45,7 +44,7 @@ const AdminAuthCallback = () => {
           return;
         }
 
-        if (!adminData.is_active) {
+        if (memberData.status !== 'active') {
           await supabase.auth.signOut();
           navigate('/admin/login', {
             replace: true,
@@ -54,7 +53,7 @@ const AdminAuthCallback = () => {
           return;
         }
 
-        if (adminData.role === 'staff') {
+        if (memberData.role === 'staff') {
           await supabase.auth.signOut();
           navigate('/admin/login', {
             replace: true,
@@ -63,9 +62,8 @@ const AdminAuthCallback = () => {
           return;
         }
 
-        // Lolos semua validasi → ke dashboard
+        // All validations passed → go to dashboard
         navigate('/admin', { replace: true });
-
       } catch (err) {
         await supabase.auth.signOut();
         navigate('/admin/login', { replace: true });

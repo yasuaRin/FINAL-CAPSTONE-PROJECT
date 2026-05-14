@@ -302,7 +302,7 @@ export const AdminLayout = () => {
               className="relative w-9 h-9 rounded-full border border-border overflow-hidden cursor-pointer flex-shrink-0 bg-muted hover:border-primary hover:scale-105 transition-all duration-200"
             >
               {avatarUrl ? (
-                <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+                <img src={avatarUrl} alt={displayName} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <span className="text-sm font-bold text-foreground">{initials}</span>
