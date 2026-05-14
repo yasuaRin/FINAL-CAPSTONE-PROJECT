@@ -14,7 +14,6 @@ import 'leaflet/dist/leaflet.css';
 
 const INDUSTRIES = ['Fashion', 'F&B', 'Beauty', 'Crafts', 'Electronics', 'Health', 'Home & Living', 'Grocery', 'Sports', 'Toys & Kids'];
 
-// ── Estimate scores from Places data ─────────────────────────────────────────
 function estimatePotentialScore(place) {
   let score = 50;
   if (place.rating)          score += Math.min(25, (place.rating - 3) * 12.5);
@@ -48,7 +47,6 @@ function estimateAuthorityScore(place) {
   return Math.min(99, Math.max(20, Math.round(score)));
 }
 
-// ── LeadMarker defined OUTSIDE component to prevent re-render issues ──────────
 const createLeadIcon = (lead, isSelected, partnerData) => {
   const isHigh = lead.potentialScore >= 85;
   const isMid  = lead.potentialScore >= 70 && lead.potentialScore < 85;
@@ -91,6 +89,7 @@ function LeadsInner() {
   const [isScanning,      setIsScanning]      = useState(false);
   const [leadsFound,      setLeadsFound]      = useState([]);
   const [selectedLead,    setSelectedLead]    = useState(null);
+  const [isFetchingDetail, setIsFetchingDetail] = useState(false);
   const [userPos,         setUserPos]         = useState({ latitude: -6.2088, longitude: 106.8456 });
   const [status,          setStatus]          = useState('SYSTEM READY');
   const [industryFilter,  setIndustryFilter]  = useState('All');
@@ -104,6 +103,7 @@ function LeadsInner() {
   const [websiteVisited,  setWebsiteVisited]  = useState(false);
   const [aiInsights,      setAiInsights]      = useState({});
   const loadingInsightIds = useRef(new Set());
+  const mapSectionRef     = useRef(null);
 
   const { partneredBrands, addPartner, updateStatus, updateOutreachMethod, removePartner, getPartner, isPartner, partnerCount } = usePartners();
 
@@ -112,7 +112,6 @@ function LeadsInner() {
   const PLACES_KEY    = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
   const GROQ_KEY      = import.meta.env.VITE_GROQ_API_KEY;
 
-  // ── Fetch real businesses from Google Places API ──────────────────────────
   const fetchRealPlaces = useCallback(async (lat, lng, industry) => {
     const includedTypes = (() => {
       if (industry === 'F&B')           return ['restaurant', 'cafe', 'bakery', 'meal_takeaway', 'food_store'];
@@ -170,7 +169,36 @@ function LeadsInner() {
     return data.places || [];
   }, [PLACES_KEY]);
 
-  // ── Map Places result → lead object ──────────────────────────────────────
+  // Fetch a single place by its Place ID to get full details
+  const fetchPlaceById = useCallback(async (placeId) => {
+    // placeId stored as "place-XXXX", strip the prefix
+    const rawId = placeId.startsWith('place-') ? placeId.slice(6) : placeId;
+    const response = await fetch(`https://places.googleapis.com/v1/places/${rawId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': PLACES_KEY,
+        'X-Goog-FieldMask': [
+          'id',
+          'displayName',
+          'formattedAddress',
+          'shortFormattedAddress',
+          'location',
+          'rating',
+          'userRatingCount',
+          'websiteUri',
+          'nationalPhoneNumber',
+          'regularOpeningHours',
+          'googleMapsUri',
+          'primaryType',
+          'editorialSummary',
+        ].join(','),
+      },
+    });
+    if (!response.ok) throw new Error(`Place detail API ${response.status}`);
+    return await response.json();
+  }, [PLACES_KEY]);
+
   const mapPlaceToLead = useCallback((place, industry, locationName) => {
     const resolvedIndustry = industry === 'All'
       ? (() => {
@@ -287,6 +315,28 @@ function LeadsInner() {
     return matchesIndustry && matchesLocation && matchesPotential;
   }), [leadsFound, industryFilter, locationFilter, potentialFilter]);
 
+  const allMapLeads = useMemo(() => {
+    const scanIds = new Set(filteredLeads.map(l => l.id));
+    const partnerLeads = partneredBrands
+      .filter(b => b.lat && b.lng && !scanIds.has(b.id))
+      .map(b => ({
+        id:             b.id,
+        name:           b.name,
+        industry:       b.industry,
+        location:       b.location,
+        lat:            b.lat,
+        lng:            b.lng,
+        potentialScore: 70,
+        address:        b.location,
+        phone:          '',
+        website:        '',
+        googleMapsUri:  '',
+        snippet:        '',
+        isReal:         true,
+      }));
+    return [...filteredLeads, ...partnerLeads];
+  }, [filteredLeads, partneredBrands]);
+
   const handleLocationChange = e => {
     const province = e.target.value;
     setLocationFilter(province);
@@ -307,7 +357,6 @@ function LeadsInner() {
     lastScanPos.current = null;
   };
 
-  // ── Open contact modal ────────────────────────────────────────────────────
   const handleContact = useCallback((lead) => {
     setContactModal(lead);
     setEmailInput('');
@@ -322,7 +371,6 @@ function LeadsInner() {
     setWebsiteVisited(false);
   }, []);
 
-  // ── Called when user confirms they actually sent the message ──────────────
   const handleConfirmSent = useCallback((lead, method) => {
     if (!isPartner(lead.id)) {
       addPartner({
@@ -330,6 +378,8 @@ function LeadsInner() {
         name:           lead.name,
         industry:       lead.industry,
         location:       lead.location,
+        lat:            lead.lat ?? null,
+        lng:            lead.lng ?? null,
         outreachMethod: method,
       }, 'In Progress');
     } else {
@@ -341,9 +391,6 @@ function LeadsInner() {
     setWebsiteVisited(false);
   }, [isPartner, addPartner, updateOutreachMethod]);
 
-  const handleSendEmail = handleContact;
-
-  // ── Generate AI insight for selected lead via Groq API ───────────────────
   const aiInsightsRef = useRef({});
 
   const generateAiInsight = useCallback(async (lead) => {
@@ -400,14 +447,101 @@ Be direct. No fluff. No percentages.`;
   useEffect(() => {
     if (!selectedLead) return;
     if (aiInsightsRef.current[selectedLead.id]) return;
-    console.log('[Leads] triggering generateAiInsight for', selectedLead.id);
     const timer = setTimeout(() => {
       generateAiInsight(selectedLead);
     }, 600);
     return () => clearTimeout(timer);
   }, [selectedLead?.id, generateAiInsight]);
 
-  // ── Map sub-components ────────────────────────────────────────────────────
+  // When a table row is clicked, try to get full Place data if the lead
+  // is not already in the scan results (e.g. a partner with a real place-xxx ID)
+  const handleTableRowClick = useCallback(async (brand) => {
+    // 1. Try to find the full lead in current scan results first
+    const existingLead = leadsFound.find(l => l.id === brand.id);
+    if (existingLead) {
+      setSelectedLead(existingLead);
+      mapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
+    // 2. If it has a place-xxx ID, fetch full details from Places API
+    if (brand.id?.startsWith('place-') && brand.lat && brand.lng) {
+      setIsFetchingDetail(true);
+      // Show a placeholder while loading so the panel opens immediately
+      setSelectedLead({
+        id:             brand.id,
+        name:           brand.name,
+        industry:       brand.industry,
+        location:       brand.location,
+        lat:            brand.lat,
+        lng:            brand.lng,
+        potentialScore: 70,
+        address:        brand.location,
+        phone:          '',
+        website:        '',
+        googleMapsUri:  '',
+        snippet:        '',
+        isReal:         true,
+        _loading:       true,
+      });
+      mapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      try {
+        const place = await fetchPlaceById(brand.id);
+        const fullLead = mapPlaceToLead(place, brand.industry, brand.location);
+        // Preserve the same id format
+        fullLead.id = brand.id;
+        setSelectedLead(fullLead);
+        // Also cache it in leadsFound so future clicks are instant
+        setLeadsFound(prev => {
+          const existing = new Set(prev.map(l => l.id));
+          return existing.has(fullLead.id) ? prev : [...prev, fullLead];
+        });
+      } catch (err) {
+        console.error('Failed to fetch place details:', err);
+        // Fall back to minimal data
+        setSelectedLead({
+          id:             brand.id,
+          name:           brand.name,
+          industry:       brand.industry,
+          location:       brand.location,
+          lat:            brand.lat,
+          lng:            brand.lng,
+          potentialScore: 70,
+          address:        brand.location,
+          phone:          '',
+          website:        '',
+          googleMapsUri:  '',
+          snippet:        '',
+          isReal:         true,
+        });
+      } finally {
+        setIsFetchingDetail(false);
+      }
+      return;
+    }
+
+    // 3. Fallback: minimal data (non-place IDs like manual "4", no coords, etc.)
+    if (brand.lat && brand.lng) {
+      setSelectedLead({
+        id:             brand.id,
+        name:           brand.name,
+        industry:       brand.industry,
+        location:       brand.location,
+        lat:            brand.lat,
+        lng:            brand.lng,
+        potentialScore: 70,
+        address:        brand.location,
+        phone:          '',
+        website:        '',
+        googleMapsUri:  '',
+        snippet:        '',
+        isReal:         true,
+      });
+      mapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [leadsFound, fetchPlaceById, mapPlaceToLead]);
+
   const LeadMarkerComponent = ({ lead }) => {
     const partnerData = getPartner(lead.id);
     const isSelected  = selectedLead?.id === lead.id;
@@ -463,7 +597,6 @@ Be direct. No fluff. No percentages.`;
     alignItems: 'center', justifyContent: 'center',
   });
 
-  // ── Derived: whether Mark as Sent button should be enabled ───────────────
   const canMarkSent = emailInput.trim().length > 0 || waOpened;
 
   return (
@@ -541,7 +674,7 @@ Be direct. No fluff. No percentages.`;
       </div>
 
       {/* Map */}
-      <div className="h-[600px] relative dashboard-card overflow-hidden bg-muted/30 border border-border shrink-0">
+      <div ref={mapSectionRef} className="h-[600px] relative dashboard-card overflow-hidden bg-muted/30 border border-border shrink-0">
         <MapContainer
           key={`${mapCenter[0].toFixed(3)},${mapCenter[1].toFixed(3)}`}
           center={mapCenter}
@@ -555,7 +688,7 @@ Be direct. No fluff. No percentages.`;
           />
           <FlyToLocation />
           <MapEvents />
-          {filteredLeads.map(lead => (
+          {allMapLeads.map(lead => (
             <LeadMarkerComponent key={lead.id} lead={lead} />
           ))}
         </MapContainer>
@@ -590,7 +723,7 @@ Be direct. No fluff. No percentages.`;
                     ${selectedLead.potentialScore >= 85 ? 'bg-rose-500 text-white' :
                       selectedLead.potentialScore >= 70 ? 'bg-amber-500 text-white' :
                       'bg-slate-500 text-white'}`}>
-                    <Shield size={20} />
+                    {isFetchingDetail ? <Loader2 size={20} className="animate-spin" /> : <Shield size={20} />}
                   </div>
                   <div>
                     <h2 className="font-bold tracking-tight">{selectedLead.name}</h2>
@@ -604,139 +737,138 @@ Be direct. No fluff. No percentages.`;
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                
-                {/* Rating row */}
-                {selectedLead.rating && (
-                  <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-3 rounded-lg">
-                    <Star size={16} className="text-amber-500 fill-amber-500" />
-                    <span className="font-bold text-amber-600">{selectedLead.rating}</span>
-                    <span className="text-[10px] text-muted-foreground">({selectedLead.ratingCount?.toLocaleString()} reviews)</span>
-                    {selectedLead.isOpen !== undefined && (
-                      <span className={`ml-auto text-[9px] font-bold uppercase px-2 py-0.5 rounded ${
-                        selectedLead.isOpen
-                          ? 'bg-emerald-500/10 text-emerald-600'
-                          : 'bg-rose-500/10 text-rose-500'
-                      }`}>
-                        {selectedLead.isOpen ? 'Open Now' : 'Closed'}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* Score cards */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-muted/30 p-4 rounded-lg border border-border">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Live Commerce Fit</p>
-                    <p className="text-2xl font-bold">{selectedLead.potentialScore}%</p>
-                  </div>
-                  <div className="bg-primary/5 p-4 rounded-lg border border-primary/10">
-                    <p className="text-[10px] font-bold text-primary uppercase tracking-wider mb-1">Priority Rank</p>
-                    <p className="text-2xl font-bold text-primary">
-                      {selectedLead.potentialScore >= 85 ? 'P-1 🔥' : selectedLead.potentialScore >= 70 ? 'P-2' : 'P-3'}
-                    </p>
-                  </div>
+              {/* Loading state while fetching full details */}
+              {selectedLead._loading ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-muted-foreground">
+                  <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                  <p className="text-xs font-bold uppercase tracking-widest">Loading business details...</p>
                 </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
 
+                  {selectedLead.rating && (
+                    <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-3 rounded-lg">
+                      <Star size={16} className="text-amber-500 fill-amber-500" />
+                      <span className="font-bold text-amber-600">{selectedLead.rating}</span>
+                      <span className="text-[10px] text-muted-foreground">({selectedLead.ratingCount?.toLocaleString()} reviews)</span>
+                      {selectedLead.isOpen !== undefined && (
+                        <span className={`ml-auto text-[9px] font-bold uppercase px-2 py-0.5 rounded ${
+                          selectedLead.isOpen
+                            ? 'bg-emerald-500/10 text-emerald-600'
+                            : 'bg-rose-500/10 text-rose-500'
+                        }`}>
+                          {selectedLead.isOpen ? 'Open Now' : 'Closed'}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
-
-                {/* AI Business Insight */}
-                <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                    <Zap size={14} className="text-primary" /> AI Business Insight
-                  </p>
-                  <div className="bg-primary/5 p-4 rounded-lg border border-primary/20 text-sm leading-relaxed min-h-[72px] flex items-center">
-                    {loadingInsightIds.current.has(selectedLead.id) && !aiInsights[selectedLead.id] ? (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Loader2 size={14} className="animate-spin" />
-                        <span className="text-xs italic">Generating insight...</span>
-                      </div>
-                    ) : aiInsights[selectedLead.id] ? (
-                      <p className="text-foreground/80">{aiInsights[selectedLead.id]}</p>
-                    ) : (
-                      <p className="italic text-muted-foreground text-xs">No insight available</p>
-                    )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-muted/30 p-4 rounded-lg border border-border">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Live Commerce Fit</p>
+                      <p className="text-2xl font-bold">{selectedLead.potentialScore}%</p>
+                    </div>
+                    <div className="bg-primary/5 p-4 rounded-lg border border-primary/10">
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-wider mb-1">Priority Rank</p>
+                      <p className="text-2xl font-bold text-primary">
+                        {selectedLead.potentialScore >= 85 ? 'P-1 🔥' : selectedLead.potentialScore >= 70 ? 'P-2' : 'P-3'}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Contact info */}
-                <div className="space-y-3">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                    <Info size={14} /> Contact & Location
-                  </p>
                   <div className="space-y-2">
-                    {selectedLead.address && (
-                      <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                        <MapPin size={14} className="mt-0.5 shrink-0" />
-                        <span className="font-medium">{selectedLead.address}</span>
-                      </div>
-                    )}
-                    {selectedLead.phone && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Phone size={14} className="text-primary shrink-0" />
-                        <span className="font-medium">{selectedLead.phone}</span>
-                      </div>
-                    )}
-                    {selectedLead.website && (
-                      <div className="flex items-center gap-2 text-xs">
-                        <Globe size={14} className="text-primary shrink-0" />
-                        <a
-                          href={selectedLead.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium text-primary hover:underline truncate max-w-[280px]"
-                        >
-                          {selectedLead.website.replace(/^https?:\/\//, '')}
-                        </a>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Navigation size={14} className="shrink-0" />
-                      <span className="font-medium">{selectedLead.lat?.toFixed(4)}, {selectedLead.lng?.toFixed(4)}</span>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                      <Zap size={14} className="text-primary" /> AI Business Insight
+                    </p>
+                    <div className="bg-primary/5 p-4 rounded-lg border border-primary/20 text-sm leading-relaxed min-h-[72px] flex items-center">
+                      {loadingInsightIds.current.has(selectedLead.id) && !aiInsights[selectedLead.id] ? (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Loader2 size={14} className="animate-spin" />
+                          <span className="text-xs italic">Generating insight...</span>
+                        </div>
+                      ) : aiInsights[selectedLead.id] ? (
+                        <p className="text-foreground/80">{aiInsights[selectedLead.id]}</p>
+                      ) : (
+                        <p className="italic text-muted-foreground text-xs">No insight available</p>
+                      )}
                     </div>
                   </div>
-                </div>
 
-                {/* CTA buttons */}
-                <div className="pt-2 space-y-3">
-                  {selectedLead.googleMapsUri && (
-                    <a
-                      href={selectedLead.googleMapsUri}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-3 bg-primary text-primary-foreground rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-sm"
-                    >
-                      <MapPin size={18} /> OPEN IN GOOGLE MAPS
-                    </a>
-                  )}
-
-                  {selectedLead.website && (
-                    <a
-                      href={selectedLead.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-3 bg-primary text-primary-foreground rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-sm"
-                    >
-                      <Globe size={18} /> VISIT WEBSITE
-                    </a>
-                  )}
-
-                  {/* ── CONTACT BUTTON ── */}
-                  {getPartner(selectedLead.id)?.outreachMethod ? (
-                    <div className="w-full py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2">
-                      <CheckCircle2 size={18} /> CONTACTED VIA {getPartner(selectedLead.id)?.outreachMethod?.toUpperCase()}
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                      <Info size={14} /> Contact & Location
+                    </p>
+                    <div className="space-y-2">
+                      {selectedLead.address && (
+                        <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                          <MapPin size={14} className="mt-0.5 shrink-0" />
+                          <span className="font-medium">{selectedLead.address}</span>
+                        </div>
+                      )}
+                      {selectedLead.phone && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Phone size={14} className="text-primary shrink-0" />
+                          <span className="font-medium">{selectedLead.phone}</span>
+                        </div>
+                      )}
+                      {selectedLead.website && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <Globe size={14} className="text-primary shrink-0" />
+                          <a
+                            href={selectedLead.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-primary hover:underline truncate max-w-[280px]"
+                          >
+                            {selectedLead.website.replace(/^https?:\/\//, '')}
+                          </a>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Navigation size={14} className="shrink-0" />
+                        <span className="font-medium">{selectedLead.lat?.toFixed(4)}, {selectedLead.lng?.toFixed(4)}</span>
+                      </div>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => handleContact(selectedLead)}
-                      className="w-full py-3 bg-primary text-primary-foreground rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-sm"
-                    >
-                      <Mail size={18} /> REACH OUT
-                    </button>
-                  )}
+                  </div>
 
+                  <div className="space-y-3">
+                    {selectedLead.googleMapsUri && (
+                      <a
+                        href={selectedLead.googleMapsUri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-3 bg-primary text-primary-foreground rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-sm"
+                      >
+                        <MapPin size={18} /> OPEN IN GOOGLE MAPS
+                      </a>
+                    )}
+
+                    {selectedLead.website && (
+                      <a
+                        href={selectedLead.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-3 bg-primary text-primary-foreground rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-sm"
+                      >
+                        <Globe size={18} /> VISIT WEBSITE
+                      </a>
+                    )}
+
+                    {getPartner(selectedLead.id)?.outreachMethod ? (
+                      <div className="w-full py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2">
+                        <CheckCircle2 size={18} /> CONTACTED VIA {getPartner(selectedLead.id)?.outreachMethod?.toUpperCase()}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleContact(selectedLead)}
+                        className="w-full py-3 bg-primary text-primary-foreground rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-sm"
+                      >
+                        <Mail size={18} /> REACH OUT
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -817,117 +949,128 @@ Be direct. No fluff. No percentages.`;
                   </td>
                 </tr>
               ) : (
-                partneredBrands.map(brand => (
-                  <tr key={brand.id} className="hover:bg-muted/20 transition-all border-l-4 border-l-transparent hover:border-l-primary">
-                    <td className="px-6 py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-foreground text-background flex items-center justify-center font-black text-sm shadow-sm rounded">
-                          {brand.name.substring(0, 2).toUpperCase()}
+                partneredBrands.map(brand => {
+                  const hasCoords = !!(brand.lat && brand.lng);
+                  const isClickable = hasCoords;
+                  return (
+                    <tr
+                      key={brand.id}
+                      onClick={() => isClickable && handleTableRowClick(brand)}
+                      className={`transition-all border-l-4 border-l-transparent hover:border-l-primary hover:bg-muted/20 ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
+                    >
+                      <td className="px-6 py-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-foreground text-background flex items-center justify-center font-black text-sm shadow-sm rounded">
+                            {brand.name.substring(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <span className="font-bold text-sm tracking-tight block">{brand.name}</span>
+                            <span className="text-[9px] font-mono text-muted-foreground/60 uppercase">ID: {brand.id.split('-').pop()}</span>
+                          </div>
                         </div>
-                        <div>
-                          <span className="font-bold text-sm tracking-tight block">{brand.name}</span>
-                          <span className="text-[9px] font-mono text-muted-foreground/60 uppercase">ID: {brand.id.split('-').pop()}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-6">
-                      <span className="text-[10px] font-black uppercase tracking-widest bg-muted/50 border border-border px-3 py-1 rounded">
-                        {brand.industry}
-                      </span>
-                    </td>
-                    <td className="px-6 py-6">
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-black uppercase tracking-widest">
-                        <MapPin size={12} className="text-primary" />{brand.location}
-                      </div>
-                    </td>
-                    <td className="px-6 py-6">
-                      <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">
-                        {new Date(brand.datePartnered).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </span>
-                    </td>
-                    <td className="px-6 py-6">
-                      {brand.outreachMethod ? (
-                        <div className="flex items-center gap-1.5">
-                          <CheckCircle2 size={14} className="text-emerald-500" />
-                          <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">
-                            {brand.outreachMethod === 'email' ? 'Email' : brand.outreachMethod === 'whatsapp' ? 'WhatsApp' : 'Sent'}
-                          </span>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            const lead = leadsFound.find(l => l.id === brand.id) || brand;
-                            handleContact(lead);
-                          }}
-                          className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 hover:text-violet-700 transition-colors"
-                        >
-                          <Mail size={12} /> Send Email
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-6 py-6">
-                      {editingId === brand.id ? (
-                        <select
-                          value={brand.status}
-                          onChange={e => updateStatus(brand.id, e.target.value)}
-                          className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-md border outline-none cursor-pointer transition-all shadow-sm
-                            ${brand.status === 'Partner' ? 'bg-blue-500 text-white border-blue-600' :
-                              brand.status === 'Dealing' ? 'bg-purple-500 text-white border-purple-600' :
-                              'bg-slate-500 text-white border-slate-600'}`}
-                        >
-                          <option value="In Progress">In Progress</option>
-                          <option value="Dealing">Dealing</option>
-                          <option value="Partner">Partner</option>
-                        </select>
-                      ) : (
-                        <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-md border inline-block
-                          ${brand.status === 'Partner' ? 'bg-blue-500 text-white border-blue-600' :
-                            brand.status === 'Dealing' ? 'bg-purple-500 text-white border-purple-600' :
-                            'bg-slate-500 text-white border-slate-600'}`}
-                        >
-                          {brand.status}
+                      </td>
+                      <td className="px-6 py-6">
+                        <span className="text-[10px] font-black uppercase tracking-widest bg-muted/50 border border-border px-3 py-1 rounded">
+                          {brand.industry}
                         </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-6">
-                      <div className="inline-flex gap-2">
-                        {editingId === brand.id ? (
-                          <button
-                            onClick={() => setEditingId(null)}
-                            style={actionBtn('rgba(34,197,94,0.1)', '#22c55e')}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(34,197,94,0.2)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'rgba(34,197,94,0.1)'}
-                            title="Save"
-                          >
-                            <Check size={14} />
-                          </button>
+                      </td>
+                      <td className="px-6 py-6">
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-black uppercase tracking-widest">
+                          <MapPin size={12} className="text-primary" />{brand.location}
+                        </div>
+                      </td>
+                      <td className="px-6 py-6">
+                        <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">
+                          {new Date(brand.datePartnered).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                      </td>
+                      <td className="px-6 py-6">
+                        {brand.outreachMethod ? (
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2 size={14} className="text-emerald-500" />
+                            <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">
+                              {brand.outreachMethod === 'email' ? 'Email' : brand.outreachMethod === 'whatsapp' ? 'WhatsApp' : 'Sent'}
+                            </span>
+                          </div>
                         ) : (
                           <button
-                            onClick={() => setEditingId(brand.id)}
-                            style={actionBtn('rgba(99,102,241,0.08)', '#6366f1')}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(99,102,241,0.18)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'rgba(99,102,241,0.08)'}
-                            title="Edit Status"
+                            onClick={e => {
+                              e.stopPropagation();
+                              const lead = leadsFound.find(l => l.id === brand.id) || brand;
+                              handleContact(lead);
+                            }}
+                            className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 hover:text-violet-700 transition-colors"
                           >
-                            <Edit3 size={14} />
+                            <Mail size={12} /> Send Email
                           </button>
                         )}
-                        <button
-                          onClick={() => {
-                            removePartner(brand.id);
-                            if (editingId === brand.id) setEditingId(null);
-                          }}
-                          style={actionBtn('rgba(219,26,26,0.08)', '#DB1A1A')}
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(219,26,26,0.18)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'rgba(219,26,26,0.08)'}
-                          title="Delete"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-6 py-6">
+                        {editingId === brand.id ? (
+                          <select
+                            value={brand.status}
+                            onChange={e => updateStatus(brand.id, e.target.value)}
+                            onClick={e => e.stopPropagation()}
+                            className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full border outline-none cursor-pointer transition-all
+                              ${brand.status === 'Partner' ? 'bg-blue-500/10 text-blue-500 border-blue-500/30' :
+                                brand.status === 'Dealing' ? 'bg-purple-500/10 text-purple-500 border-purple-500/30' :
+                                'bg-slate-500/10 text-slate-400 border-slate-500/30'}`}
+                          >
+                            <option value="In Progress">In Progress</option>
+                            <option value="Dealing">Dealing</option>
+                            <option value="Partner">Partner</option>
+                          </select>
+                        ) : (
+                          <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full border inline-flex items-center justify-center min-w-[100px]
+                            ${brand.status === 'Partner' ? 'bg-blue-500/10 text-blue-500 border-blue-500/30' :
+                              brand.status === 'Dealing' ? 'bg-purple-500/10 text-purple-500 border-purple-500/30' :
+                              'bg-slate-500/10 text-slate-400 border-slate-500/30'}`}
+                          >
+                            {brand.status}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-6">
+                        <div className="inline-flex gap-2">
+                          {editingId === brand.id ? (
+                            <button
+                              onClick={e => { e.stopPropagation(); setEditingId(null); }}
+                              style={actionBtn('rgba(34,197,94,0.1)', '#22c55e')}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(34,197,94,0.2)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'rgba(34,197,94,0.1)'}
+                              title="Save"
+                            >
+                              <Check size={14} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={e => { e.stopPropagation(); setEditingId(brand.id); }}
+                              style={actionBtn('rgba(99,102,241,0.08)', '#6366f1')}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(99,102,241,0.18)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'rgba(99,102,241,0.08)'}
+                              title="Edit Status"
+                            >
+                              <Edit3 size={14} />
+                            </button>
+                          )}
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              removePartner(brand.id);
+                              if (editingId === brand.id) setEditingId(null);
+                            }}
+                            style={actionBtn('rgba(219,26,26,0.08)', '#DB1A1A')}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(219,26,26,0.18)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'rgba(219,26,26,0.08)'}
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -935,11 +1078,10 @@ Be direct. No fluff. No percentages.`;
 
         <div className="p-6 bg-muted/5 border-t border-border flex justify-between items-center">
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">Total Active Partners: {partnerCount}</p>
-
         </div>
       </div>
 
-      {/* ── CONTACT MODAL ── */}
+      {/* CONTACT MODAL */}
       <AnimatePresence>
         {contactModal && (
           <motion.div
@@ -962,14 +1104,12 @@ Be direct. No fluff. No percentages.`;
                 </button>
               </div>
 
-              {/* Info notice */}
               <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-700 dark:text-amber-400">
                 <p className="font-bold mb-1">📧 Email Not Available</p>
                 <p>Find their email on the website, or reach out via WhatsApp. Once sent, click "Mark as Sent".</p>
               </div>
 
               <div className="space-y-3">
-                {/* WhatsApp option */}
                 {contactModal.phone ? (
                   <div className="space-y-2">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Via WhatsApp</p>
@@ -989,7 +1129,6 @@ Be direct. No fluff. No percentages.`;
                   </div>
                 )}
 
-                {/* Email option */}
                 <div className="space-y-2">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                     Via Email
@@ -1004,7 +1143,7 @@ Be direct. No fluff. No percentages.`;
                         placeholder={!contactModal.website ? 'No website — email unavailable' : !websiteVisited ? 'Visit website first...' : 'Paste their email here...'}
                         value={emailInput}
                         onChange={e => setEmailInput(e.target.value)}
-                       disabled={!contactModal.website || !websiteVisited}
+                        disabled={!contactModal.website || !websiteVisited}
                         className="w-full px-3 py-2 text-sm border border-border rounded-md bg-background outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-muted/50"
                       />
                     </div>
@@ -1054,7 +1193,6 @@ vidhelp.com`)}`}
                 </div>
               </div>
 
-              {/* ── Confirm sent — only enabled after WA opened OR email entered ── */}
               <div className="pt-2 border-t border-border space-y-2">
                 <button
                   disabled={!canMarkSent}
