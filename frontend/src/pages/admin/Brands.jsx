@@ -53,7 +53,7 @@ export default function Brands() {
     if (authError) { console.error("Auth Error:", authError); return; }
     if (!authUser?.email) { console.error("No authenticated email found"); return; }
     
-    // ✅ Change this - query 'team_members' instead of 'admins'
+    //  Change this - query 'team_members' instead of 'admins'
     const { data, error } = await supabase
       .from("team_members")  // ← Fixed: use team_members table
       .select("role")
@@ -216,7 +216,7 @@ export default function Brands() {
     if (deleteId) {
       const { error } = await supabase.from("brands").delete().eq("brand_id", deleteId);
       if (error) { setNotification("Failed to delete brand"); }
-      else { setNotification("✅ Brand removed successfully"); fetchData(); }
+      else { setNotification(" Brand removed successfully"); fetchData(); }
       setDeleteId(null);
       setTimeout(() => setNotification(null), 3000);
     }
@@ -233,11 +233,11 @@ export default function Brands() {
     if (editingBrand) {
       const { error } = await supabase.from("brands").update(brandData).eq("brand_id", editingBrand.brand_id);
       if (error) { setNotification("Failed to update brand"); }
-      else { setNotification("✅ Brand updated successfully"); fetchData(); }
+      else { setNotification(" Brand updated successfully"); fetchData(); }
     } else {
       const { error } = await supabase.from("brands").insert([brandData]);
       if (error) { setNotification("Failed to create brand"); }
-      else { setNotification("✅ Brand onboarded successfully"); fetchData(); }
+      else { setNotification(" Brand onboarded successfully"); fetchData(); }
     }
     closeForm();
     setTimeout(() => setNotification(null), 3000);
@@ -314,7 +314,7 @@ return (
             exit={{ opacity: 0, y: -20, x: '-50%' }}
             className="fixed top-4 left-1/2 z-[100] bg-card text-foreground px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-border"
           >
-            <div className={`rounded-full p-1 ${notification.includes('✅') ? 'bg-emerald-500' : notification.includes('❌') ? 'bg-red-500' : 'bg-emerald-500'}`}>
+            <div className={`rounded-full p-1 ${notification.includes('') ? 'bg-emerald-500' : notification.includes('❌') ? 'bg-red-500' : 'bg-emerald-500'}`}>
               <CheckCircle2 size={16} className="text-white" />
             </div>
             <span className="text-sm font-bold tracking-tight">{notification}</span>
