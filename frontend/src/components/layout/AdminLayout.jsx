@@ -29,7 +29,7 @@ const CategoryIcon = ({ category }) => {
   return null;
 };
 
-export const AdminLayout = () => {
+export const  AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen]       = useState(false);
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const avatarMenuRef = useRef(null);
@@ -339,6 +339,34 @@ export const AdminLayout = () => {
           </div>
         )}
       </main>
+
+      {/* ========== PDF EXPORT CONTAINERS - ADDED FOR MULTI-PAGE EXPORT ========== */}
+      {/* These containers render all pages hidden for PDF export without affecting user experience */}
+      <div style={{ 
+        position: 'fixed', 
+        left: '-9999px', 
+        top: 0, 
+        zIndex: -9999,
+        width: '1200px',
+        backgroundColor: '#ffffff'
+      }}>
+        <div id="dashboard-export-container">
+          {/* Dashboard content will be populated by React Router */}
+        </div>
+        <div id="revenue-export-container">
+          {/* Revenue content will be populated by React Router */}
+        </div>
+        <div id="brands-export-container">
+          {/* Brands content will be populated by React Router */}
+        </div>
+        <div id="team-export-container">
+          {/* Team content will be populated by React Router */}
+        </div>
+        <div id="leads-export-container">
+          {/* Leads content will be populated by React Router */}
+        </div>
+      </div>
+      {/* ========== END PDF EXPORT CONTAINERS ========== */}
     </div>
   );
 };
