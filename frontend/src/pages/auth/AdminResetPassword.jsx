@@ -31,23 +31,13 @@ const AdminResetPassword = () => {
   const [factorId, setFactorId] = useState(null);
   const [mfaLoading, setMfaLoading] = useState(false);
 
-useEffect(() => {
-  const href = window.location.href;
-  const codeMatch = href.match(/[?&]code=([^&#]+)/);
-  const code = codeMatch ? codeMatch[1] : sessionStorage.getItem('reset_code');
+  useEffect(() => {
+    const href = window.location.href;
+    const codeMatch = href.match(/[?&]code=([^&#]+)/);
+    const code = codeMatch ? codeMatch[1] : sessionStorage.getItem('reset_code');
 
-  let exchanged = false;
+    let exchanged = false;
 
-  // ✅ Cek session dulu — mungkin useAuth sudah exchange duluan
-  supabase.auth.getSession().then(({ data }) => {
-    if (data?.session) {
-      exchanged = true;
-      sessionStorage.removeItem('reset_code');
-      setSessionReady(true);
-      return;
-    }
-
-    // Kalau belum ada session, baru exchange code
     if (code) {
       sessionStorage.removeItem('reset_code');
       supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
@@ -60,24 +50,30 @@ useEffect(() => {
         }
       });
     } else {
-      setTimeout(() => {
-        if (!exchanged) {
-          setError('Session not found. Please request a new reset link.');
+      supabase.auth.getSession().then(({ data }) => {
+        if (data?.session) {
+          exchanged = true;
+          setSessionReady(true);
+        } else {
+          setTimeout(() => {
+            if (!exchanged) {
+              setError('Session not found. Please request a new reset link.');
+            }
+          }, 5000);
         }
-      }, 5000);
+      });
     }
-  });
 
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
-      exchanged = true;
-      setSessionReady(true);
-      setError('');
-    }
-  });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        exchanged = true;
+        setSessionReady(true);
+        setError('');
+      }
+    });
 
-  return () => subscription.unsubscribe();
-}, []);
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -98,22 +94,38 @@ useEffect(() => {
       const currentLevel = aalData?.currentLevel;
       const nextLevel = aalData?.nextLevel;
 
-      if (currentLevel === 'aal2' || nextLevel === 'aal1') {
+      console.log('AAL currentLevel:', currentLevel, '| nextLevel:', nextLevel);
+
+      // ✅ Kalau sudah aal2, langsung update password
+      if (currentLevel === 'aal2') {
         await updatePassword();
         return;
       }
 
-      const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
-      if (factorsError) throw factorsError;
+      // ✅ Kalau nextLevel aal2, user punya MFA — harus verify dulu
+      if (nextLevel === 'aal2') {
+        const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+        if (factorsError) throw factorsError;
 
-      const totpFactor = factorsData?.totp?.[0];
-      if (!totpFactor) {
-        await updatePassword();
+        console.log('All TOTP factors:', JSON.stringify(factorsData?.totp, null, 2));
+
+        const verifiedFactor = factorsData?.totp?.find(f => f.status === 'verified');
+        const totpFactor = verifiedFactor || factorsData?.totp?.[0];
+
+        console.log('Using factor:', totpFactor?.id, '| status:', totpFactor?.status);
+
+        if (!totpFactor) {
+          await updatePassword();
+          return;
+        }
+
+        setFactorId(totpFactor.id);
+        setNeedsMfa(true);
         return;
       }
 
-      setFactorId(totpFactor.id);
-      setNeedsMfa(true);
+      // Tidak ada MFA — langsung update password
+      await updatePassword();
     } catch (err) {
       setError(err.message || 'Failed to verify session.');
     } finally {
@@ -127,8 +139,14 @@ useEffect(() => {
     setMfaLoading(true);
 
     try {
-      const { data: freshChallenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+      const { data: freshChallenge, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId,
+      });
       if (challengeError) throw challengeError;
+
+      console.log('Challenge ID:', freshChallenge.id, '| factorId:', factorId);
+
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       const { error: verifyError } = await supabase.auth.mfa.verify({
         factorId,
@@ -137,9 +155,18 @@ useEffect(() => {
       });
       if (verifyError) throw verifyError;
 
+      // Cek AAL setelah verify
+      const { data: aalCheck } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      console.log('After verify AAL:', aalCheck?.currentLevel);
+
       await updatePassword();
     } catch (err) {
-      setError(err.message || 'Invalid or expired MFA code.');
+      console.error('MFA error:', err);
+      if (err.message?.includes('Invalid TOTP') || err.status === 422) {
+        setError('Invalid code. Make sure your device time is correct and try with a fresh code.');
+      } else {
+        setError(err.message || 'Invalid or expired MFA code.');
+      }
       setMfaCode('');
     } finally {
       setMfaLoading(false);
@@ -251,16 +278,19 @@ useEffect(() => {
                   Authenticator Code (6 digits)
                 </label>
                 <input
-                  type="password"
+                  type="text"
                   inputMode="numeric"
                   maxLength={6}
                   required
                   value={mfaCode}
                   onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
-                  placeholder="••••••"
+                  placeholder="000000"
                   autoComplete="one-time-code"
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 tracking-widest text-center text-lg"
                 />
+                <p className="mt-1 text-xs text-center text-gray-400 dark:text-gray-500">
+                  Wait for a fresh code before submitting
+                </p>
               </div>
 
               <button type="submit" disabled={mfaLoading || mfaCode.length !== 6}
