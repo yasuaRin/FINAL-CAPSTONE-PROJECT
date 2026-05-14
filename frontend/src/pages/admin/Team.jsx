@@ -109,6 +109,8 @@ const RoleBadge = ({ role }) => {
   );
 };
 
+const roleOrder = { super_admin: 0, admin: 1, staff: 2 };
+
 export default function Team() {
   const { user, role: currentRole } = useAuth();
   const formAvatarRef = useRef(null);
@@ -147,6 +149,9 @@ export default function Team() {
         avatar: m.avatar_url,
         roleDescription: m.role_description || m.role || 'Staff',
       }));
+
+      // Sort: super_admin first → admin → staff; within same role keep newest first (from DB order)
+      memberList.sort((a, b) => (roleOrder[a.role] ?? 2) - (roleOrder[b.role] ?? 2));
 
       setMembers(memberList);
     } catch (err) {
@@ -638,4 +643,4 @@ export default function Team() {
     </div>
   </div>
   );
-};
+}
