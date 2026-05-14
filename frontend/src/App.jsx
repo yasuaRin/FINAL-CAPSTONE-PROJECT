@@ -10,10 +10,40 @@ import AdminLogin from './pages/auth/AdminLogin';
 import AdminResetPassword from './pages/auth/AdminResetPassword';
 import AdminAuthCallback from './pages/auth/AdminAuthCallback';
 import Leads from './pages/admin/Leads';
+import { useState, useEffect } from 'react';
+import { setExportHandlers } from './utils/exportState';
 
 function App() {
+  const [isExporting, setIsExporting] = useState(false);
+
+  useEffect(() => {
+    setExportHandlers(
+      () => setIsExporting(true),
+      () => setIsExporting(false)
+    );
+  }, []);
+
   return (
     <HashRouter>
+      {/* ✅ MOVED: now inside HashRouter so router hooks work in page components */}
+      {isExporting && (
+        <div style={{
+          position: 'fixed',
+          left: '-9999px',
+          top: 0,
+          width: '1200px',
+          zIndex: -1,
+          pointerEvents: 'none',
+          overflow: 'visible',
+        }}>
+          <div id="dashboard-export-container" style={{ width: '1200px' }}><Dashboard /></div>
+          <div id="revenue-export-container"   style={{ width: '1200px' }}><Revenue /></div>
+          <div id="brands-export-container"    style={{ width: '1200px' }}><Brands /></div>
+          <div id="team-export-container"      style={{ width: '1200px' }}><Team /></div>
+          <div id="leads-export-container"     style={{ width: '1200px' }}><Leads /></div>
+        </div>
+      )}
+
       <Routes>
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/auth/reset-password" element={<AdminResetPassword />} />

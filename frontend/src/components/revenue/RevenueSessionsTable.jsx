@@ -4,10 +4,8 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Edit2, Trash2, Plus, X, Activity,
-  SlidersHorizontal, ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
-
-const LIMIT_OPTIONS = [10, 25, 50, 100, 500, 1000, null];
 
 function getPageList(currentPage, totalPages) {
   if (totalPages <= 7) {
@@ -29,12 +27,8 @@ const RevenueSessionsTable = ({
   setSearchTerm = () => {},
   tableFilter = {},
   setTableFilter = () => {},
-  sortOpen, setSortOpen, limitOpen, setLimitOpen,
-  sortGroups = [], activeSortLabel = '',
   sortCol,
   sortDir,
-  setSortCol,
-  setSortDir,
   rowLimit,
   setRowLimit,
   openEditModal = () => {},
@@ -48,28 +42,16 @@ const RevenueSessionsTable = ({
   loading = false,
 }) => {
 
-  const [filterOpen, setFilterOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const filterRef = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (filterRef.current && !filterRef.current.contains(e.target)) {
-        setFilterOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [rowLimit, searchTerm, tableFilter, sortCol, sortDir]);
 
-  const totalCount  = sessionIntelligence.length;
-  const showingAll  = rowLimit === null;
-  const totalPages  = showingAll ? 1 : Math.max(1, Math.ceil(totalCount / rowLimit));
-  const safePage    = Math.min(currentPage, totalPages);
+  const totalCount = sessionIntelligence.length;
+  const showingAll = rowLimit === null;
+  const totalPages = showingAll ? 1 : Math.max(1, Math.ceil(totalCount / rowLimit));
+  const safePage = Math.min(currentPage, totalPages);
 
   const paginatedSessions = useMemo(() => {
     if (showingAll) return sessionIntelligence;
@@ -79,33 +61,22 @@ const RevenueSessionsTable = ({
 
   const pageList = getPageList(safePage, totalPages);
 
-  const sortOptions = [
-    { label: 'Newest',   col: 'date',    dir: 'desc' },
-    { label: 'Oldest',   col: 'date',    dir: 'asc'  },
-    { label: 'Revenue ↓',    col: 'revenue', dir: 'desc' },
-    { label: 'Revenue ↑',    col: 'revenue', dir: 'asc'  },
-    { label: 'Views ↓',  col: 'viewers', dir: 'desc' },
-    { label: 'Views ↑',  col: 'viewers', dir: 'asc'  },
-  ];
+  const rowStart = totalCount === 0
+    ? 0
+    : (safePage - 1) * rowLimit + 1;
 
-  const activeFilterCount = [
-    tableFilter.period !== 'All',
-    !(sortCol === 'date' && sortDir === 'desc'),
-    rowLimit !== 25,
-  ].filter(Boolean).length;
-
-  const rowStart = showingAll ? 1 : (safePage - 1) * rowLimit + 1;
-  const rowEnd   = showingAll ? totalCount : Math.min(safePage * rowLimit, totalCount);
+  const rowEnd = showingAll
+    ? totalCount
+    : Math.min(rowStart + rowLimit - 1, totalCount);
 
   return (
     <div className="lg:col-span-2 flex flex-col min-h-[500px] lg:h-[700px]">
       <div
         id="session-intelligence"
-        className="bg-card rounded-3xl border border-border shadow-sm overflow-hidden flex flex-col h-full"
+        className="bg-card rounded-3xl border border-border shadow-sm flex flex-col h-full"
       >
-
         {/* Loading bar */}
-        <div className="h-[3px] w-full bg-border/40 overflow-hidden flex-shrink-0">
+        <div className="h-[3px] w-full bg-border/40 overflow-hidden flex-shrink-0 rounded-t-3xl">
           <AnimatePresence>
             {loading && (
               <motion.div
@@ -122,7 +93,6 @@ const RevenueSessionsTable = ({
         {/* Toolbar */}
         <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-border bg-muted/5">
           <div className="flex items-center gap-2 flex-wrap">
-
             <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap">
               <Activity size={13} className="text-primary" /> Sessions
             </h3>
@@ -148,120 +118,6 @@ const RevenueSessionsTable = ({
             )}
 
             <div className="ml-auto flex items-center gap-2">
-
-              {/* Filters button */}
-              <div className="relative" ref={filterRef}>
-                <button
-                  onClick={() => setFilterOpen((p) => !p)}
-                  className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-medium transition-all min-h-[32px] ${
-                    filterOpen
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-border bg-background hover:border-primary/40'
-                  }`}
-                >
-                  <SlidersHorizontal size={12} />
-                  <span className="hidden xs:inline">Filters</span>
-                  {activeFilterCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-primary text-white text-[9px] font-black flex items-center justify-center">
-                      {activeFilterCount}
-                    </span>
-                  )}
-                </button>
-
-                <AnimatePresence>
-                  {filterOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -4, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                      transition={{ duration: 0.14 }}
-                      style={{ top: 'calc(100% + 8px)' }}
-                      className="absolute right-0 z-50 w-[min(288px,calc(100vw-2rem))] bg-card border border-border rounded-2xl shadow-xl"
-                    >
-                      <div className="p-4 space-y-4">
-
-                        {/* Sort */}
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-2">Sort by</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {sortOptions.map((opt) => {
-                              const isActive = sortCol === opt.col && sortDir === opt.dir;
-                              return (
-                                <button
-                                  key={`${opt.col}:${opt.dir}`}
-                                  onClick={() => { setSortCol(opt.col); setSortDir(opt.dir); }}
-                                  className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-all min-h-[28px] ${
-                                    isActive
-                                      ? 'bg-primary text-white border-primary shadow-sm'
-                                      : 'bg-background border-border hover:border-primary/40 text-foreground'
-                                  }`}
-                                >
-                                  {opt.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        <div className="border-t border-border/60" />
-
-                        {/* Period */}
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-2">Period</p>
-                          <select
-                            value={tableFilter.period !== 'All' ? tableFilter.period : ''}
-                            onChange={(e) => setTableFilter({ ...tableFilter, period: e.target.value || 'All' })}
-                            className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-[11px] outline-none focus:ring-1 focus:ring-primary/20"
-                          >
-                            <option value="">All Periods</option>
-                            {uniquePeriods.map(period => (
-                              <option key={period} value={period}>{period}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="border-t border-border/60" />
-
-                        {/* Show rows */}
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-2">Show rows</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {LIMIT_OPTIONS.map((opt, i) => (
-                              <button
-                                key={i}
-                                onClick={() => setRowLimit(opt)}
-                                className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-all min-h-[28px] ${
-                                  rowLimit === opt
-                                    ? 'bg-primary text-white border-primary shadow-sm'
-                                    : 'bg-background border-border hover:border-primary/40 text-foreground'
-                                }`}
-                              >
-                                {opt === null ? 'All' : opt}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Reset all */}
-                        <button
-                          onClick={() => {
-                            setSortCol('date');
-                            setSortDir('desc');
-                            setTableFilter({ brandId: 'All', period: 'All' });
-                            setRowLimit(25);
-                            setFilterOpen(false);
-                          }}
-                          className="w-full py-1.5 rounded-lg border border-border/60 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted/20 transition-all"
-                        >
-                          Reset all
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Add session */}
               <button
                 onClick={() => { resetForm(); setShowSessionModal(true); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg text-[11px] font-medium whitespace-nowrap min-h-[32px]"
@@ -276,10 +132,11 @@ const RevenueSessionsTable = ({
 
         {/* Table */}
         <div className="flex-1 overflow-auto">
-          <table className="w-full text-left min-w-[520px]">
+          <table className="w-full text-left min-w-[720px]">
             <thead className="sticky top-0 bg-card z-20">
               <tr className="text-[10px] font-medium text-muted-foreground border-b border-border/50 bg-muted/10">
                 <th className="px-3 sm:px-6 py-3 whitespace-nowrap">Date</th>
+                <th className="px-3 sm:px-6 py-3 whitespace-nowrap">Time</th>
                 <th className="px-3 sm:px-6 py-3 whitespace-nowrap">Brand</th>
                 <th className="px-3 sm:px-6 py-3 hidden sm:table-cell whitespace-nowrap">Period</th>
                 <th className="px-3 sm:px-6 py-3 whitespace-nowrap">Platform</th>
@@ -288,41 +145,58 @@ const RevenueSessionsTable = ({
                 <th className="px-3 sm:px-6 py-3 text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
+
             <tbody className="divide-y divide-border/20">
               {paginatedSessions.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-xs text-muted-foreground">
+                  <td colSpan={8} className="px-6 py-12 text-center text-xs text-muted-foreground">
                     {loading ? 'Loading sessions…' : 'No sessions found.'}
                   </td>
                 </tr>
               )}
+
               {paginatedSessions.map((log) => (
                 <tr key={log.id} className="hover:bg-muted/20 transition-colors group">
                   <td className="px-3 sm:px-6 py-3 text-[11px] text-muted-foreground whitespace-nowrap">
                     {format(parseISO(log.date), 'MMM dd, yyyy')}
                   </td>
+
+                  <td className="px-3 sm:px-6 py-3 text-[11px] text-muted-foreground whitespace-nowrap">
+                    {log.time || '00:00'}
+                  </td>
+
                   <td className="px-3 sm:px-6 py-3">
                     <span className="text-[11px] font-medium text-foreground group-hover:text-primary">
                       {log.brandName}
                     </span>
                   </td>
+
                   <td className="px-3 sm:px-6 py-3 hidden sm:table-cell">
-                    <span className="text-[10px] text-muted-foreground">{log.period}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {log.period}
+                    </span>
                   </td>
+
                   <td className="px-3 sm:px-6 py-3">
                     <span className={`text-[9px] font-medium uppercase px-2 py-0.5 rounded text-white ${
-                      log.platform === 'TikTok' ? 'bg-black' :
-                      log.platform === 'Shopee'  ? 'bg-orange-500' : 'bg-blue-500'
+                      log.platform === 'TikTok'
+                        ? 'bg-black'
+                        : log.platform === 'Shopee'
+                        ? 'bg-orange-500'
+                        : 'bg-blue-500'
                     }`}>
                       {log.platform}
                     </span>
                   </td>
+
                   <td className="px-3 sm:px-6 py-3 text-right text-[11px] hidden md:table-cell">
                     {log.viewers?.toLocaleString()}
                   </td>
+
                   <td className="px-3 sm:px-6 py-3 text-right text-[11px] font-medium whitespace-nowrap">
                     {formatCurrency(log.revenue)}
                   </td>
+
                   <td className="px-3 sm:px-6 py-3 text-right">
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
@@ -332,6 +206,7 @@ const RevenueSessionsTable = ({
                       >
                         <Edit2 size={11} />
                       </button>
+
                       <button
                         onClick={() => handleDeleteSession(log.id)}
                         className="p-1.5 rounded bg-muted/50 hover:bg-red-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
@@ -348,14 +223,13 @@ const RevenueSessionsTable = ({
         </div>
 
         {/* Footer */}
-        <div className="px-3 sm:px-6 py-2.5 border-t border-border/60 bg-muted/5 flex items-center justify-between gap-2 min-h-[44px] flex-wrap">
-
+        <div className="px-3 sm:px-6 py-2.5 border-t border-border/60 bg-muted/5 flex items-center justify-between gap-2 min-h-[44px] flex-wrap rounded-b-3xl">
           <p className="text-[9px] text-muted-foreground whitespace-nowrap shrink-0">
             {totalCount === 0
               ? 'No sessions'
               : showingAll
                 ? `All ${totalCount.toLocaleString()} sessions`
-                : `${rowStart.toLocaleString()}–${rowEnd.toLocaleString()} of ${totalCount.toLocaleString()}`
+                : `Showing ${rowStart.toLocaleString()}–${rowEnd.toLocaleString()} of ${totalCount.toLocaleString()} sessions`
             }
           </p>
 
@@ -408,7 +282,6 @@ const RevenueSessionsTable = ({
             </button>
           )}
         </div>
-
       </div>
     </div>
   );

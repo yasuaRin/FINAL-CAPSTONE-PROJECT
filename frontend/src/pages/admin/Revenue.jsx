@@ -7,7 +7,7 @@ import {
   Filter, ChevronDown, X, AlertTriangle, Plus, Users
 } from 'lucide-react';
 
-import DateRangeSelector from '../../components/ui/DateRangeSelector';
+import SortByButton from '../../components/layout/SortByButton';
 import { useRevenue } from '../../hooks/useRevenue';
 import { useBrands } from '../../hooks/useBrands';
 import { useTeam } from '../../hooks/useTeam';
@@ -143,7 +143,7 @@ const Revenue = () => {
     return revenueData.map(i => ({
       id: sid(i.id),
       brandId: sid(i.brand_id),
-      hostId: sid(i.host_id),
+      host_team_member_id: sid(i.host_team_member_id),
       date: i.date,
       period_id: i.period_id,
       platform:
@@ -154,6 +154,49 @@ const Revenue = () => {
       viewers: (i.viewers_shopee ?? 0) + (i.viewers_tiktok ?? 0),
     }));
   }, [revenueData]);
+
+  // Debug for Top Performers - MOVED HERE after revenueLogs is defined
+  useEffect(() => {
+    if (!revenueLogs.length && !team?.length) return;
+    
+    console.log('🔍 TOP PERFORMERS DEBUG:');
+    console.log('Team members count:', team?.length);
+    console.log('Team sample:', team?.slice(0, 3));
+    
+    // Check revenueLogs for host_team_member_id values
+    const uniquehost_team_member_ids = new Set();
+    const host_team_member_idCounts = {};
+    
+    revenueLogs.forEach(log => {
+      if (log.host_team_member_id && log.host_team_member_id !== 'null' && log.host_team_member_id !== '') {
+        uniquehost_team_member_ids.add(log.host_team_member_id);
+        host_team_member_idCounts[log.host_team_member_id] = (host_team_member_idCounts[log.host_team_member_id] || 0) + 1;
+      }
+    });
+    
+    console.log('Unique host IDs in revenueLogs:', uniquehost_team_member_ids.size);
+    console.log('Sample host IDs:', Array.from(uniquehost_team_member_ids).slice(0, 5));
+    console.log('Host ID to session count mapping:', Object.entries(host_team_member_idCounts).slice(0, 5));
+    
+    // Check if host IDs match team IDs
+    const teamIds = new Set(team?.map(t => String(t.id)) || []);
+    let matchCount = 0;
+    
+    uniquehost_team_member_ids.forEach(host_team_member_id => {
+      if (teamIds.has(host_team_member_id)) {
+        matchCount++;
+      }
+    });
+    
+    console.log('Host IDs matching team IDs:', matchCount, 'out of', uniquehost_team_member_ids.size);
+    
+    // Show which host IDs are NOT in team
+    if (uniquehost_team_member_ids.size > 0 && matchCount === 0) {
+      console.warn('⚠️ No host IDs match team IDs! This is why top performers are empty.');
+      console.log('First host ID from revenue:', Array.from(uniquehost_team_member_ids)[0]);
+      console.log('First team ID from team:', Array.from(teamIds)[0]);
+    }
+  }, [team, revenueLogs]);
 
   // ── brandMap for fast lookup ──
   const brandMap = useMemo(() => {
@@ -178,14 +221,14 @@ const Revenue = () => {
 
     const staffBrandRevenue = {};
     revenueLogs.forEach(log => {
-      if (!log.hostId) return;
-      const key = `${log.brandId}_${log.hostId}`;
+      if (!log.host_team_member_id) return;
+      const key = `${log.brandId}_${log.host_team_member_id}`;
       if (!staffBrandRevenue[key]) {
         staffBrandRevenue[key] = {
           brandId: log.brandId,
           brandName: brandMap[log.brandId] || 'Unknown',
-          staffId: log.hostId,
-          staffName: teamMap[log.hostId] || `Host ${log.hostId}`,
+          staffId: log.host_team_member_id,
+          staffName: teamMap[log.host_team_member_id] || `Host ${log.host_team_member_id}`,
           revenue: 0,
         };
       }
@@ -346,7 +389,7 @@ const topPlatform = topPlatformAllTime;
     let rows = revenueLogs.map(log => ({
       ...log,
       brandName: brandMap[log.brandId] || 'Unknown Brand',
-      staffName: teamMap[log.hostId] || '—',
+      staffName: teamMap[log.host_team_member_id] || '—',
       period: `Period ${log.period_id}`,
     }));
 
@@ -434,7 +477,7 @@ const topPlatform = topPlatformAllTime;
         likes_shopee: 0,
         likes_tiktok: 0,
         period_id: 1,
-        host_id: 1,
+        host_team_member_id: null,
         brand_id: sessionFormData.brandId,
         platform_id: platformData?.platform_id,
       }]);
@@ -530,7 +573,7 @@ const topPlatform = topPlatformAllTime;
   }
 
   return (
-    <motion.div className="space-y-6 pb-16 relative min-w-0 overflow-x-hidden">
+  <motion.div id="revenue-report-container" className="space-y-6 pb-16 relative min-w-0 overflow-x-hidden">
       <AnimatePresence>
         {notification && (
           <motion.div
@@ -551,14 +594,18 @@ const topPlatform = topPlatformAllTime;
           <p className="text-muted-foreground mt-1 text-sm">Track performance, analyze trends, and monitor platform distribution.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <DateRangeSelector value={dateRange} onChange={setDateRange} />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center justify-center rounded-xl text-sm font-bold transition-all bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 sm:px-6 py-2 gap-2 shadow-lg whitespace-nowrap"
-          >
-            <FileUp size={16} /> Import
-          </button>
-          <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".csv,.xlsx,.json" />
+          <SortByButton
+              brands={brands}
+              selectedBrand={tableFilter.brandId === 'All' ? null : tableFilter.brandId}
+              onBrandChange={(brandId) =>
+                setTableFilter(prev => ({
+                  ...prev,
+                  brandId: brandId || 'All',
+                }))
+              }
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+            />
         </div>
       </div>
 
