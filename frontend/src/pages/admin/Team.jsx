@@ -108,26 +108,26 @@ export default function Team() {
   const fetchMembers = async () => {
     setLoading(true);
     try {
-      const [{ data: admins, error: adminsError }, { data: staff, error: staffError }] = await Promise.all([
-        supabase.from('admins').select('id, full_name, email, role, is_active, avatar_url, phone').order('created_at', { ascending: false }),
-        supabase.from('staff').select('id, name, email, phone, role, status, avatar_url').order('created_at', { ascending: false }),
-      ]);
-      if (adminsError) console.error('Admins fetch error:', adminsError);
-      if (staffError)  console.error('Staff fetch error:', staffError);
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('id, name, email, phone, avatar_url, role, role_description, status, auth_user_id')
+        .order('created_at', { ascending: false });
 
-      const adminList = (admins || []).map(a => ({
-        _id: a.id, _table: 'admins',
-        name: a.full_name || a.email, email: a.email, phone: a.phone || '',
-        role: a.role, status: a.is_active ? 'active' : 'inactive',
-        avatar: a.avatar_url, roleDescription: a.role === 'super_admin' ? 'Super Admin' : 'Admin',
+      if (error) console.error('Team members fetch error:', error);
+
+      const memberList = (data || []).map(m => ({
+        _id: m.id,
+        _table: 'team_members',
+        name: m.name,
+        email: m.email,
+        phone: m.phone || '',
+        role: m.auth_user_id ? (m.role || 'admin') : 'staff',
+        status: m.status || 'active',
+        avatar: m.avatar_url,
+        roleDescription: m.role_description || m.role || 'Staff',
       }));
-      const staffList = (staff || []).map(s => ({
-        _id: s.id, _table: 'staff',
-        name: s.name, email: s.email, phone: s.phone || '',
-        role: 'staff', status: s.status || 'active',
-        avatar: s.avatar_url || null, roleDescription: s.role || 'Staff',
-      }));
-      setMembers([...adminList, ...staffList]);
+
+      setMembers(memberList);
     } catch (err) {
       console.error('Error fetching members:', err);
     } finally {
@@ -216,13 +216,12 @@ export default function Team() {
       };
 
       if (editingMember) {
-        // ✅ Edit — lewat backend pakai service key
         const _res = await fetch(`${import.meta.env.VITE_API_URL}/team/update-member`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
             id: editingMember._id,
-            table: editingMember._table,
+            table: 'team_members',
             name,
             phone: phone || null,
             status,
@@ -234,21 +233,31 @@ export default function Team() {
         if (!_res.ok) throw new Error(_result.message);
 
       } else {
-        // ✅ Create baru
         if (role === 'staff') {
           const _res = await fetch(`${import.meta.env.VITE_API_URL}/team/create-staff`, {
             method: 'POST',
             headers,
-            body: JSON.stringify({ name, email, phone: phone || null, role: roleDescription, status, avatar_url: formAvatar || null }),
+            body: JSON.stringify({
+              name, email, phone: phone || null,
+              role: roleDescription, status,
+              avatar_url: formAvatar || null,
+            }),
           });
           const _result = await _res.json();
           if (!_res.ok) throw new Error(_result.message);
         } else {
-          if (!password) { setFormError('Password is required for Admin / Super Admin accounts.'); setSubmitting(false); return; }
+          if (!password) {
+            setFormError('Password is required for Admin / Super Admin accounts.');
+            setSubmitting(false);
+            return;
+          }
           const _res = await fetch(`${import.meta.env.VITE_API_URL}/team/create-admin`, {
             method: 'POST',
             headers,
-            body: JSON.stringify({ email, password, name, phone, role, avatar_url: formAvatar || null }),
+            body: JSON.stringify({
+              email, password, name, phone, role,
+              avatar_url: formAvatar || null,
+            }),
           });
           const _result = await _res.json();
           if (!_res.ok) throw new Error(_result.message);
@@ -275,7 +284,7 @@ export default function Team() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({ id: deleteTarget._id, table: deleteTarget._table }),
+        body: JSON.stringify({ id: deleteTarget._id, table: 'team_members' }),
       });
       const _result = await _res.json();
       if (!_res.ok) throw new Error(_result.message);
@@ -377,7 +386,7 @@ export default function Team() {
                       <div>
                         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--foreground)', margin: 0 }}>{member.name}</p>
                         <p style={{ fontSize: 11, color: 'var(--muted-foreground)', margin: '3px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Mail size={11} /> {member.email}
+                          <Mail size={11} /> {member.email || '—'}
                         </p>
                         {member.phone && (
                           <p style={{ fontSize: 10, color: 'var(--muted-foreground)', margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>

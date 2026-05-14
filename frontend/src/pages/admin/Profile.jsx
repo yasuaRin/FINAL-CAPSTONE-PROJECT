@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../services/supabase';
 
-// ── Color palette CSS vars injected globally ──────────────────────────────────
 const PALETTE_STYLE = `
   :root {
     --accent:       #DB1A1A;
@@ -137,144 +136,6 @@ function CameraModal({ open, onClose, onCapture }) {
   );
 }
 
-const MOCK_SECRET = 'JBSWY3DPEHPK3PXP';
-const MOCK_QR = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=otpauth://totp/VidHelp:admin@vidhelp.com?secret=${MOCK_SECRET}%26issuer=VidHelp`;
-
-function TwoFAModal({ open, enabled, onClose, onEnabled, onDisabled }) {
-  const [step, setStep] = useState(enabled ? 'disable' : 'qr');
-  const [code, setCode] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (open) { setStep(enabled ? 'disable' : 'qr'); setCode(''); setError(''); }
-  }, [open, enabled]);
-
-  const handleVerify = () => {
-    if (code.length !== 6) { setError('Please enter a 6-digit code.'); return; }
-    setLoading(true);
-    setTimeout(() => { setLoading(false); setStep('success'); onEnabled(); }, 800);
-  };
-
-  const handleDisable = () => {
-    if (code.length !== 6) { setError('Please enter a 6-digit code to confirm.'); return; }
-    setLoading(true);
-    setTimeout(() => { setLoading(false); onDisabled(); onClose(); }, 800);
-  };
-
-  const CodeInput = ({ id }) => (
-    <input
-      autoFocus id={id} type="text" inputMode="numeric" maxLength={6} value={code}
-      onChange={e => { setCode(e.target.value.replace(/\D/g, '')); setError(''); }}
-      placeholder="000000"
-      style={{
-        width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)',
-        borderRadius: 12, padding: '12px 16px', color: 'var(--fg)',
-        fontSize: 24, textAlign: 'center', letterSpacing: '0.6em',
-        fontFamily: 'monospace', outline: 'none',
-      }}
-    />
-  );
-
-  if (!open) return null;
-  return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 100,
-        background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-      }}
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 16 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 16 }}
-        style={{
-          background: 'var(--bg)', border: '1px solid var(--border)',
-          borderRadius: 20, padding: 24, width: '100%', maxWidth: 360,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--fg)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Smartphone size={16} style={{ color: 'var(--muted)' }} />
-            {step === 'disable' ? 'Disable 2FA' : 'Enable two-factor authentication'}
-          </span>
-          <button onClick={onClose} style={iconBtnStyle}><X size={16} /></button>
-        </div>
-
-        {step === 'qr' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>Scan this QR code with your authenticator app.</p>
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', padding: 10, borderRadius: 14 }}>
-                <img src={MOCK_QR} alt="2FA QR Code" style={{ width: 176, height: 176, display: 'block' }} />
-              </div>
-            </div>
-            <div style={{ background: 'var(--surface)', borderRadius: 10, padding: 12, border: '1px solid var(--border)' }}>
-              <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--muted)', fontWeight: 700, margin: '0 0 4px' }}>Manual entry key</p>
-              <p style={{ fontSize: 11, color: 'var(--fg)', fontFamily: 'monospace', wordBreak: 'break-all', margin: 0 }}>{MOCK_SECRET}</p>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={onClose} style={cancelBtnStyle}>Cancel</button>
-              <button onClick={() => setStep('verify')} style={primaryBtnStyle}>Next — enter code</button>
-            </div>
-          </div>
-        )}
-
-        {step === 'verify' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>Enter the 6-digit code from your authenticator app.</p>
-            <CodeInput id="verify-code" />
-            {error && <p style={{ fontSize: 12, color: 'var(--accent)', margin: 0 }}>{error}</p>}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setStep('qr')} style={cancelBtnStyle}>Back</button>
-              <button onClick={handleVerify} disabled={loading || code.length !== 6} style={{ ...primaryBtnStyle, opacity: (loading || code.length !== 6) ? 0.5 : 1 }}>
-                {loading && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
-                {loading ? 'Verifying...' : 'Verify & enable'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 'success' && (
-          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 16, padding: '8px 0' }}>
-            <div style={{
-              width: 56, height: 56, background: 'rgba(219,26,26,0.1)', borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto',
-            }}>
-              <CheckCircle2 size={28} style={{ color: 'var(--accent)' }} />
-            </div>
-            <div>
-              <h4 style={{ margin: '0 0 4px', color: 'var(--fg)', fontWeight: 700, fontSize: 16 }}>2FA enabled!</h4>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)' }}>Your account is now protected with two-factor authentication.</p>
-            </div>
-            <button onClick={onClose} style={primaryBtnStyle}>Done</button>
-          </div>
-        )}
-
-        {step === 'disable' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>Enter the 6-digit code from your authenticator app to disable 2FA.</p>
-            <CodeInput id="disable-code" />
-            {error && <p style={{ fontSize: 12, color: 'var(--accent)', margin: 0 }}>{error}</p>}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={onClose} style={cancelBtnStyle}>Cancel</button>
-              <button onClick={handleDisable} disabled={loading || code.length !== 6} style={{ ...primaryBtnStyle, opacity: (loading || code.length !== 6) ? 0.5 : 1 }}>
-                {loading && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
-                {loading ? 'Disabling...' : 'Disable 2FA'}
-              </button>
-            </div>
-          </div>
-        )}
-      </motion.div>
-    </div>
-  );
-}
-
-// ── Shared style objects ───────────────────────────────────────────────────────
 const iconBtnStyle = {
   padding: 6, borderRadius: 8, border: 'none', cursor: 'pointer',
   background: 'transparent', color: 'var(--muted)',
@@ -327,8 +188,6 @@ export default function ProfileSettings() {
   const [saved, setSaved] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [show2FA, setShow2FA] = useState(false);
-  const [isTwoFAEnabled, setIsTwoFAEnabled] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
   const fileInputRef = useRef(null);
@@ -424,7 +283,7 @@ export default function ProfileSettings() {
     setPasswordLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
-      redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}/`,
       });
       if (error) throw error;
       showToast(`Password reset email sent to ${profile.email}.`);
@@ -452,22 +311,17 @@ export default function ProfileSettings() {
   return (
     <>
       <style>{PALETTE_STYLE}</style>
-
       <Toast {...toast} />
 
       <div style={{ padding: '32px 24px' }}>
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
 
-          {/* Page header */}
           <div style={{ marginBottom: 24 }}>
             <p style={{ fontSize: 11, color: 'var(--muted)', margin: '0 0 4px' }}>Pages / profile</p>
             <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--fg)' }}>Profile</h1>
           </div>
 
-          {/* Main card */}
           <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 1px 8px rgba(0,0,0,0.06)' }}>
-
-            {/* Header banner — accent red */}
             <div style={{
               padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               background: 'var(--accent)',
@@ -484,15 +338,11 @@ export default function ProfileSettings() {
               </div>
             </div>
 
-            {/* Body: sidebar + form */}
             <div style={{ padding: 24, display: 'grid', gridTemplateColumns: 'minmax(220px,260px) 1fr', gap: 24 }}>
-
-              {/* ── Left Sidebar ── */}
               <div style={{
                 background: 'var(--sidebar-bg)', border: '1px solid var(--border)',
                 borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', alignItems: 'center',
               }}>
-                {/* Avatar */}
                 <div style={{ position: 'relative', width: 112, height: 112, marginBottom: 20 }}>
                   <div style={{
                     width: '100%', height: '100%', borderRadius: '50%',
@@ -501,7 +351,7 @@ export default function ProfileSettings() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     {profile.avatar_url
-                      ? <img src={profile.avatar_url} alt={profile.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ? <img src={profile.avatar_url} alt={profile.full_name} referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       : (
                         <div style={{
                           width: '100%', height: '100%', borderRadius: '50%',
@@ -513,7 +363,6 @@ export default function ProfileSettings() {
                       )
                     }
                   </div>
-                  {/* Shield badge */}
                   <div style={{
                     position: 'absolute', bottom: 0, right: 0, width: 30, height: 30,
                     background: 'var(--accent)', borderRadius: '50%',
@@ -522,7 +371,6 @@ export default function ProfileSettings() {
                   }}>
                     <Shield size={13} style={{ color: '#fff' }} />
                   </div>
-                  {/* Edit overlays */}
                   {isEditing && (
                     <div style={{
                       position: 'absolute', inset: 0, borderRadius: '50%',
@@ -545,7 +393,6 @@ export default function ProfileSettings() {
                 <h3 style={{ fontWeight: 700, fontSize: 16, color: 'var(--fg)', margin: '0 0 4px', textAlign: 'center' }}>{profile.full_name || 'Admin User'}</h3>
                 <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 24px', textAlign: 'center' }}>{profile.role}</p>
 
-                {/* Progress */}
                 <div style={{ width: '100%', borderTop: '1px solid var(--border)', paddingTop: 20 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--muted)' }}>Employee Status</span>
@@ -567,7 +414,6 @@ export default function ProfileSettings() {
                 </div>
               </div>
 
-              {/* ── Right: Form ── */}
               <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
                 <form onSubmit={handleSave}>
                   <div style={{ padding: 24 }}>
@@ -663,7 +509,6 @@ export default function ProfileSettings() {
             </div>
           </div>
 
-          {/* ── Security Settings ── */}
           <div style={{
             marginTop: 20, background: 'var(--bg)', border: '1px solid var(--border)',
             borderRadius: 20, overflow: 'hidden',
@@ -673,12 +518,10 @@ export default function ProfileSettings() {
               <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--muted)' }}>Security Settings</span>
             </div>
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-              {/* Password row */}
               <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: 16, background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 14, transition: 'border-color 0.15s',
+                borderRadius: 14,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{
@@ -700,58 +543,13 @@ export default function ProfileSettings() {
                     background: 'var(--bg)', borderRadius: 10,
                     fontSize: 11, fontWeight: 700, color: 'var(--fg)', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', gap: 6,
-                    opacity: passwordLoading ? 0.5 : 1, transition: 'all 0.15s',
+                    opacity: passwordLoading ? 0.5 : 1,
                     letterSpacing: '0.04em',
                   }}
                 >
                   {passwordLoading && <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} />}
                   {passwordLoading ? 'Sending...' : 'Change'}
                 </button>
-              </div>
-
-              {/* 2FA row */}
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: 16, background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 14, transition: 'border-color 0.15s',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 36, height: 36, background: 'var(--bg)',
-                    border: '1px solid var(--border)', borderRadius: 12,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <Smartphone size={14} style={{ color: 'var(--muted)' }} />
-                  </div>
-                  <div>
-                    <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 500, color: 'var(--fg)' }}>Two-factor authentication</p>
-                    <p style={{ margin: 0, fontSize: 11, color: 'var(--muted)' }}>
-                      {isTwoFAEnabled ? 'Currently enabled — your account is protected' : 'Add an extra layer of security'}
-                    </p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {isTwoFAEnabled && (
-                    <span style={{
-                      fontSize: 9, fontWeight: 700, color: '#22c55e',
-                      background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)',
-                      padding: '2px 8px', borderRadius: 6, letterSpacing: '0.1em',
-                    }}>ON</span>
-                  )}
-                  <button
-                    onClick={() => setShow2FA(true)}
-                    style={{
-                      padding: '6px 16px', border: '1px solid var(--border)',
-                      background: isTwoFAEnabled ? 'var(--accent)' : 'var(--bg)',
-                      color: isTwoFAEnabled ? '#fff' : 'var(--fg)',
-                      borderColor: isTwoFAEnabled ? 'var(--accent)' : 'var(--border)',
-                      borderRadius: 10, fontSize: 11, fontWeight: 700,
-                      cursor: 'pointer', letterSpacing: '0.04em', transition: 'all 0.15s',
-                    }}
-                  >
-                    {isTwoFAEnabled ? 'Disable 2FA' : 'Enable 2FA'}
-                  </button>
-                </div>
               </div>
             </div>
           </div>
@@ -764,18 +562,6 @@ export default function ProfileSettings() {
             open={isCameraOpen}
             onClose={() => setIsCameraOpen(false)}
             onCapture={dataUrl => { setProfile(p => ({ ...p, avatar_url: dataUrl })); showToast('Avatar updated.'); }}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {show2FA && (
-          <TwoFAModal
-            open={show2FA}
-            enabled={isTwoFAEnabled}
-            onClose={() => setShow2FA(false)}
-            onEnabled={() => setIsTwoFAEnabled(true)}
-            onDisabled={() => setIsTwoFAEnabled(false)}
           />
         )}
       </AnimatePresence>
