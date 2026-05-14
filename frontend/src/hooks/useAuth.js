@@ -3,25 +3,29 @@ import { supabase } from '../services/supabase';
 
 export const useAuth = () => {
   const [user, setUser] = useState(null);
-  const [adminData, setAdminData] = useState(null);
+  const [memberData, setMemberData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchAdminData = async (authUser) => {
-    if (!authUser) { setAdminData(null); return; }
+  const fetchMemberData = async (authUser) => {
+    if (!authUser) { setMemberData(null); return; }
+
     const { data } = await supabase
-      .from('admins')
-      .select('role, is_active, full_name, avatar_url, phone')
-      .eq('id', authUser.id)
+      .from('team_members')
+      .select('role, status, name, avatar_url, phone')
+      .eq('auth_user_id', authUser.id)
       .single();
 
-    // Auto-save Google avatar jika belum ada di tabel admins
+    // Auto-save Google avatar if not set yet
     const googleAvatar = authUser.user_metadata?.picture || authUser.user_metadata?.avatar_url;
     if (data && !data.avatar_url && googleAvatar) {
-      await supabase.from('admins').update({ avatar_url: googleAvatar }).eq('id', authUser.id);
+      await supabase
+        .from('team_members')
+        .update({ avatar_url: googleAvatar })
+        .eq('auth_user_id', authUser.id);
       data.avatar_url = googleAvatar;
     }
 
-    setAdminData(data || null);
+    setMemberData(data || null);
   };
 
   useEffect(() => {
@@ -29,14 +33,14 @@ export const useAuth = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         setUser(session?.user ?? null);
-        await fetchAdminData(session?.user ?? null);
+        await fetchMemberData(session?.user ?? null);
         if (session?.access_token) {
           localStorage.setItem('token', session.access_token);
         }
       } catch (error) {
         console.error('Auth error:', error);
         setUser(null);
-        setAdminData(null);
+        setMemberData(null);
       } finally {
         setLoading(false);
       }
@@ -51,7 +55,7 @@ export const useAuth = () => {
           return;
         }
         setUser(session?.user ?? null);
-        await fetchAdminData(session?.user ?? null);
+        await fetchMemberData(session?.user ?? null);
         setLoading(false);
         if (session?.access_token) {
           localStorage.setItem('token', session.access_token);
@@ -71,14 +75,10 @@ export const useAuth = () => {
     return data;
   };
 
-  // ── Robust logout: clear local state first, then try Supabase signOut ──
   const logout = async () => {
-    // Clear local state immediately so UI redirects right away
     setUser(null);
-    setAdminData(null);
+    setMemberData(null);
     localStorage.removeItem('token');
-
-    // Attempt Supabase signOut — ignore errors (session may already be dead)
     try {
       await supabase.auth.signOut({ scope: 'local' });
     } catch (err) {
@@ -91,8 +91,8 @@ export const useAuth = () => {
     loading,
     login,
     logout,
-    role: adminData?.role || null,
-    isActive: adminData?.is_active || false,
-    adminProfile: adminData,
+    role: memberData?.role || null,
+    isActive: memberData?.status === 'active',
+    adminProfile: memberData,
   };
 };
