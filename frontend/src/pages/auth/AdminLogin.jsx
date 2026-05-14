@@ -100,37 +100,37 @@ export const AdminLogin = () => {
       throw new Error('Only @gmail.com or @vidhelp.com email addresses are allowed.');
     }
 
-    const { data: adminData, error: dbError } = await supabase
-      .from('admins')
-      .select('role, is_active')
-      .eq('id', authUser.id)
+    const { data: memberData, error: dbError } = await supabase
+      .from('team_members')
+      .select('role, status, auth_user_id')
+      .eq('auth_user_id', authUser.id)
       .single();
 
-    if (dbError || !adminData) {
+    if (dbError || !memberData) {
       await supabase.auth.signOut();
       throw new Error('Account not found in the system. Please contact Super Admin.');
     }
 
-    if (!adminData.is_active) {
+    if (memberData.status !== 'active') {
       await supabase.auth.signOut();
       throw new Error('Your account has been deactivated. Please contact Super Admin.');
     }
 
-    if (adminData.role === 'staff') {
+    if (memberData.role === 'staff') {
       await supabase.auth.signOut();
       throw new Error('Staff accounts do not have access to the Admin Portal.');
     }
 
-    if (adminData.role !== selectedRole) {
+    if (memberData.role !== selectedRole) {
       await supabase.auth.signOut();
-      const actualLabel = adminData.role === 'super_admin' ? 'Super Admin' : 'Admin';
+      const actualLabel = memberData.role === 'super_admin' ? 'Super Admin' : 'Admin';
       const selectedLabel = selectedRole === 'super_admin' ? 'Super Admin' : 'Admin';
       throw new Error(
         `Wrong access level selected. You selected "${selectedLabel}" but your account is registered as "${actualLabel}". Please select the correct access level and try again.`
       );
     }
 
-    return adminData;
+    return memberData;
   };
 
   const handleSubmit = async (e) => {
