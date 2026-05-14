@@ -17,7 +17,6 @@ export const useTeam = () => {
       if (cached) {
         const { data, timestamp } = JSON.parse(cached);
         const isExpired = Date.now() - timestamp > CACHE_DURATION;
-        
         if (!isExpired && data?.length > 0) {
           console.log('📦 Using cached team data');
           setTeam(data);
@@ -27,22 +26,21 @@ export const useTeam = () => {
       }
 
       setLoading(true);
-      
+
       const { data, error: teamError } = await supabase
-        .from('staff')
-        .select('id, name, email, phone, role, status')
+        .from('team_members')
+        .select('id, name, email, phone, role, status, old_staff_id')
         .limit(200);
 
       if (teamError) throw teamError;
-      
+
       setTeam(data || []);
-      
+
       // Save to cache
       sessionStorage.setItem(CACHE_KEY, JSON.stringify({
         data: data || [],
         timestamp: Date.now()
       }));
-      
     } catch (err) {
       console.error('Error fetching team:', err);
       setError(err.message);
