@@ -1,80 +1,156 @@
 // frontend/src/hooks/useRevenue.js
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabase';
+
+const PAGE_SIZE = 500;
+
+const fetchAllRows = async () => {
+  const { count: totalCount, error: countError } = await supabase
+    .from('live_sessions')
+    .select('*', { count: 'exact', head: true });
+
+  if (countError) throw countError;
+  if (!totalCount) return [];
+
+  console.log(`📊 useRevenue: expecting ${totalCount} total sessions`);
+
+  const allRows = [];
+  let from = 0;
+
+  while (allRows.length < totalCount) {
+    const { data, error } = await supabase
+      .from('live_sessions')
+      .select(`
+        id,
+        date,
+        revenue_shopee,
+        revenue_tiktok,
+        viewers_shopee,
+        viewers_tiktok,
+        likes_shopee,
+        likes_tiktok,
+        host_id,
+        brand_id,
+        period_id
+      `)
+      .order('id', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    const page = data || [];
+
+    if (page.length === 0) {
+      console.warn(`⚠️ useRevenue: pagination ended early at ${allRows.length}/${totalCount}`);
+      break;
+    }
+
+    allRows.push(...page);
+    from += page.length;
+  }
+
+  console.log(`📦 useRevenue: fetched ${allRows.length}/${totalCount} sessions`);
+
+  const seen = new Set();
+  const unique = allRows.filter((row) => {
+    if (seen.has(row.id)) return false;
+    seen.add(row.id);
+    return true;
+  });
+  
+  if (unique.length !== allRows.length) {
+    console.warn(`⚠️ removed ${allRows.length - unique.length} duplicate rows`);
+  }
+
+  console.log(`✅ useRevenue: ${unique.length} unique rows`);
+  return unique;
+};
 
 export const useRevenue = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [brandTotals, setBrandTotals] = useState(new Map());
+  const [yearlyData, setYearlyData] = useState([]);
 
-  const fetchRevenue = async () => {
+  const fetchRevenue = useCallback(async () => {
     try {
       setLoading(true);
-      console.log('Fetching revenue from Supabase...');
-      
-      // Fetch ALL live sessions directly from Supabase
-      const { data: revenueData, error: revenueError } = await supabase
-        .from('live_sessions')
-        .select(`
-          id,
-          date,
-          time,
-          revenue_shopee,
-          revenue_tiktok,
-          viewers_shopee,
-          viewers_tiktok,
-          likes_shopee,
-          likes_tiktok,
-          host_id,
-          brand_id,
-          platform_id,
-          period_id
-        `)
-        .order('date', { ascending: false });
 
-      if (revenueError) {
-        console.error('Supabase error:', revenueError);
-        throw revenueError;
-      }
+      const rows = await fetchAllRows();
 
-      console.log(`Fetched ${revenueData?.length || 0} revenue records`);
-      
-      // Transform data to match what dashboard expects
-      const transformedData = revenueData?.map(item => ({
-        id: item.id,
-        date: item.date,
-        time: item.time,
-        host_id: item.host_id,
-        brand_id: item.brand_id,
-        platform_id: item.platform_id,
-        revenue_shopee: item.revenue_shopee || 0,
-        revenue_tiktok: item.revenue_tiktok || 0,
-        viewers_shopee: item.viewers_shopee || 0,
-        viewers_tiktok: item.viewers_tiktok || 0,
-        likes_shopee: item.likes_shopee || 0,
-        likes_tiktok: item.likes_tiktok || 0,
-        period_id: item.period_id,
-        total_revenue: (item.revenue_shopee || 0) + (item.revenue_tiktok || 0)
-      })) || [];
+      let runningTotal = 0;
+      const yearMap = new Map();
+      const brandMap = new Map();
 
-      setData(transformedData);
+      rows.forEach((item) => {
+        const s = item.revenue_shopee ?? 0;
+        const t = item.revenue_tiktok ?? 0;
+        const rev = s + t;
+
+        runningTotal += rev;
+
+        if (item.date) {
+          const year = new Date(item.date).getFullYear();
+          yearMap.set(year, (yearMap.get(year) ?? 0) + rev);
+        }
+
+        if (item.brand_id) {
+          const brandId = String(item.brand_id); // Convert UUID to string for Map
+          const currentRevenue = brandMap.get(brandId) || 0;
+          brandMap.set(brandId, currentRevenue + rev);
+        }
+      });
+
+      console.log('💰 Total revenue:', runningTotal.toLocaleString('id-ID'));
+      console.log('📊 Brand revenue map size:', brandMap.size);
+      console.log('📊 Brand revenue details:', Array.from(brandMap.entries()).map(([id, rev]) => ({ id, rev })));
+
+      setTotalRevenue(runningTotal);
+      setBrandTotals(brandMap);
+
+      const calculatedYearly = Array.from(yearMap.entries())
+        .map(([year, total]) => ({ year, total_revenue: total }))
+        .sort((a, b) => a.year - b.year);
+
+      setYearlyData(calculatedYearly);
+
+      setData(
+        rows.map((item) => ({
+          id: item.id,
+          date: item.date,
+          period_id: item.period_id,
+          host_id: item.host_id,
+          brand_id: String(item.brand_id), // Convert UUID to string
+          revenue_shopee: item.revenue_shopee ?? 0,
+          revenue_tiktok: item.revenue_tiktok ?? 0,
+          viewers_shopee: item.viewers_shopee ?? 0,
+          viewers_tiktok: item.viewers_tiktok ?? 0,
+          likes_shopee: item.likes_shopee ?? 0,
+          likes_tiktok: item.likes_tiktok ?? 0,
+        }))
+      );
     } catch (err) {
-      console.error('Error fetching revenue:', err);
+      console.error('useRevenue fetch error:', err);
       setError(err.message);
-      setData([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchRevenue();
-  }, []);
+  }, [fetchRevenue]);
 
   return {
     data,
     loading,
     error,
-    refetch: fetchRevenue
+    totalRevenue,
+    brandTotals,
+    yearlyData,
+    refetch: fetchRevenue,
   };
 };

@@ -1,717 +1,800 @@
 ﻿// frontend/src/pages/admin/Revenue.jsx
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  TrendingUp, DollarSign, Activity, Download,
-  CheckCircle2, Calendar, Users, Target, BarChart3,
-  ArrowUpRight, ArrowDownRight, Minus, ChevronDown, Check, Filter,
-  Zap, Shield, Clock, PieChart, Globe, FileUp
+  TrendingUp, Activity, FileUp, CheckCircle2,
+  Filter, ChevronDown, X, AlertTriangle, Plus, Users
 } from 'lucide-react';
-import {
-  CartesianGrid, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, AreaChart, Area, PieChart as RePieChart, Pie, Cell
-} from 'recharts';
+
+import DateRangeSelector from '../../components/ui/DateRangeSelector';
 import { useRevenue } from '../../hooks/useRevenue';
 import { useBrands } from '../../hooks/useBrands';
 import { useTeam } from '../../hooks/useTeam';
-import { DateRangeSelector } from '../../components/DateRangeSelector';
-import { subDays, startOfDay, endOfDay, format, isWithinInterval } from 'date-fns';
+import { supabase } from '../../services/supabase';
 
+import {
+  subDays, isWithinInterval, startOfDay, endOfDay,
+  parseISO, format, startOfMonth, endOfMonth
+} from 'date-fns';
+
+import RevenueBrandsPanel from '../../components/revenue/RevenueBrandsPanel';
+import RevenueSessionsTable from '../../components/revenue/RevenueSessionsTable';
+
+// ---------------- HELPERS ----------------
+const formatCurrency = (value) =>
+  `Rp ${(value || 0).toLocaleString('id-ID')}`;
+
+// Normalize UUID to string
+const sid = (v) => (v == null ? '' : String(v));
+
+// ---------------- MAIN ----------------
 const Revenue = () => {
-  const parseRevenueDate = (value) => {
-    if (!value) return null;
-    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-    if (typeof value === 'string' || typeof value === 'number') {
-      const parsed = new Date(value);
-      return Number.isNaN(parsed.getTime()) ? null : parsed;
-    }
-    return null;
-  };
-
-  const normalizeDateKey = (dateValue) => {
-    const parsed = parseRevenueDate(dateValue);
-    return parsed ? format(parsed, 'yyyy-MM-dd') : null;
-  };
-
-  const { data: revenue, loading: revenueLoading } = useRevenue();
-  const { brands, loading: brandsLoading } = useBrands();
-  const { team, loading: teamLoading } = useTeam();
-
-  const [notification, setNotification] = useState(null);
-  const [showRevenueOnly, setShowRevenueOnly] = useState(true);
-  const [sortCol, setSortCol] = useState('date');
-  const [sortDir, setSortDir] = useState('desc');
-  const [sortOpen, setSortOpen] = useState(false);
-  const [limitOpen, setLimitOpen] = useState(false);
-  const [rowLimit, setRowLimit] = useState(10);
-  const sortRef = useRef(null);
-  const limitRef = useRef(null);
   const [dateRange, setDateRange] = useState({
     start: subDays(new Date(), 30),
     end: new Date(),
-    preset: '30d'
   });
 
-  // Close dropdowns on outside click
+  const [insightBrandId, setInsightBrandId] = useState('All');
+  const [notification, setNotification] = useState(null);
+  const [tableFilter, setTableFilter] = useState({ brandId: 'All', period: 'All' });
+  const [editingSession, setEditingSession] = useState(null);
+  const [sessionToDelete, setSessionToDelete] = useState(null);
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sessionFormData, setSessionFormData] = useState({
+    date: format(new Date(), 'yyyy-MM-dd'), brandId: '', platform: 'TikTok', viewers: 0, revenue: 0,
+  });
+  const [sortCol, setSortCol] = useState('date');
+  const [sortDir, setSortDir] = useState('desc');
+  const [rowLimit, setRowLimit] = useState(25);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [limitOpen, setLimitOpen] = useState(false);
+  const [periodsData, setPeriodsData] = useState([]);
+  const sortRef = useRef(null);
+  const limitRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const { data: revenueData, loading, refetch: refetchRevenue, brandTotals } = useRevenue();
+  const { brands } = useBrands(brandTotals);
+  const { team } = useTeam();
+
+  // Fetch periods data from database
   useEffect(() => {
-    const handler = (e) => {
-      if (sortRef.current && !sortRef.current.contains(e.target)) setSortOpen(false);
-      if (limitRef.current && !limitRef.current.contains(e.target)) setLimitOpen(false);
+    const fetchPeriods = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('periods')
+          .select('period_id, period_name, period_start_date, period_end_date')
+          .order('period_id');
+        
+        if (!error && data) {
+          console.log('📅 Periods fetched:', data);
+          setPeriodsData(data);
+        } else if (error) {
+          console.error('Error fetching periods:', error);
+        }
+      } catch (err) {
+        console.error('Failed to fetch periods:', err);
+      }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    
+    fetchPeriods();
   }, []);
 
-  const showNotification = (msg) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 3000);
-  };
+  // Create period map for quick lookup
+  const periodMap = useMemo(() => {
+    const map = {};
+    periodsData.forEach(p => {
+      map[p.period_id] = {
+        id: p.period_id,
+        name: p.period_name || `Period ${p.period_id}`,
+        startDate: p.period_start_date,
+        endDate: p.period_end_date,
+      };
+    });
+    return map;
+  }, [periodsData]);
 
-  const isLoading = revenueLoading || brandsLoading || teamLoading;
-
-  // Filter revenue by date range
-  const filteredRevenue = useMemo(() => {
-    if (!revenue?.length) return [];
-    return revenue.filter(item => {
-      const d = parseRevenueDate(item.date);
-      return d && isWithinInterval(d, {
-        start: startOfDay(dateRange.start),
-        end: endOfDay(dateRange.end)
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 REVENUE PAGE DEBUG:');
+    console.log('brandTotals size:', brandTotals.size);
+    console.log('brands count:', brands?.length);
+    console.log('revenueData count:', revenueData?.length);
+    console.log('periodsData count:', periodsData.length);
+    console.log('periodMap:', periodMap);
+    
+    if (brandTotals.size > 0 && brands?.length > 0) {
+      console.log('💸 BRAND REVENUE MAPPING:');
+      brands.forEach(brand => {
+        const brandId = sid(brand.brand_id);
+        const revenue = brandTotals.get(brandId) || 0;
+        console.log(`  ${brand.brand_name}: Rp ${revenue.toLocaleString('id-ID')}`);
       });
-    });
-  }, [revenue, dateRange]);
+    }
+  }, [brandTotals, brands, revenueData, periodsData, periodMap]);
 
-  // KPI calculations
-  const kpis = useMemo(() => {
-    const totalRevenue = filteredRevenue.reduce((s, i) =>
-      s + (i.revenue_shopee || 0) + (i.revenue_tiktok || 0), 0);
-
-    const totalSessions = filteredRevenue.length;
-
-    const avgRevenue = totalSessions > 0
-      ? Math.round(totalRevenue / totalSessions)
-      : 0;
-
-    const shopeeTotal = filteredRevenue.reduce((s, i) => s + (i.revenue_shopee || 0), 0);
-    const tiktokTotal = filteredRevenue.reduce((s, i) => s + (i.revenue_tiktok || 0), 0);
+  // ── Normalize brandsList with total revenue from brandTotals ──
+  const brandsList = useMemo(() => {
+    if (!brands) return [];
     
-    let topPlatform;
-    if (shopeeTotal > tiktokTotal) topPlatform = 'Shopee';
-    else if (tiktokTotal > shopeeTotal) topPlatform = 'TikTok';
-    else topPlatform = 'Multi';
-
-    const today = new Date();
-    const last7 = filteredRevenue.filter(i => {
-      const dateValue = parseRevenueDate(i.date);
-      if (!dateValue) return false;
-      const d = (today - dateValue) / 86400000;
-      return d <= 7 && d > 0;
-    });
-    const prev7 = filteredRevenue.filter(i => {
-      const dateValue = parseRevenueDate(i.date);
-      if (!dateValue) return false;
-      const d = (today - dateValue) / 86400000;
-      return d <= 14 && d > 7;
-    });
-    const last7Total = last7.reduce((s, i) => s + (i.revenue_shopee || 0) + (i.revenue_tiktok || 0), 0);
-    const prev7Total = prev7.reduce((s, i) => s + (i.revenue_shopee || 0) + (i.revenue_tiktok || 0), 0);
-    const revenueGrowth = prev7Total > 0 ? ((last7Total - prev7Total) / prev7Total * 100).toFixed(1) : 0;
-
-    return { totalRevenue, totalSessions, avgRevenue, topPlatform, revenueGrowth };
-  }, [filteredRevenue]);
-
-  // Revenue trend (daily grouped)
-  const revenueTrend = useMemo(() => {
-    if (!filteredRevenue.length) return [];
-    
-    const dailyMap = new Map();
-    
-    filteredRevenue.forEach(item => {
-      const dateKey = format(parseRevenueDate(item.date), 'yyyy-MM-dd');
-      const revenue = (item.revenue_shopee || 0) + (item.revenue_tiktok || 0);
-      
-      if (dailyMap.has(dateKey)) {
-        dailyMap.set(dateKey, dailyMap.get(dateKey) + revenue);
-      } else {
-        dailyMap.set(dateKey, revenue);
-      }
-    });
-    
-    return Array.from(dailyMap.entries())
-      .map(([date, revenue]) => ({
-        date: format(new Date(date), 'MMM dd'),
-        revenue,
-        forecast: Math.round(revenue * 1.06)
+    return brands
+      .map(b => ({ 
+        id: sid(b.brand_id), 
+        name: b.brand_name,
+        totalRevenue: brandTotals.get(sid(b.brand_id)) || 0
       }))
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, [filteredRevenue]);
+      .sort((a, b) => b.totalRevenue - a.totalRevenue);
+  }, [brands, brandTotals]);
 
-  // Platform stats
-  const platformStats = useMemo(() => {
-    if (!filteredRevenue.length) return [];
-    
-    let shopeeOnlyRev = 0;
-    let tiktokOnlyRev = 0;
-    let multiRev = 0;
-    
-    filteredRevenue.forEach(item => {
-      const hasShopee = (item.revenue_shopee || 0) > 0;
-      const hasTiktok = (item.revenue_tiktok || 0) > 0;
-      
-      if (hasShopee && hasTiktok) {
-        multiRev += (item.revenue_shopee || 0) + (item.revenue_tiktok || 0);
-      } else if (hasShopee) {
-        shopeeOnlyRev += (item.revenue_shopee || 0);
-      } else if (hasTiktok) {
-        tiktokOnlyRev += (item.revenue_tiktok || 0);
+  // ── Normalize teamMap for fast lookup ──
+  const teamMap = useMemo(() => {
+    const m = {};
+    (team || []).forEach(t => { m[sid(t.id)] = t.name; });
+    return m;
+  }, [team]);
+
+  // ── raw logs – all IDs normalized to string ──
+  // log.revenue = revenue_shopee + revenue_tiktok — the correct full session total
+  // for ALL platform types including Multi. Never re-sum from revenueData.
+  const revenueLogs = useMemo(() => {
+    if (!revenueData) return [];
+    return revenueData.map(i => ({
+      id: sid(i.id),
+      brandId: sid(i.brand_id),
+      hostId: sid(i.host_id),
+      date: i.date,
+      period_id: i.period_id,
+      platform:
+        i.revenue_shopee > 0 && i.revenue_tiktok > 0 ? 'Multi'
+        : i.revenue_shopee > 0 ? 'Shopee'
+        : 'TikTok',
+      revenue: (i.revenue_shopee ?? 0) + (i.revenue_tiktok ?? 0),
+      viewers: (i.viewers_shopee ?? 0) + (i.viewers_tiktok ?? 0),
+    }));
+  }, [revenueData]);
+
+  // ── brandMap for fast lookup ──
+  const brandMap = useMemo(() => {
+    const m = {};
+    brandsList.forEach(b => { m[b.id] = b.name; });
+    return m;
+  }, [brandsList]);
+
+  // ── All-time revenue ──
+  const allTimeRevenue = useMemo(() => {
+    let total = 0;
+    brandTotals.forEach(val => { total += val; });
+    return total;
+  }, [brandTotals]);
+
+  const totalSessionsAllTime = revenueLogs.length;
+  const avgRevenueAllTime = totalSessionsAllTime === 0 ? 0 : allTimeRevenue / totalSessionsAllTime;
+
+  // ── Best staff per brand (ONE staff member per brand - the top earner) ──
+  const bestStaffPerBrand = useMemo(() => {
+    if (!team?.length) return [];
+
+    const staffBrandRevenue = {};
+    revenueLogs.forEach(log => {
+      if (!log.hostId) return;
+      const key = `${log.brandId}_${log.hostId}`;
+      if (!staffBrandRevenue[key]) {
+        staffBrandRevenue[key] = {
+          brandId: log.brandId,
+          brandName: brandMap[log.brandId] || 'Unknown',
+          staffId: log.hostId,
+          staffName: teamMap[log.hostId] || `Host ${log.hostId}`,
+          revenue: 0,
+        };
+      }
+      staffBrandRevenue[key].revenue += log.revenue;
+    });
+
+    const bestStaffPerBrandMap = {};
+    Object.values(staffBrandRevenue).forEach(item => {
+      const brandId = item.brandId;
+      if (!bestStaffPerBrandMap[brandId] || item.revenue > bestStaffPerBrandMap[brandId].revenue) {
+        bestStaffPerBrandMap[brandId] = item;
       }
     });
-    
-    const total = shopeeOnlyRev + tiktokOnlyRev + multiRev;
-    if (total === 0) return [];
-    
-    const stats = [];
-    
-    if (shopeeOnlyRev > 0) {
-      stats.push({ 
-        name: 'Shopee', 
-        revenue: shopeeOnlyRev, 
-        pct: (shopeeOnlyRev / total * 100).toFixed(1),
-        color: '#00f5ff'
-      });
-    }
-    
-    if (tiktokOnlyRev > 0) {
-      stats.push({ 
-        name: 'TikTok', 
-        revenue: tiktokOnlyRev, 
-        pct: (tiktokOnlyRev / total * 100).toFixed(1),
-        color: '#DB1A1A'
-      });
-    }
-    
-    if (multiRev > 0) {
-      stats.push({ 
-        name: 'Multi', 
-        revenue: multiRev, 
-        pct: (multiRev / total * 100).toFixed(1),
-        color: '#3b82f6'
-      });
-    }
-    
-    return stats.sort((a, b) => b.revenue - a.revenue);
-  }, [filteredRevenue]);
 
-  // Full sorted list (no slice here — slicing moved to render)
-  const sessionIntelligence = useMemo(() => {
-    if (!filteredRevenue.length) return [];
-    let sessions = [...filteredRevenue]
-      .map(item => {
-        const brand = brands?.find(b => b.id === item.brand_id);
-        const staff = team?.find(t => t.id === item.host_id);
-        const totalRev = (item.revenue_shopee || 0) + (item.revenue_tiktok || 0);
-        
-        const hasShopee = (item.revenue_shopee || 0) > 0;
-        const hasTiktok = (item.revenue_tiktok || 0) > 0;
-        
-        let platformType;
-        if (hasShopee && hasTiktok) platformType = 'Multi';
-        else if (hasShopee) platformType = 'Shopee';
-        else if (hasTiktok) platformType = 'TikTok';
-        else platformType = '—';
-        
-        return {
-          ...item,
-          brandName: brand?.brand_name || '—',
-          staffName: staff?.name || '—',
-          totalRevenue: totalRev,
-          platform: platformType,
-          parsedDate: parseRevenueDate(item.date)
-        };
-      });
-    
-    if (showRevenueOnly) {
-      sessions = sessions.filter(item => item.totalRevenue > 0);
-    }
+    return Object.values(bestStaffPerBrandMap)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+  }, [revenueLogs, teamMap, brandMap]);
 
-    sessions.sort((a, b) => {
-      let aVal, bVal;
-      if (sortCol === 'date') {
-        aVal = a.parsedDate?.getTime() ?? 0;
-        bVal = b.parsedDate?.getTime() ?? 0;
-      } else if (sortCol === 'revenue') {
-        aVal = a.totalRevenue;
-        bVal = b.totalRevenue;
-      } else if (sortCol === 'host') {
-        return sortDir === 'asc'
-          ? a.staffName.localeCompare(b.staffName)
-          : b.staffName.localeCompare(a.staffName);
+  // ── Top platform by revenue in selected date range ──
+const topPlatformInRange = useMemo(() => {
+  const filtered = revenueLogs.filter(l =>
+    isWithinInterval(parseISO(l.date), {
+      start: startOfDay(dateRange.start),
+      end: endOfDay(dateRange.end),
+    })
+  );
+
+  const stats = { TikTok: 0, Shopee: 0, Multi: 0 };
+  filtered.forEach(log => {
+    stats[log.platform] += log.revenue;
+  });
+
+  const entries = Object.entries(stats).filter(([, rev]) => rev > 0);
+  if (!entries.length) return { name: 'N/A', revenue: 0 };
+
+  const [name, revenue] = entries.reduce((p, c) => (p[1] > c[1] ? p : c));
+  return { name, revenue };
+}, [revenueLogs, dateRange]);
+
+// ── Top platform by revenue (ALL TIME - matches SQL query) ──
+const topPlatformAllTime = useMemo(() => {
+  const stats = { TikTok: 0, Shopee: 0, Multi: 0 };
+  
+  revenueLogs.forEach(log => {
+    stats[log.platform] += log.revenue;
+  });
+
+  const entries = Object.entries(stats).filter(([, rev]) => rev > 0);
+  if (!entries.length) return { name: 'N/A', revenue: 0 };
+
+  const [name, revenue] = entries.reduce((p, c) => (p[1] > c[1] ? p : c));
+  return { name, revenue };
+}, [revenueLogs]);
+
+// Use the all-time version to match your SQL query
+const topPlatform = topPlatformAllTime;
+
+  // ── Brand performance insights - Shows TOTAL revenue and OVERALL date range ──
+  const brandPerformanceInsights = useMemo(() => {
+    const map = {};
+    
+    brandsList.forEach(b => {
+      map[b.id] = {
+        id: b.id,
+        name: b.name,
+        totalRevenue: b.totalRevenue,
+        peakRevenue: 0,
+        peakPeriod: '',
+        peakPeriodId: null,
+        peakRange: '',
+        overallStartDate: null,
+        overallEndDate: null,
+        overallRange: '',
+        hasSessions: b.totalRevenue > 0,
+        sessionCount: 0,
+        periodRevenue: {},
+      };
+    });
+
+    revenueLogs.forEach(log => {
+      const b = map[log.brandId];
+      if (!b) return;
+      
+      b.sessionCount++;
+      
+      const logDate = parseISO(log.date);
+      if (!b.overallStartDate || logDate < b.overallStartDate) {
+        b.overallStartDate = logDate;
       }
+      if (!b.overallEndDate || logDate > b.overallEndDate) {
+        b.overallEndDate = logDate;
+      }
+      
+      const periodId = log.period_id;
+      const periodKey = `period_${periodId}`;
+      
+      if (!b.periodRevenue[periodKey]) {
+        b.periodRevenue[periodKey] = {
+          periodId: periodId,
+          revenue: 0,
+          sessions: [],
+        };
+      }
+      b.periodRevenue[periodKey].revenue += log.revenue;
+      b.periodRevenue[periodKey].sessions.push({
+        date: log.date,
+        revenue: log.revenue,
+      });
+      
+      if (log.revenue > b.peakRevenue) {
+        b.peakRevenue = log.revenue;
+      }
+    });
+
+    Object.values(map).forEach(b => {
+      if (b.hasSessions && b.overallStartDate && b.overallEndDate) {
+        b.overallRange = `${format(b.overallStartDate, 'dd MMM yyyy')} - ${format(b.overallEndDate, 'dd MMM yyyy')}`;
+      }
+      
+      if (b.hasSessions && Object.keys(b.periodRevenue).length > 0) {
+        let bestPeriod = null;
+        let bestPeriodRevenue = 0;
+        
+        Object.values(b.periodRevenue).forEach(period => {
+          if (period.revenue > bestPeriodRevenue) {
+            bestPeriodRevenue = period.revenue;
+            bestPeriod = period;
+          }
+        });
+        
+        if (bestPeriod) {
+          b.peakPeriodId = bestPeriod.periodId;
+          b.peakPeriod = `Period ${bestPeriod.periodId}`;
+          b.bestPeriodRevenue = bestPeriodRevenue;
+          
+          const periodInfo = periodMap[bestPeriod.periodId];
+          if (periodInfo && periodInfo.startDate && periodInfo.endDate) {
+            const startDate = parseISO(periodInfo.startDate);
+            const endDate = parseISO(periodInfo.endDate);
+            b.peakRange = `${format(startDate, 'dd MMM yyyy')} - ${format(endDate, 'dd MMM yyyy')}`;
+          } else {
+            const dates = bestPeriod.sessions.map(s => parseISO(s.date)).sort((a, b) => a - b);
+            b.peakRange = `${format(dates[0], 'dd MMM yyyy')} - ${format(dates[dates.length - 1], 'dd MMM yyyy')}`;
+          }
+        }
+      }
+    });
+
+    let results = Object.values(map);
+    if (insightBrandId !== 'All') results = results.filter(b => b.id === insightBrandId);
+    
+    return results.sort((a, b) => b.totalRevenue - a.totalRevenue);
+  }, [revenueLogs, brandsList, insightBrandId, periodMap]);
+
+  // ── Session intelligence (filtered + sorted table rows) ──
+  const sessionIntelligence = useMemo(() => {
+    let rows = revenueLogs.map(log => ({
+      ...log,
+      brandName: brandMap[log.brandId] || 'Unknown Brand',
+      staffName: teamMap[log.hostId] || '—',
+      period: `Period ${log.period_id}`,
+    }));
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      rows = rows.filter(s => s.brandName.toLowerCase().includes(term));
+    }
+
+    if (tableFilter.brandId !== 'All') rows = rows.filter(s => s.brandId === tableFilter.brandId);
+    if (tableFilter.period !== 'All') rows = rows.filter(s => s.period === tableFilter.period);
+
+    rows.sort((a, b) => {
+      let aVal, bVal;
+      if (sortCol === 'date') { aVal = new Date(a.date).getTime(); bVal = new Date(b.date).getTime(); }
+      else if (sortCol === 'revenue') { aVal = a.revenue; bVal = b.revenue; }
+      else if (sortCol === 'viewers') { aVal = a.viewers; bVal = b.viewers; }
       return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
     });
-    
-    return sessions;
-  }, [filteredRevenue, brands, team, showRevenueOnly, sortCol, sortDir]);
 
-  // Sliced based on rowLimit (null = show all)
-  const visibleSessions = useMemo(() => {
-    return rowLimit === null ? sessionIntelligence : sessionIntelligence.slice(0, rowLimit);
-  }, [sessionIntelligence, rowLimit]);
+    return rows;
+  }, [revenueLogs, brandMap, teamMap, searchTerm, tableFilter, sortCol, sortDir]);
 
-  const handleDateRangeChange = (newRange) => {
-    setDateRange(newRange);
-    showNotification('Analytics data updated');
-  };
+  const visibleSessions = useMemo(
+    () => rowLimit === null ? sessionIntelligence : sessionIntelligence.slice(0, rowLimit),
+    [sessionIntelligence, rowLimit]
+  );
 
-  const handleExport = () => {
-    showNotification('Report exported successfully');
-  };
+  const uniquePeriods = useMemo(() => {
+    const periods = new Set();
+    revenueLogs.forEach(log => periods.add(`Period ${log.period_id}`));
+    return Array.from(periods).sort((a, b) => {
+      const numA = parseInt(a.split(' ')[1]);
+      const numB = parseInt(b.split(' ')[1]);
+      return numA - numB;
+    });
+  }, [revenueLogs]);
 
-  // Sort options - simplified (removed brand and platform)
   const sortGroups = [
-    {
-      label: 'Revenue',
-      options: [
-        { label: 'Highest first', col: 'revenue', dir: 'desc' },
-        { label: 'Lowest first',  col: 'revenue', dir: 'asc'  },
-      ]
-    },
-    {
-      label: 'Date',
-      options: [
-        { label: 'Newest first', col: 'date', dir: 'desc' },
-        { label: 'Oldest first', col: 'date', dir: 'asc'  },
-      ]
-    },
-    {
-      label: 'Host',
-      options: [
-        { label: 'A → Z', col: 'host', dir: 'asc'  },
-        { label: 'Z → A', col: 'host', dir: 'desc' },
-      ]
-    },
+    { label: 'Date', options: [{ label: 'Newest first', col: 'date', dir: 'desc' }, { label: 'Oldest first', col: 'date', dir: 'asc' }] },
+    { label: 'Revenue', options: [{ label: 'Highest first', col: 'revenue', dir: 'desc' }, { label: 'Lowest first', col: 'revenue', dir: 'asc' }] },
+    { label: 'Viewers', options: [{ label: 'Most viewers', col: 'viewers', dir: 'desc' }, { label: 'Fewest viewers', col: 'viewers', dir: 'asc' }] },
   ];
 
-  // Row limit options
-  const limitOptions = [5, 10, 25, 50, null];
+  const limitOptions = [10, 25, 50, 100, null];
 
-  // Human-readable label for the active sort
   const activeSortLabel = (() => {
-    for (const group of sortGroups) {
-      const match = group.options.find(o => o.col === sortCol && o.dir === sortDir);
-      if (match) return `${group.label}: ${match.label}`;
+    for (const g of sortGroups) {
+      const m = g.options.find(o => o.col === sortCol && o.dir === sortDir);
+      if (m) return `${g.label}: ${m.label}`;
     }
     return 'Sort';
   })();
 
-  if (isLoading) {
+  const notify = (msg) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  const resetForm = () => setSessionFormData({
+    date: format(new Date(), 'yyyy-MM-dd'),
+    brandId: brandsList[0]?.id || '',
+    platform: 'TikTok',
+    viewers: 0,
+    revenue: 0,
+  });
+
+  const handleCreateSession = async () => {
+    try {
+      const { data: platformData } = await supabase
+        .from('platforms')
+        .select('platform_id')
+        .eq('platform_name', sessionFormData.platform === 'Multi' ? 'multi' : sessionFormData.platform.toLowerCase())
+        .single();
+
+      const isShopee = sessionFormData.platform === 'Shopee' || sessionFormData.platform === 'Multi';
+      const isTikTok = sessionFormData.platform === 'TikTok' || sessionFormData.platform === 'Multi';
+
+      const { error } = await supabase.from('live_sessions').insert([{
+        date: sessionFormData.date,
+        time: '00:00',
+        revenue_shopee: isShopee ? sessionFormData.revenue : 0,
+        revenue_tiktok: isTikTok ? sessionFormData.revenue : 0,
+        viewers_shopee: isShopee ? sessionFormData.viewers : 0,
+        viewers_tiktok: isTikTok ? sessionFormData.viewers : 0,
+        likes_shopee: 0,
+        likes_tiktok: 0,
+        period_id: 1,
+        host_id: 1,
+        brand_id: sessionFormData.brandId,
+        platform_id: platformData?.platform_id,
+      }]);
+
+      if (error) throw error;
+      notify('Session created successfully');
+      setShowSessionModal(false);
+      resetForm();
+      refetchRevenue();
+    } catch (err) {
+      console.error('Create error:', err);
+      notify('Failed to create session');
+    }
+  };
+
+  const handleUpdateSession = async () => {
+    try {
+      const isShopee = sessionFormData.platform === 'Shopee' || sessionFormData.platform === 'Multi';
+      const isTikTok = sessionFormData.platform === 'TikTok' || sessionFormData.platform === 'Multi';
+
+      const { error } = await supabase.from('live_sessions').update({
+        date: sessionFormData.date,
+        revenue_shopee: isShopee ? sessionFormData.revenue : 0,
+        revenue_tiktok: isTikTok ? sessionFormData.revenue : 0,
+        viewers_shopee: isShopee ? sessionFormData.viewers : 0,
+        viewers_tiktok: isTikTok ? sessionFormData.viewers : 0,
+        brand_id: sessionFormData.brandId,
+      }).eq('id', editingSession.id);
+
+      if (error) throw error;
+      notify('Session updated successfully');
+      setShowSessionModal(false);
+      setEditingSession(null);
+      resetForm();
+      refetchRevenue();
+    } catch (err) {
+      console.error('Update error:', err);
+      notify('Failed to update session');
+    }
+  };
+
+  const confirmDelete = async () => {
+    try {
+      const { error } = await supabase.from('live_sessions').delete().eq('id', sessionToDelete.id);
+      if (error) throw error;
+      notify('Session deleted successfully');
+      setSessionToDelete(null);
+      refetchRevenue();
+    } catch (err) {
+      console.error('Delete error:', err);
+      notify('Failed to delete session');
+    }
+  };
+
+  const handleDeleteSession = (id) => {
+    const session = sessionIntelligence.find(x => x.id === id);
+    if (session) setSessionToDelete(session);
+  };
+
+  const openEditModal = (session) => {
+    setEditingSession(session);
+    setSessionFormData({
+      date: session.date,
+      brandId: session.brandId,
+      platform: session.platform,
+      viewers: session.viewers,
+      revenue: session.revenue,
+    });
+    setShowSessionModal(true);
+  };
+
+  const handleHallOfFameClick = (brandId, period) => {
+    document.getElementById('session-intelligence')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTableFilter({ brandId, period });
+    notify(`Showing sessions for ${period}`);
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    console.log('File upload:', file);
+  };
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-            Loading intelligence data...
-          </p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Loading intelligence data...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-8 pb-16 relative"
-    >
-      {/* Notification Toast */}
+    <motion.div className="space-y-6 pb-16 relative min-w-0 overflow-x-hidden">
       <AnimatePresence>
         {notification && (
           <motion.div
             initial={{ opacity: 0, y: -20, x: '-50%' }}
             animate={{ opacity: 1, y: 20, x: '-50%' }}
             exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className="fixed top-4 left-1/2 z-[100] bg-card backdrop-blur-xl text-foreground px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-border"
+            className="fixed top-4 left-1/2 z-[100] bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10"
           >
-            <div className="bg-emerald-500 rounded-full p-1">
-              <CheckCircle2 size={16} className="text-white" />
-            </div>
+            <div className="bg-emerald-500 rounded-full p-1"><CheckCircle2 size={16} /></div>
             <span className="text-sm font-bold tracking-tight">{notification}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Header */}
-      <div className="bg-card rounded-[2rem] p-8 border border-border">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-1.5 bg-primary/10 rounded-lg">
-                <TrendingUp size={14} className="text-primary" />
-              </div>
-              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">
-                Financial Intelligence
-              </span>
-            </div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground font-sans">
-              Revenue Analytics
-            </h1>
-            <p className="text-muted-foreground mt-2 font-medium text-sm">
-              Real-time GTV tracking across all nodes.
-            </p>
-          </div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Revenue</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Track performance, analyze trends, and monitor platform distribution.</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <DateRangeSelector value={dateRange} onChange={setDateRange} />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center justify-center rounded-xl text-sm font-bold transition-all bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 sm:px-6 py-2 gap-2 shadow-lg whitespace-nowrap"
+          >
+            <FileUp size={16} /> Import
+          </button>
+          <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".csv,.xlsx,.json" />
+        </div>
+      </div>
 
-          <div className="flex items-center gap-3">
-            <DateRangeSelector value={dateRange} onChange={handleDateRangeChange} />
-            <button
-              onClick={handleExport}
-              className="inline-flex items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90 transition-all h-10 px-6 shadow-lg shadow-primary/20"
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 min-w-0">
+        <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Total Revenue</p>
+          <p className="text-xl sm:text-2xl font-bold text-foreground leading-tight break-all">
+            {formatCurrency(allTimeRevenue)}
+          </p>
+          <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Avg / session</span>
+            <span className="text-[11px] font-bold text-foreground">{formatCurrency(Math.round(avgRevenueAllTime))}</span>
+          </div>
+        </div>
+
+        <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
+          <div className="flex items-center gap-2 mb-3">
+            <Users size={12} className="text-primary shrink-0" />
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Top Performers</p>
+          </div>
+          <div className="space-y-2">
+            {bestStaffPerBrand.length === 0 && (
+              <p className="text-xs text-muted-foreground">No data yet</p>
+            )}
+            {bestStaffPerBrand.slice(0, 5).map((staff, i) => (
+              <div key={`${staff.staffId}_${staff.brandId}`} className="flex items-center justify-between gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="text-[8px] font-black text-muted-foreground/50 w-3 shrink-0">{i + 1}</span>
+                  <span className="text-[11px] font-bold text-primary truncate">{staff.staffName}</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0 min-w-0">
+                  <span className="text-[9px] font-medium text-muted-foreground hidden sm:inline">Top:</span>
+                  <span className="text-[9px] font-bold text-foreground truncate max-w-[80px]">{staff.brandName}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+            Top Platform
+            <span className="ml-1 font-normal normal-case tracking-normal text-muted-foreground/50 text-[9px]">(range)</span>
+          </p>
+          <p className="text-xl sm:text-2xl font-bold text-foreground">{topPlatform.name}</p>
+          <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Revenue</span>
+            <span className="text-[11px] font-bold text-foreground break-all">{formatCurrency(topPlatform.revenue)}</span>
+          </div>
+        </div>
+
+        <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Total Live Sessions</p>
+          <p className="text-xl sm:text-2xl font-bold text-foreground">{totalSessionsAllTime.toLocaleString()}</p>
+          <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Brands</span>
+            <span className="text-[11px] font-bold text-foreground">{brandsList.length}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12 min-w-0">
+        <RevenueBrandsPanel
+          brandsList={brandsList}
+          insightBrandId={insightBrandId}
+          setInsightBrandId={setInsightBrandId}
+          brandPerformanceInsights={brandPerformanceInsights}
+          handleHallOfFameClick={handleHallOfFameClick}
+          formatCurrency={formatCurrency}
+        />
+
+        <RevenueSessionsTable
+          visibleSessions={visibleSessions}
+          sessionIntelligence={sessionIntelligence}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          tableFilter={tableFilter}
+          setTableFilter={setTableFilter}
+          sortRef={sortRef}
+          limitRef={limitRef}
+          sortOpen={sortOpen}
+          setSortOpen={setSortOpen}
+          limitOpen={limitOpen}
+          setLimitOpen={setLimitOpen}
+          sortGroups={sortGroups}
+          sortCol={sortCol}
+          sortDir={sortDir}
+          setSortCol={setSortCol}
+          setSortDir={setSortDir}
+          rowLimit={rowLimit}
+          setRowLimit={setRowLimit}
+          limitOptions={limitOptions}
+          activeSortLabel={activeSortLabel}
+          openEditModal={openEditModal}
+          handleDeleteSession={handleDeleteSession}
+          formatCurrency={formatCurrency}
+          parseISO={parseISO}
+          format={format}
+          resetForm={resetForm}
+          setShowSessionModal={setShowSessionModal}
+          uniquePeriods={uniquePeriods}
+          loading={loading}
+        />
+      </div>
+
+      <AnimatePresence>
+        {showSessionModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-card w-full max-w-md rounded-3xl border border-border shadow-2xl"
             >
-              <Download size={14} />
-              Export Report
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <motion.div whileHover={{ y: -4 }} className="bg-card rounded-3xl p-6 border border-border hover:border-primary/50 transition-all">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-primary/10 rounded-xl">
-              <DollarSign size={20} className="text-primary" />
-            </div>
-            <div className={`flex items-center gap-1 text-[10px] font-black ${kpis.revenueGrowth >= 0 ? 'text-emerald-500 bg-emerald-500/10' : 'text-red-500 bg-red-500/10'} px-2 py-1 rounded-full`}>
-              {kpis.revenueGrowth >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-              {Math.abs(kpis.revenueGrowth)}%
-            </div>
-          </div>
-          <div className="text-3xl font-mono font-black tracking-tighter text-foreground">Rp {kpis.totalRevenue.toLocaleString()}</div>
-          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Aggregate Revenue</div>
-        </motion.div>
-
-        <motion.div whileHover={{ y: -4 }} className="bg-card rounded-3xl p-6 border border-border hover:border-primary/50 transition-all">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-primary/10 rounded-xl">
-              <Activity size={20} className="text-primary" />
-            </div>
-          </div>
-          <div className="text-3xl font-mono font-black tracking-tighter text-foreground">{kpis.totalSessions.toLocaleString()}</div>
-          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Total Sessions</div>
-        </motion.div>
-
-        <motion.div whileHover={{ y: -4 }} className="bg-card rounded-3xl p-6 border border-border hover:border-primary/50 transition-all">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-primary/10 rounded-xl">
-              <Target size={20} className="text-primary" />
-            </div>
-          </div>
-          <div className="text-3xl font-mono font-black tracking-tighter text-foreground">Rp {kpis.avgRevenue.toLocaleString()}</div>
-          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Avg per Session</div>
-        </motion.div>
-
-        <motion.div whileHover={{ y: -4 }} className="bg-card rounded-3xl p-6 border border-border hover:border-primary/50 transition-all">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-primary/10 rounded-xl">
-              <TrendingUp size={20} className="text-primary" />
-            </div>
-          </div>
-          <div className="text-3xl font-mono font-black tracking-tighter text-foreground">{kpis.topPlatform}</div>
-          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Top Platform</div>
-        </motion.div>
-      </div>
-
-      {/* Revenue Trend Chart */}
-      <div className="bg-card rounded-[2.5rem] border border-border p-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <BarChart3 size={18} className="text-primary" />
-            <h3 className="text-xs font-black uppercase tracking-widest text-foreground">Revenue Trend Analysis</h3>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-              <span className="text-[10px] font-medium text-muted-foreground">Actual Revenue</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="h-[400px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={revenueTrend}>
-              <defs>
-                <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.2} vertical={false} />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 600 }} dy={8} interval={5} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 600 }} tickFormatter={v => `Rp ${(v / 1000).toFixed(0)}k`} />
-              <Tooltip contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--foreground)', backdropFilter: 'blur(10px)' }} formatter={(value) => [`Rp ${value.toLocaleString()}`, 'Revenue']} labelFormatter={(label) => `Date: ${label}`} />
-              <Area type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={4} fill="url(#revenueGradient)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Platform + Session Table Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Platform Distribution */}
-        <div className="bg-card rounded-[2rem] border border-border overflow-hidden">
-          <div className="p-6 border-b border-border">
-            <div className="flex items-center gap-2">
-              <PieChart size={16} className="text-primary" />
-              <h3 className="text-xs font-black uppercase tracking-widest text-foreground">Platform Contribution</h3>
-            </div>
-          </div>
-          <div className="p-6">
-            {platformStats.length > 0 ? (
-              <div className="space-y-5">
-                {platformStats.map((p, i) => (
-                  <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}>
-                    <div className="flex justify-between mb-2">
-                      <span className="text-sm font-bold text-foreground">{p.name}</span>
-                      <span className="text-xs font-mono font-bold text-foreground">Rp {p.revenue.toLocaleString()}</span>
-                    </div>
-                    <div className="h-2 bg-border rounded-full overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${p.pct}%` }} transition={{ duration: 0.8, delay: i * 0.1 }} className="h-full rounded-full" style={{ backgroundColor: p.color }} />
-                    </div>
-                    <div className="flex justify-end mt-1">
-                      <span className="text-[9px] font-bold text-muted-foreground">{p.pct}%</span>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-muted-foreground py-8">
-                <p className="text-xs">No platform data available</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Session Intelligence Table */}
-        <div className="lg:col-span-2 bg-card rounded-[2rem] border border-border overflow-hidden">
-          
-          <div className="p-6 border-b border-border flex items-center justify-between gap-4">
-            {/* Left: title + session count */}
-            <div className="flex items-center gap-2">
-              <Clock size={16} className="text-primary" />
-              <h3 className="text-xs font-black uppercase tracking-widest text-foreground">Session Intelligence</h3>
-              <span className="ml-1 text-[9px] font-bold text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-full">
-                {visibleSessions.length}/{sessionIntelligence.length}
-              </span>
-            </div>
-
-            {/* Right: controls */}
-            <div className="flex items-center gap-2">
-              {/* Show all toggle */}
-              <button
-                onClick={() => setShowRevenueOnly(!showRevenueOnly)}
-                className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-lg border border-border hover:border-primary/40 bg-background"
-              >
-                {showRevenueOnly ? 'Show All' : 'Revenue Only'}
-              </button>
-
-              {/* Row limit dropdown */}
-              <div className="relative" ref={limitRef}>
-                <button
-                  onClick={() => { setLimitOpen(prev => !prev); setSortOpen(false); }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-wider transition-all ${
-                    limitOpen
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-primary'
-                  }`}
-                >
-                  Show {rowLimit === null ? 'All' : rowLimit}
-                  <ChevronDown
-                    size={10}
-                    className={`transition-transform duration-200 ${limitOpen ? 'rotate-180' : ''}`}
-                  />
+              <div className="px-6 py-4 border-b border-border bg-muted/20 flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-[0.2em]">
+                  {editingSession ? 'Edit Record' : 'Record New Session'}
+                </h3>
+                <button onClick={() => setShowSessionModal(false)} className="p-2 hover:bg-muted rounded-full">
+                  <X size={16} />
                 </button>
-
-                <AnimatePresence>
-                  {limitOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 6, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 6, scale: 0.97 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-full mt-2 z-50 w-36 bg-card border border-border rounded-2xl shadow-xl overflow-hidden"
-                    >
-                      <div className="px-4 pt-3 pb-1">
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-                          Rows per view
-                        </span>
-                      </div>
-                      {limitOptions.map((opt, i) => {
-                        const isActive = rowLimit === opt;
-                        return (
-                          <button
-                            key={i}
-                            onClick={() => { setRowLimit(opt); setLimitOpen(false); }}
-                            className={`w-full flex items-center justify-between px-4 py-2 text-left text-xs font-medium transition-colors ${
-                              isActive
-                                ? 'text-primary bg-primary/8'
-                                : 'text-foreground hover:bg-muted/10'
-                            }`}
-                          >
-                            <span>{opt === null ? 'All' : `Top ${opt}`}</span>
-                            {isActive && <Check size={11} className="text-primary shrink-0" />}
-                          </button>
-                        );
-                      })}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
-
-              {/* Sort dropdown */}
-              <div className="relative" ref={sortRef}>
-                <button
-                  onClick={() => { setSortOpen(prev => !prev); setLimitOpen(false); }}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-wider transition-all ${
-                    sortOpen
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-primary'
-                  }`}
-                >
-                  <Filter size={10} />
-                  Sort by
-                  <ChevronDown
-                    size={10}
-                    className={`transition-transform duration-200 ${sortOpen ? 'rotate-180' : ''}`}
+              <div className="p-6 space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Target Date</label>
+                  <input
+                    type="date"
+                    value={sessionFormData.date}
+                    onChange={e => setSessionFormData({ ...sessionFormData, date: e.target.value })}
+                    className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
                   />
-                </button>
-
-                <AnimatePresence>
-                  {sortOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 6, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 6, scale: 0.97 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-full mt-2 z-50 w-52 bg-card border border-border rounded-2xl shadow-xl overflow-hidden"
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Brand</label>
+                    <select
+                      value={sessionFormData.brandId}
+                      onChange={e => setSessionFormData({ ...sessionFormData, brandId: e.target.value })}
+                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
                     >
-                      {sortGroups.map((group, gi) => (
-                        <div key={gi}>
-                          <div className="px-4 pt-3 pb-1">
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-                              {group.label}
-                            </span>
-                          </div>
-                          {group.options.map((opt, oi) => {
-                            const isActive = sortCol === opt.col && sortDir === opt.dir;
-                            return (
-                              <button
-                                key={oi}
-                                onClick={() => {
-                                  setSortCol(opt.col);
-                                  setSortDir(opt.dir);
-                                  setSortOpen(false);
-                                }}
-                                className={`w-full flex items-center justify-between px-4 py-2 text-left text-xs font-medium transition-colors ${
-                                  isActive
-                                    ? 'text-primary bg-primary/8'
-                                    : 'text-foreground hover:bg-muted/10'
-                                }`}
-                              >
-                                <span>{opt.label}</span>
-                                {isActive && (
-                                  <Check size={11} className="text-primary shrink-0" />
-                                )}
-                              </button>
-                            );
-                          })}
-                          {gi < sortGroups.length - 1 && (
-                            <div className="mx-4 my-1 border-t border-border" />
-                          )}
-                        </div>
-                      ))}
-
-                      <div className="px-4 py-3 border-t border-border bg-muted/5">
-                        <p className="text-[9px] text-muted-foreground font-medium">
-                          Active: <span className="text-foreground font-bold">{activeSortLabel}</span>
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            {visibleSessions.length > 0 ? (
-              <>
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-4 px-4 text-[9px] font-black uppercase tracking-wider text-muted-foreground">Date</th>
-                      <th className="text-left py-4 px-4 text-[9px] font-black uppercase tracking-wider text-muted-foreground">Brand</th>
-                      <th className="text-left py-4 px-4 text-[9px] font-black uppercase tracking-wider text-muted-foreground">Platform</th>
-                      <th className="text-left py-4 px-4 text-[9px] font-black uppercase tracking-wider text-muted-foreground">Host</th>
-                      <th className="text-right py-4 px-4 text-[9px] font-black uppercase tracking-wider text-muted-foreground">Revenue</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleSessions.map((item, idx) => {
-                      const platformInfo = platformStats.find(p => p.name === item.platform);
-                      const badgeColor = platformInfo?.color || 'var(--primary)';
-                      
-                      return (
-                        <tr key={item.id || idx} className="border-b border-border hover:bg-muted/5 transition-colors">
-                          <td className="py-3 px-4 text-xs font-mono text-foreground">
-                            {(() => {
-                              const parsed = parseRevenueDate(item.date);
-                              return parsed ? format(parsed, 'MMM dd') : item.date;
-                            })()}
-                          </td>
-                          <td className="py-3 px-4 font-bold text-sm text-foreground">{item.brandName}</td>
-                          <td className="py-3 px-4">
-                            <span className="text-[9px] font-black px-2 py-1 rounded-full uppercase" style={{ backgroundColor: `${badgeColor}20`, color: badgeColor }}>
-                              {item.platform}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-xs text-muted-foreground">{item.staffName}</td>
-                          <td className="py-3 px-4 text-right font-mono font-bold text-sm text-foreground">
-                            {item.totalRevenue > 0 ? `Rp ${item.totalRevenue.toLocaleString()}` : '—'}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-
-                {/* Footer: showing X of Y */}
-                {rowLimit !== null && sessionIntelligence.length > rowLimit && (
-                  <div className="px-6 py-3 border-t border-border bg-muted/5 flex items-center justify-between">
-                    <p className="text-[9px] text-muted-foreground font-medium">
-                      Showing <span className="text-foreground font-bold">{visibleSessions.length}</span> of <span className="text-foreground font-bold">{sessionIntelligence.length}</span> sessions
-                    </p>
-                    <button
-                      onClick={() => setRowLimit(null)}
-                      className="text-[9px] font-bold uppercase tracking-wider text-primary hover:text-primary/70 transition-colors"
-                    >
-                      View all →
-                    </button>
+                      <option value="" disabled>Select Brand</option>
+                      {brandsList.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
                   </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-xs text-muted-foreground">No sessions found for selected period</p>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Channel</label>
+                    <select
+                      value={sessionFormData.platform}
+                      onChange={e => setSessionFormData({ ...sessionFormData, platform: e.target.value })}
+                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
+                    >
+                      <option value="TikTok">TikTok</option>
+                      <option value="Shopee">Shopee</option>
+                      <option value="Multi">Multi-Platform</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Viewers</label>
+                    <input
+                      type="number"
+                      value={sessionFormData.viewers}
+                      onChange={e => setSessionFormData({ ...sessionFormData, viewers: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Revenue (Rp)</label>
+                    <input
+                      type="number"
+                      value={sessionFormData.revenue}
+                      onChange={e => setSessionFormData({ ...sessionFormData, revenue: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs font-bold"
+                    />
+                  </div>
+                </div>
               </div>
-            )}
+              <div className="p-6 bg-muted/20 border-t border-border flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setShowSessionModal(false)}
+                  className="px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase text-muted-foreground"
+                >
+                  Discard
+                </button>
+                <button
+                  onClick={editingSession ? handleUpdateSession : handleCreateSession}
+                  className="px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase bg-primary text-white"
+                >
+                  {editingSession ? 'Update' : 'Commit'}
+                </button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      </div>
+        )}
+      </AnimatePresence>
 
-      {/* Footer Status */}
+      <AnimatePresence>
+        {sessionToDelete && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card w-full max-w-sm rounded-[32px] border border-border shadow-2xl p-8 text-center"
+            >
+              <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <AlertTriangle size={32} />
+              </div>
+              <h3 className="text-lg font-bold mb-2">Delete Session?</h3>
+              <p className="text-xs text-muted-foreground mb-8">
+                This will permanently remove the record for{' '}
+                <span className="text-foreground font-bold">{sessionToDelete.brandName}</span>.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setSessionToDelete(null)}
+                  className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase text-muted-foreground hover:bg-muted transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase bg-red-500 text-white hover:bg-red-600 transition-all"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <div className="pt-8 border-t border-border">
-        <p className="text-[9px] text-center text-muted-foreground uppercase tracking-[0.3em] font-black">
-          VidHelp Intelligence Hub • Real-time Analytics • {format(dateRange.start, 'MMM dd')} - {format(dateRange.end, 'MMM dd, yyyy')}
+        <p className="text-[9px] text-center text-muted-foreground uppercase tracking-[0.3em] font-bold">
+          VidHelp Intelligence Hub • {revenueData?.length?.toLocaleString() || '0'} Total Sessions
         </p>
       </div>
     </motion.div>

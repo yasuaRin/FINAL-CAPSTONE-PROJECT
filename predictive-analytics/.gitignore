@@ -1,6 +1,0 @@
-.env
-__pycache__/
-*.pyc
-.ipynb_checkpoints/
-data/backup_*.csv
-data/backup_*.sql

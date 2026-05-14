@@ -62,3 +62,5 @@ coverage/
 .tmp/
 # ─── DB ─────────────────────────────────────────────────────────────────────
 db/
+db/*.ipynb
+backend/src/ml/savedModels/
