@@ -1,12 +1,10 @@
-﻿// frontend/src/pages/admin/Dashboard.jsx
-
-import { useMemo, useState, useEffect, useCallback } from 'react';
+﻿import { useMemo, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Download, Activity,
   ShieldAlert, CheckCircle2, ArrowUpRight,
-  PieChart as PieChartIcon, AlertCircle, Brain, RefreshCw, AlertTriangle
+  PieChart as PieChartIcon, AlertCircle, Brain, RefreshCw, AlertTriangle, Handshake
 } from 'lucide-react';
 import {
   PieChart, Pie, Cell, ResponsiveContainer,
@@ -19,6 +17,9 @@ import { SortByButton } from '../../components/layout/SortByButton';
 import { usePredictions } from '../../hooks/usePredictions';
 import { supabase } from '../../services/supabase';
 import { RevenueBarChart } from '../../components/dashboard/RevenueBarChart';
+// CHANGED: was exportDashboardReport — that only captured this one page.
+// exportCompleteReport finds all 5 HiddenExportPages containers in App.jsx.
+import { exportCompleteReport } from '../../utils/exportPDF';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -43,9 +44,9 @@ const formatCompactCurrency = (value) => {
 };
 
 // ============================================================================
-// KPI CARD — simplified, larger, readable
+// KPI CARD
 // ============================================================================
-const KpiCard = ({ label, value, icon: Icon, badge, badgeStyle, action, onAction }) => (
+const KpiCard = ({ title, value, icon: Icon, badge, badgeStyle, action, onAction, children }) => (
   <motion.div
     whileHover={{ y: -3, scale: 1.015 }}
     whileTap={{ scale: 0.98 }}
@@ -54,11 +55,13 @@ const KpiCard = ({ label, value, icon: Icon, badge, badgeStyle, action, onAction
   >
     <div className="flex justify-between items-start gap-2">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground group-hover:text-primary transition-colors leading-tight">
-        {label}
+        {title}
       </p>
-      <div className="p-1.5 bg-primary/10 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
-        <Icon size={14} />
-      </div>
+      {Icon && (
+        <div className="p-1.5 bg-primary/10 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+          <Icon size={14} />
+        </div>
+      )}
     </div>
 
     <h3 className="text-base font-mono font-bold mt-2 truncate">{value}</h3>
@@ -75,21 +78,8 @@ const KpiCard = ({ label, value, icon: Icon, badge, badgeStyle, action, onAction
         </span>
       )}
     </div>
+    {children}
   </motion.div>
-);
-
-// ============================================================================
-// KPI SKELETON
-// ============================================================================
-const KpiSkeleton = () => (
-  <div className="dashboard-card p-6 border-l-4 border-l-primary/20 animate-pulse">
-    <div className="flex justify-between items-center">
-      <div className="h-3 w-24 bg-muted rounded" />
-      <div className="w-9 h-9 bg-muted rounded-lg" />
-    </div>
-    <div className="h-9 w-36 bg-muted rounded mt-3" />
-    <div className="mt-4 h-5 w-20 bg-muted rounded-full" />
-  </div>
 );
 
 // ============================================================================
@@ -205,11 +195,51 @@ export const Dashboard = () => {
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [timedOut, setTimedOut]           = useState(false);
   const [forceShow, setForceShow]         = useState(false);
+  
+  const [dateRange, setDateRange] = useState({
+    start: null,
+    end: null,
+    preset: 'allData'
+  });
 
   const { data: revenue, loading: revenueLoading, error: revenueError, totalRevenue: aggregatedTotal, brandTotals, yearlyData } = useRevenue();
   const { brands, loading: brandsLoading }   = useBrands(brandTotals);
   const { team,   loading: teamLoading }     = useTeam();
   const { futurePredictions, retrainModels, isRetraining } = usePredictions();
+  
+  // Partnership data from Supabase (partners table)
+  const [partneredBrands, setPartneredBrands] = useState([]);
+  
+  useEffect(() => {
+    const fetchPartneredBrands = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('partners')
+          .select('*');
+        
+        if (!error && data) {
+          setPartneredBrands(data);
+        }
+      } catch (err) {
+        setPartneredBrands([]);
+      }
+    };
+    fetchPartneredBrands();
+  }, []);
+
+  // Partnership counts
+  const partnershipStats = {
+    inProgress: partneredBrands.filter(
+      p => p.status === 'In Progress'
+    ).length,
+    dealing: partneredBrands.filter(
+      p => p.status === 'Dealing'
+    ).length,
+    partner: partneredBrands.filter(
+      p => p.status === 'Partner'
+    ).length,
+  };
+  const partnerCount = partneredBrands.length;
 
   // Safety timeouts so a slow DB never freezes the UI
   useEffect(() => {
@@ -231,72 +261,84 @@ export const Dashboard = () => {
   // ── FILTERED REVENUE ─────────────────────────────────────────────────────
   const filteredRevenue = useMemo(() => {
     if (!revenue || revenue.length === 0) return [];
-    if (!selectedBrand) return revenue;
-    return revenue.filter((item) => item.brand_id === selectedBrand);
-  }, [revenue, selectedBrand]);
+
+    return revenue.filter((item) => {
+      const matchesBrand =
+        !selectedBrand || item.brand_id === selectedBrand;
+
+      const itemDate = item?.date
+        ? new Date(item.date)
+        : null;
+
+      const matchesDate =
+        !dateRange?.start ||
+        !dateRange?.end ||
+        dateRange.preset === 'allData' ||
+        (
+          itemDate &&
+          itemDate >= dateRange.start &&
+          itemDate <= dateRange.end
+        );
+
+      return matchesBrand && matchesDate;
+    });
+  }, [revenue, selectedBrand, dateRange]);
 
   const selectedBrandName = brands?.find((b) => b.brand_id === selectedBrand)?.brand_name;
 
   // ── TOTAL REVENUE KPI ────────────────────────────────────────────────────
-  // Uses brandTotals Map from useRevenue — same integers that produced
-  // aggregatedTotal, so per-brand + all-brands always reconcile to Supabase.
   const totalRevenue = useMemo(() => {
-    if (selectedBrand) {
-      return brandTotals.get(selectedBrand) ?? 0;
-    }
-    return aggregatedTotal;
-  }, [selectedBrand, brandTotals, aggregatedTotal]);
+    return filteredRevenue.reduce(
+      (sum, item) => sum + sumRevenue(item),
+      0
+    );
+  }, [filteredRevenue]);
 
   // ── CHART DATA ───────────────────────────────────────────────────────────
   const chartData = useMemo(() => {
-    if (!selectedBrand) {
-      if (!yearlyData || yearlyData.length === 0) return [];
-
-      const result = yearlyData.map((item) => ({
-        year:     item.year.toString(),
-        actual:   item.total_revenue,
-        forecast: 0,
-      }));
-
-      if (futurePredictions?.length > 0) {
-        const predByYear = new Map();
-        futurePredictions.forEach((pred) => {
-          if (pred?.date && pred.is_future === true) {
-            const year = new Date(pred.date).getFullYear();
-            predByYear.set(year, (predByYear.get(year) || 0) + (pred.predicted || 0));
-          }
-        });
-
-        predByYear.forEach((value, year) => {
-          const existing = result.find((r) => parseInt(r.year) === year);
-          if (existing) {
-            existing.forecast = value;
-          } else {
-            result.push({ year: year.toString(), actual: 0, forecast: value });
-          }
-        });
-      }
-
-      return result.sort((a, b) => parseInt(a.year) - parseInt(b.year));
-    }
-
-    const yearMap = new Map(globalYears.map((y) => [y, 0]));
+    const yearMap = new Map();
 
     filteredRevenue.forEach((item) => {
       if (!item?.date) return;
       const year = new Date(item.date).getFullYear();
-      const rev  = sumRevenue(item);
+      const rev = sumRevenue(item);
       yearMap.set(year, (yearMap.get(year) || 0) + rev);
     });
 
-    return Array.from(yearMap.entries())
+    const result = Array.from(yearMap.entries())
       .map(([year, rev]) => ({
-        year:     year.toString(),
-        actual:   rev,
+        year: year.toString(),
+        actual: rev,
         forecast: 0,
       }))
       .sort((a, b) => parseInt(a.year) - parseInt(b.year));
-  }, [yearlyData, futurePredictions, selectedBrand, filteredRevenue, globalYears]);
+
+    if (futurePredictions?.length > 0 && !selectedBrand && dateRange.preset === 'allData') {
+      const predByYear = new Map();
+      futurePredictions.forEach((pred) => {
+        if (pred?.date && pred.is_future === true) {
+          const year = new Date(pred.date).getFullYear();
+          predByYear.set(year, (predByYear.get(year) || 0) + (pred.predicted || 0));
+        }
+      });
+
+      predByYear.forEach((value, year) => {
+        const existing = result.find((r) => parseInt(r.year) === year);
+        if (existing) {
+          existing.forecast = value;
+        } else {
+          result.push({ year: year.toString(), actual: 0, forecast: value });
+        }
+      });
+    }
+
+    return result.sort((a, b) => parseInt(a.year) - parseInt(b.year));
+  }, [filteredRevenue, futurePredictions, selectedBrand, dateRange.preset]);
+
+  const totalTeamMembers = useMemo(
+    () => team?.length ?? 0,
+    [team]
+  );
 
   // ── OTHER KPI VALUES ─────────────────────────────────────────────────────
   const activeBrands = useMemo(
@@ -366,13 +408,13 @@ export const Dashboard = () => {
     notify(result.success ? 'ML models retrained successfully!' : `Failed: ${result.error}`);
   }, [retrainModels, notify]);
 
-  const handleExportReport = useCallback(() => {
+  // CHANGED: calls exportCompleteReport so all 5 HiddenExportPages containers
+  // (#dashboard-export-container … #leads-export-container) are captured.
+  const handleExportReport = useCallback(async () => {
     setIsExporting(true);
-    setTimeout(() => {
-      setIsExporting(false);
-      notify('Report exported');
-    }, 1500);
-  }, [notify]);
+    await exportCompleteReport();
+    setIsExporting(false);
+  }, []);
 
   const handleBrandClick = useCallback(
     (brandId) => {
@@ -404,7 +446,7 @@ export const Dashboard = () => {
 
   // ── RENDER ───────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-8 pb-12 relative">
+    <div id="dashboard-report-container" className="space-y-8 pb-12 relative">
       <AnimatePresence>
         {notification && (
           <motion.div
@@ -426,6 +468,7 @@ export const Dashboard = () => {
           <p className="text-muted-foreground mt-1">Welcome back, here is what is happening today.</p>
         </div>
         <div className="flex items-center gap-3">
+          {/* CHANGED: onClick now calls handleExportReport → exportCompleteReport */}
           <button
             onClick={handleExportReport}
             disabled={isExporting}
@@ -448,7 +491,8 @@ export const Dashboard = () => {
             brands={brands}
             onBrandChange={setSelectedBrand}
             selectedBrand={selectedBrand}
-            availableYears={globalYears}
+            onDateRangeChange={setDateRange}
+            dateRange={dateRange}
           />
         </div>
       </div>
@@ -472,7 +516,7 @@ export const Dashboard = () => {
       {/* KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KpiCard
-          label="Total Revenue"
+          title="Total Revenue"
           value={formatCurrency(totalRevenue)}
           icon={ArrowUpRight}
           badge={selectedBrandName ? `Brand: ${selectedBrandName}` : 'All Time'}
@@ -481,31 +525,57 @@ export const Dashboard = () => {
           onAction={() => !selectedBrand && navigate('/admin/revenue')}
         />
         <KpiCard
-          label="Active Brands"
-          value={activeBrands}
-          icon={ArrowUpRight}
-          badge="Live"
-          badgeStyle="text-info bg-info/10"
+          title="Brands Overview"
+          value={`${activeBrands}/${atRisk}`}
+          icon={AlertTriangle}
+          badge={`${atRisk} High Risk of Churn`}
+          badgeStyle={
+            atRisk > 0
+              ? 'bg-destructive text-white'
+              : 'bg-emerald-500 text-white'
+          }
           action="Manage Brands →"
           onAction={() => navigate('/admin/brands')}
         />
         <KpiCard
-          label="At-Risk Brands"
-          value={atRisk}
-          icon={AlertCircle}
-          badge={atRisk > 0 ? 'High Risk' : 'All Clear'}
-          badgeStyle={atRisk > 0 ? 'bg-destructive text-white' : 'bg-emerald-500 text-white'}
-          action="Risk Analysis →"
-          onAction={() => navigate('/admin/brands')}
+          title="Total Staff"
+          value={totalTeamMembers}
+          icon={Activity}
+          badge="Active Staff"
+          badgeStyle="bg-primary/10 text-primary"
+          action="Manage Team →"
+          onAction={() => navigate('/admin/team')}
         />
         <KpiCard
-          label="ML Forecast"
-          value={`${futurePredictions?.length ?? 0} Periods`}
-          icon={Brain}
-          badge={`${avgConfidence.toFixed(0)}% avg confidence`}
+          title="Partnership Status"
+          value={partnerCount}
+          icon={Handshake}
+          badge="Total Active Partnerships"
           badgeStyle="bg-primary/10 text-primary"
-          onAction={handleRerunModel}
-        />
+          action="View Partnerships →"
+          onAction={() => navigate('/admin/leads')}
+        >
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-3 text-center">
+              <p className="text-xs text-gray-400">In Progress</p>
+              <p className="text-lg font-bold text-yellow-400">
+                {partnershipStats.inProgress}
+              </p>
+            </div>
+            <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3 text-center">
+              <p className="text-xs text-gray-400">Dealing</p>
+              <p className="text-lg font-bold text-blue-400">
+                {partnershipStats.dealing}
+              </p>
+            </div>
+            <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3 text-center">
+              <p className="text-xs text-gray-400">Partner</p>
+              <p className="text-lg font-bold text-green-400">
+                {partnershipStats.partner}
+              </p>
+            </div>
+          </div>
+        </KpiCard>
       </div>
 
       {/* Charts Grid */}

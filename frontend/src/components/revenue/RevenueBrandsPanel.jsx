@@ -2,12 +2,11 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Filter, ChevronRight, Calendar } from 'lucide-react';
+import { TrendingUp, ChevronRight, Calendar } from 'lucide-react';
 
 const RevenueBrandsPanel = ({
   brandsList = [],
   insightBrandId,
-  setInsightBrandId,
   brandPerformanceInsights = [],
   handleHallOfFameClick,
   formatCurrency,
@@ -15,31 +14,13 @@ const RevenueBrandsPanel = ({
   return (
     <div className="lg:col-span-1 border border-border bg-card rounded-3xl overflow-hidden shadow-sm flex flex-col h-[700px]">
       
-      {/* Header */}
+      {/* Header - No filter select, just title */}
       <div className="p-6 border-b border-border bg-muted/20">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <TrendingUp size={16} className="text-primary" />
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">
-              Brand Performance Overview
-            </h3>
-          </div>
-        </div>
-
-        <div className="relative group">
-          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary" size={12} />
-          <select
-            value={insightBrandId}
-            onChange={(e) => setInsightBrandId(e.target.value)}
-            className="w-full bg-white/50 dark:bg-muted/40 border border-border rounded-xl py-2 pl-9 pr-4 text-[10px] font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-primary/20 appearance-auto"
-          >
-            <option value="All">All Brands</option>
-            {brandsList.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name.toUpperCase()}
-              </option>
-            ))}
-          </select>
+        <div className="flex items-center gap-2">
+          <TrendingUp size={16} className="text-primary" />
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">
+            Brand Performance Overview
+          </h3>
         </div>
       </div>
 
@@ -92,7 +73,7 @@ const RevenueBrandsPanel = ({
                     <div className="flex items-center gap-1">
                       <TrendingUp size={8} className="text-primary" />
                       <span>
-                        <strong>Peak Period {insight.peakPeriod?.replace('Period ', '') || 'N/A'}:</strong> {formatCurrency(insight.bestPeriodRevenue || insight.peakRevenue)}
+                        <strong>Peak {insight.peakPeriod}:</strong> {formatCurrency(insight.bestPeriodRevenue || insight.peakRevenue)}
                       </span>
                     </div>
                   </div>
