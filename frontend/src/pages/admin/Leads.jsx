@@ -600,7 +600,7 @@ Be direct. No fluff. No percentages.`;
   const canMarkSent = emailInput.trim().length > 0 || waOpened;
 
   return (
-    <div className="flex flex-col gap-8 pb-10">
+  <div id="leads-report-container" className="flex flex-col gap-8 pb-10">
 
       {/* Header HUD */}
       <div className="flex flex-col lg:flex-row justify-between items-center gap-6">

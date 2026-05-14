@@ -40,19 +40,40 @@ const primaryBtn = {
   fontWeight: 700, fontSize: 13, cursor: 'pointer',
 };
 
-const Avatar = ({ src, name, size = 40 }) => (
-  <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
-    <img
-      src={src || `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`}
-      alt={name}
-      referrerPolicy="no-referrer"
-      style={{
-        width: size, height: size, borderRadius: '50%', objectFit: 'cover',
-        border: '1px solid var(--border)',
-      }}
-    />
-  </div>
-);
+const Avatar = ({ src, name, size = 40 }) => {
+  const initials = (name || '?').slice(0, 2).toUpperCase();
+  const color = `hsl(${[...name||''].reduce((a,c)=>a+c.charCodeAt(0),0) % 360}, 55%, 50%)`;
+
+  if (!src) return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      background: color, border: '1px solid var(--border)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.35, fontWeight: 700, color: '#fff',
+    }}>{initials}</div>
+  );
+
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <img
+        src={src}
+        alt={name}
+        referrerPolicy="no-referrer"
+        onError={e => {
+          // On error, replace with initials div instead of re-requesting dicebear
+          const div = document.createElement('div');
+          div.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:${color};border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:${Math.floor(size*0.35)}px;font-weight:700;color:#fff;flex-shrink:0`;
+          div.textContent = initials;
+          e.target.parentNode.replaceChild(div, e.target);
+        }}
+        style={{
+          width: size, height: size, borderRadius: '50%', objectFit: 'cover',
+          border: '1px solid var(--border)',
+        }}
+      />
+    </div>
+  );
+};
 
 const StatusBadge = ({ status }) => (
   <div style={{
@@ -302,14 +323,17 @@ export default function Team() {
   };
 
   if (loading) return (
+  <div id="team-report-container">
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 12, flexDirection: 'column' }}>
       <style>{BASE_STYLE}</style>
       <div style={{ width: 40, height: 40, border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       <p style={{ color: 'var(--muted-foreground)', fontSize: 13, fontWeight: 500 }}>Loading team data...</p>
     </div>
-  );
+  </div>
+);
 
   return (
+  <div id="team-report-container">
     <div style={{ paddingTop: 8, paddingBottom: 48 }}>
       <style>{BASE_STYLE}</style>
 
@@ -617,5 +641,6 @@ export default function Team() {
         </div>
       )}
     </div>
+  </div>
   );
 }
