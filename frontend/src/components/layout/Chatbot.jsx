@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, User, Loader2 } from 'lucide-react';
 import { askVidHelp } from '../../../../backend/src/lib/rag.js';
