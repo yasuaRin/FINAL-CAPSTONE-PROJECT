@@ -210,7 +210,7 @@ export const SortByButton = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.14 }}
-            className="absolute left-0 top-full  origin0-top min-w-[320px] mt-2 z-50 w-80 bg-card border border-border rounded-2xl shadow-xl max-h-[500px] overflow-y-auto"
+            className="absolute right-0 top-[calc(100%+8px)] z-50 w-[280px] bg-card border border-border rounded-2xl shadow-xl"
           >
             <div className="p-4 space-y-4">
               {/* Date Range Section */}

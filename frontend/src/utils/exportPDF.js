@@ -1,4 +1,3 @@
-
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 import { triggerExportRender, dismissExportRender } from './exportState';
@@ -215,8 +214,8 @@ export const exportToPDF = async (elementId, filename, pageTitle = '') => {
       cacheBust: true,
       backgroundColor: '#ffffff',
       skipAutoScale: false,
-      width: element.scrollWidth,   // ← add these two
-      height: element.scrollHeight, 
+      width: element.scrollWidth,
+      height: element.scrollHeight,
     });
 
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });

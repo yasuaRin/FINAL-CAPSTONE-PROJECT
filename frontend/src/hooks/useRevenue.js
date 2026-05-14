@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabase';
+import { time } from 'framer-motion';
 
 const PAGE_SIZE = 500;
 
@@ -24,6 +25,7 @@ const fetchAllRows = async () => {
       .select(`
         id,
         date,
+        time,
         revenue_shopee,
         revenue_tiktok,
         viewers_shopee,
@@ -121,8 +123,9 @@ export const useRevenue = () => {
         rows.map((item) => ({
           id: item.id,
           date: item.date,
+          time: item.time ?? null,
           period_id: item.period_id,
-          host_team_member_id: item.host_team_member_id,
+          host_team_member_id: item.host_team_member_id ?? null,
           brand_id: String(item.brand_id), // Convert UUID to string
           revenue_shopee: item.revenue_shopee ?? 0,
           revenue_tiktok: item.revenue_tiktok ?? 0,
