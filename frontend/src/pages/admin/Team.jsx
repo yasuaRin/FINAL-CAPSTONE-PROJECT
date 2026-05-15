@@ -1,7 +1,8 @@
 ﻿import { useState, useEffect, useMemo, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../../services/supabase";
 import { useAuth } from "../../hooks/useAuth";
-import { UserPlus, Search, Mail, Phone, Edit3, Trash2, AlertTriangle, X, Upload, MoreVertical, Activity } from "lucide-react";
+import { UserPlus, Search, Mail, Phone, Edit3, Trash2, AlertTriangle, X, Upload, MoreVertical, Activity, CheckCircle2 } from "lucide-react";
 
 const BASE_STYLE = `
   @keyframes spin  { to { transform: rotate(360deg); } }
@@ -135,10 +136,23 @@ export default function Team() {
   const [submitting, setSubmitting] = useState(false);
   const [selectedRole, setSelectedRole] = useState("staff");
 
+  // ── Toast notification — same pattern as Brands.jsx ──
+  const [notification, setNotification] = useState(null);
+
+  // Auto-clear after 4 seconds
+  useEffect(() => {
+    if (!notification) return;
+    const t = setTimeout(() => setNotification(null), 4000);
+    return () => clearTimeout(t);
+  }, [notification]);
+
   const fetchMembers = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.from("team_members").select("id, name, email, phone, avatar_url, role, role_description, status, auth_user_id").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("id, name, email, phone, avatar_url, role, role_description, status, auth_user_id")
+        .order("created_at", { ascending: false });
 
       if (error) console.error("Team members fetch error:", error);
 
@@ -154,7 +168,7 @@ export default function Team() {
         roleDescription: m.role_description || m.role || "Staff",
       }));
 
-      // Sort: super_admin first → admin → staff; within same role keep newest first (from DB order)
+      // Stable sort: preserves DB order (newest first) within same role
       memberList.sort((a, b) => (roleOrder[a.role] ?? 2) - (roleOrder[b.role] ?? 2));
 
       setMembers(memberList);
@@ -288,7 +302,7 @@ export default function Team() {
             }),
           });
           const _result = await _res.json();
-          if (!_res.ok) throw new Error(_result.message);
+          if (!_res.ok) throw new Error(_result.message || "Failed to create staff member.");
         } else {
           if (!password) {
             setFormError("Password is required for Admin / Super Admin accounts.");
@@ -313,6 +327,7 @@ export default function Team() {
       }
 
       await fetchMembers();
+      setNotification(editingMember ? "Member updated successfully." : "Member added successfully.");
       closeForm();
     } catch (err) {
       console.error("SUBMIT ERROR:", err);
@@ -339,8 +354,10 @@ export default function Team() {
       const _result = await _res.json();
       if (!_res.ok) throw new Error(_result.message);
       await fetchMembers();
+      setNotification("Member removed successfully.");
     } catch (err) {
       console.error("Delete error:", err);
+      setNotification("❌ Failed to remove member.");
     } finally {
       setDeleteTarget(null);
     }
@@ -358,6 +375,48 @@ export default function Team() {
   return (
     <div style={{ paddingTop: 8, paddingBottom: 48 }}>
       <style>{BASE_STYLE}</style>
+
+      {/* ── Toast Notification — Brands.jsx style ── */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, x: "-50%" }}
+            animate={{ opacity: 1, y: 20, x: "-50%" }}
+            exit={{ opacity: 0, y: -20, x: "-50%" }}
+            style={{
+              position: "fixed",
+              top: 4,
+              left: "50%",
+              zIndex: 100,
+              background: "var(--card)",
+              color: "var(--foreground)",
+              padding: "12px 24px",
+              borderRadius: 16,
+              boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              border: "1px solid var(--border)",
+              minWidth: 260,
+            }}
+          >
+            <div
+              style={{
+                borderRadius: "50%",
+                padding: 4,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: notification.includes("❌") ? "#ef4444" : "#22c55e",
+                flexShrink: 0,
+              }}
+            >
+              <CheckCircle2 size={16} color="white" />
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em" }}>{notification}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Header ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32, flexWrap: "wrap", gap: 16 }}>
@@ -557,7 +616,7 @@ export default function Team() {
                 <AlertTriangle size={24} color="var(--primary)" />
               </div>
               <div>
-                <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>De-authorize Member?</h3>
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>Delete Member?</h3>
                 <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "8px 0 0" }}>
                   This will permanently remove <strong style={{ color: "var(--foreground)" }}>{deleteTarget.name}</strong> from the system.
                 </p>
@@ -759,4 +818,4 @@ export default function Team() {
       )}
     </div>
   );
-};
+}

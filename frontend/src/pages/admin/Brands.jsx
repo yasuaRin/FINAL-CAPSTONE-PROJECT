@@ -207,20 +207,32 @@ export default function Brands() {
   }, [filteredBrands, sessions, riskData, brandTotals]);
 
   const handleDelete = async () => {
-    if (!isSuperAdmin) {
-      setNotification("❌ Access Denied: Only Super Admin can delete brands");
-      setDeleteId(null);
-      setTimeout(() => setNotification(null), 3000);
-      return;
-    }
-    if (deleteId) {
-      const { error } = await supabase.from("brands").delete().eq("brand_id", deleteId);
-      if (error) { setNotification("Failed to delete brand"); }
-      else { setNotification(" Brand removed successfully"); fetchData(); }
-      setDeleteId(null);
-      setTimeout(() => setNotification(null), 3000);
-    }
-  };
+  if (!deleteId) return;
+
+  // delete linked records first
+  await supabase
+    .from("live_sessions")
+    .delete()
+    .eq("brand_id", deleteId);
+
+  await supabase
+    .from("risk_monitor")
+    .delete()
+    .eq("brand_id", deleteId);
+
+  // then delete brand
+  const { error } = await supabase
+    .from("brands")
+    .delete()
+    .eq("brand_id", deleteId);
+
+  if (error) {
+    setNotification("Failed to delete brand");
+  } else {
+    setNotification("Brand removed successfully");
+    fetchData();
+  }
+};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
