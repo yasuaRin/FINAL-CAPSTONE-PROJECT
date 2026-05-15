@@ -444,7 +444,7 @@ app.delete('/api/brands/:id', async (req, res) => {
 app.get('/api/team', async (req, res) => {
   try {
     const { data, error } = await supabase
-      .from('staff')
+      .from('team_members')
       .select('*')
       .order('name');
     
@@ -452,6 +452,117 @@ app.get('/api/team', async (req, res) => {
     res.json({ success: true, data });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// CREATE STAFF
+app.post('/api/team/create-staff', async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      phone,
+      role,
+      status,
+      avatar_url,
+    } = req.body;
+
+    const { data, error } = await supabase
+      .from('team_members')
+      .insert([
+        {
+          name,
+          email,
+          phone,
+          role_description: role,
+          status,
+          avatar_url,
+          role: 'staff',
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error('Create staff error:', error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+// UPDATE MEMBER
+app.post('/api/team/update-member', async (req, res) => {
+  try {
+    const {
+      id,
+      name,
+      phone,
+      status,
+      avatar_url,
+      roleDescription,
+    } = req.body;
+
+    const { data, error } = await supabase
+      .from('team_members')
+      .update({
+        name,
+        phone,
+        status,
+        avatar_url,
+        role_description: roleDescription,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error('Update member error:', error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+// DELETE MEMBER
+app.post('/api/team/delete-member', async (req, res) => {
+  try {
+    const { id } = req.body;
+
+    const { error } = await supabase
+      .from('team_members')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      message: 'Member deleted',
+    });
+  } catch (error) {
+    console.error('Delete member error:', error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 });
 

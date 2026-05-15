@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabase';
-import { time } from 'framer-motion';
 
 const PAGE_SIZE = 500;
 
@@ -13,8 +12,6 @@ const fetchAllRows = async () => {
 
   if (countError) throw countError;
   if (!totalCount) return [];
-
-  console.log(`📊 useRevenue: expecting ${totalCount} total sessions`);
 
   const allRows = [];
   let from = 0;
@@ -43,16 +40,11 @@ const fetchAllRows = async () => {
 
     const page = data || [];
 
-    if (page.length === 0) {
-      console.warn(`⚠️ useRevenue: pagination ended early at ${allRows.length}/${totalCount}`);
-      break;
-    }
+    if (page.length === 0) break;
 
     allRows.push(...page);
     from += page.length;
   }
-
-  console.log(`📦 useRevenue: fetched ${allRows.length}/${totalCount} sessions`);
 
   const seen = new Set();
   const unique = allRows.filter((row) => {
@@ -60,12 +52,7 @@ const fetchAllRows = async () => {
     seen.add(row.id);
     return true;
   });
-  
-  if (unique.length !== allRows.length) {
-    console.warn(`⚠️ removed ${allRows.length - unique.length} duplicate rows`);
-  }
 
-  console.log(`✅ useRevenue: ${unique.length} unique rows`);
   return unique;
 };
 
@@ -100,15 +87,11 @@ export const useRevenue = () => {
         }
 
         if (item.brand_id) {
-          const brandId = String(item.brand_id); // Convert UUID to string for Map
+          const brandId = String(item.brand_id);
           const currentRevenue = brandMap.get(brandId) || 0;
           brandMap.set(brandId, currentRevenue + rev);
         }
       });
-
-      console.log('💰 Total revenue:', runningTotal.toLocaleString('id-ID'));
-      console.log('📊 Brand revenue map size:', brandMap.size);
-      console.log('📊 Brand revenue details:', Array.from(brandMap.entries()).map(([id, rev]) => ({ id, rev })));
 
       setTotalRevenue(runningTotal);
       setBrandTotals(brandMap);
@@ -126,7 +109,7 @@ export const useRevenue = () => {
           time: item.time ?? null,
           period_id: item.period_id,
           host_team_member_id: item.host_team_member_id ?? null,
-          brand_id: String(item.brand_id), // Convert UUID to string
+          brand_id: String(item.brand_id),
           revenue_shopee: item.revenue_shopee ?? 0,
           revenue_tiktok: item.revenue_tiktok ?? 0,
           viewers_shopee: item.viewers_shopee ?? 0,
@@ -136,7 +119,6 @@ export const useRevenue = () => {
         }))
       );
     } catch (err) {
-      console.error('useRevenue fetch error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
