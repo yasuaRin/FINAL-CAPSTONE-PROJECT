@@ -1,9 +1,10 @@
+import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const GEMINI_KEY = process.env.GEMINI_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -18,7 +19,7 @@ function chunkText(text) {
 
 async function getEmbedding(text) {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${GEMINI_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${GEMINI_API_KEY}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -48,7 +49,7 @@ async function ingest() {
     .neq('id', 0);
 
   if (deleteError) {
-    console.warn('⚠️  Could not clear old data:', deleteError.message);
+    console.warn('Could not clear old data:', deleteError.message);
   } else {
     console.log('Cleared old data ✓\n');
   }
@@ -86,9 +87,9 @@ async function ingest() {
 
   console.log(`\n${'─'.repeat(50)}`);
   if (successCount === chunks.length) {
-    console.log(`✅ Ingestion complete! All ${successCount}/${chunks.length} chunks inserted.`);
+    console.log(`Ingestion complete! All ${successCount}/${chunks.length} chunks inserted.`);
   } else {
-    console.log(`⚠️  Ingestion done with issues: ${successCount}/${chunks.length} chunks inserted.`);
+    console.log(`Ingestion done with issues: ${successCount}/${chunks.length} chunks inserted.`);
   }
   console.log(`${'─'.repeat(50)}\n`);
 }
