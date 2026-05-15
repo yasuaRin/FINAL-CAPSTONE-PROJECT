@@ -192,7 +192,7 @@ const Landing = () => {
               <p className="text-black/60 font-medium text-xs leading-relaxed font-sans">Customer bisa langsung nanya & lihat produk real. Live memberikan pengalaman lebih dari sekadar foto atau video biasa di shopping centre.</p>
             </div>
             <div className="p-8 border border-primary bg-white text-black shadow-[8px_8px_0px_#ff0054]">
-              <h3 className="text-lg font-bold mb-3 uppercase font-sans">II. Voucher Masif</h3>
+              <h3 className="text-lg font-bold mb-3 uppercase text-black font-sans">II. Voucher Masif</h3>
               <p className="text-black/80 font-medium text-xs leading-relaxed font-sans">Shopee & TikTok sering bakar uang via voucher diskon hingga 50% khusus di sesi Live. Jangan lewatkan momentum subsidi platform ini.</p>
             </div>
             <div className="p-8 border border-primary bg-white shadow-[8px_8px_0px_#ff0054]">
