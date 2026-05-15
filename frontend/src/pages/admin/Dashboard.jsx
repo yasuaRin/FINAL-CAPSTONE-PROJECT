@@ -660,12 +660,6 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="pt-8 border-t border-border text-center">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
-          VidHelp Intelligence Hub · System Operational · Total Revenue: {formatCurrency(totalRevenue)}
-        </p>
-      </div>
     </div>
   );
 };

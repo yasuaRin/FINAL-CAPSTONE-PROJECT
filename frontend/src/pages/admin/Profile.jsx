@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   User as UserIcon, Shield, Camera, Save, Loader2,
   CheckCircle2, X, RefreshCw, Mail, Phone,
-  Lock, Smartphone, Upload, FileText, Pencil
+  Lock, Upload, FileText, Pencil
 } from 'lucide-react';
 import { supabase } from '../../services/supabase';
 
@@ -207,15 +207,27 @@ export default function ProfileSettings() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { data: adminData } = await supabase.from('admins').select('full_name, email, role, avatar_url, phone').eq('id', user.id).single();
-        const { data: profileData } = await supabase.from('profiles').select('bio').eq('id', user.id).single();
+
+        // Fetch dari team_members pakai auth_user_id
+        const { data: memberData } = await supabase
+          .from('team_members')
+          .select('name, email, role, avatar_url, phone, role_description')
+          .eq('auth_user_id', user.id)
+          .single();
+
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('bio')
+          .eq('id', user.id)
+          .single();
+
         const fetched = {
-          full_name: adminData?.full_name || user.user_metadata?.full_name || '',
-          email: adminData?.email || user.email || '',
-          phone: adminData?.phone || '',
-          role: adminData?.role || '',
+          full_name: memberData?.name || user.user_metadata?.full_name || '',
+          email: memberData?.email || user.email || '',
+          phone: memberData?.phone || '',
+          role: memberData?.role_description || memberData?.role || '',
           bio: profileData?.bio || '',
-          avatar_url: adminData?.avatar_url || user.user_metadata?.avatar_url || null,
+          avatar_url: memberData?.avatar_url || user.user_metadata?.avatar_url || null,
         };
         setProfile(fetched);
         setProfileSnapshot(fetched);
@@ -243,10 +255,31 @@ export default function ProfileSettings() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-      const { error: adminError } = await supabase.from('admins').update({ full_name: profile.full_name, phone: profile.phone, avatar_url: profile.avatar_url, updated_at: new Date().toISOString() }).eq('id', user.id);
-      if (adminError) throw adminError;
-      const { error: profileError } = await supabase.from('profiles').update({ full_name: profile.full_name, bio: profile.bio, avatar_url: profile.avatar_url, updated_at: new Date().toISOString() }).eq('id', user.id);
+
+      // Update team_members
+      const { error: memberError } = await supabase
+        .from('team_members')
+        .update({
+          name: profile.full_name,
+          phone: profile.phone,
+          avatar_url: profile.avatar_url,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('auth_user_id', user.id);
+      if (memberError) throw memberError;
+
+      // Update profiles (bio)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: profile.full_name,
+          bio: profile.bio,
+          avatar_url: profile.avatar_url,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
       if (profileError) throw profileError;
+
       setProfileSnapshot({ ...profile });
       setSaved(true); setIsEditing(false);
       showToast('Profile updated successfully.');
@@ -553,6 +586,7 @@ export default function ProfileSettings() {
               </div>
             </div>
           </div>
+
         </div>
       </div>
 
