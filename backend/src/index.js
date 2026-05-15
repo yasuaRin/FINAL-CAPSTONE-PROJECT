@@ -45,9 +45,9 @@ app.use(cors({
 }));
 
 
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+//app.use(helmet({
+//crossOriginResourcePolicy: { policy: "cross-origin" }
+//}));
 app.use(compression());
 app.use(express.json());
 app.use(morgan('dev'));
@@ -81,10 +81,6 @@ app.get('/health', (req, res) => {
 // ML MODEL ENDPOINTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * POST /api/ml/train
- * Train all ML models and compare performance
- */
 app.post('/api/ml/train', async (req, res) => {
   console.log('[ML] Starting model training...');
   
@@ -111,10 +107,6 @@ app.post('/api/ml/train', async (req, res) => {
   });
 });
 
-/**
- * POST /api/ml/predict
- * Generate revenue predictions for future periods
- */
 app.post('/api/ml/predict', async (req, res) => {
   const { periods = 4 } = req.body;
   console.log(`[ML] Generating predictions for ${periods} future periods...`);
@@ -140,14 +132,9 @@ app.post('/api/ml/predict', async (req, res) => {
   });
 });
 
-/**
- * POST /api/ml/retrain
- * Full retrain + predict (one-click for dashboard)
- */
 app.post('/api/ml/retrain', async (req, res) => {
   console.log('[ML] Full retrain + predict workflow started...');
   
-  // First train the model
   exec(`python "${TRAIN_SCRIPT}"`, (trainError, trainStdout, trainStderr) => {
     if (trainError) {
       console.error('[ML] Training failed:', trainError.message);
@@ -160,7 +147,6 @@ app.post('/api/ml/retrain', async (req, res) => {
     
     console.log('[ML] Training complete, generating predictions...');
     
-    // Then generate predictions
     exec(`python "${PREDICT_SCRIPT}" 4`, (predError, predStdout, predStderr) => {
       if (predError) {
         console.error('[ML] Prediction failed:', predError.message);
@@ -184,13 +170,8 @@ app.post('/api/ml/retrain', async (req, res) => {
   });
 });
 
-/**
- * GET /api/ml/status
- * Check ML model status and metrics
- */
 app.get('/api/ml/status', async (req, res) => {
   try {
-    // Get latest predictions
     const { data: predictions, error: predError } = await supabase
       .from('revenue_predictions')
       .select('*')
@@ -199,7 +180,6 @@ app.get('/api/ml/status', async (req, res) => {
     
     if (predError) throw predError;
     
-    // Get model metrics
     const { data: metrics, error: metricsError } = await supabase
       .from('revenue_predictions')
       .select('model_r2, model_mae, created_at')
@@ -223,10 +203,6 @@ app.get('/api/ml/status', async (req, res) => {
   }
 });
 
-/**
- * GET /api/ml/metrics
- * Get model performance metrics
- */
 app.get('/api/ml/metrics', async (req, res) => {
   try {
     const metricsPath = path.join(ML_DIR, 'savedModels', 'model_comparison.json');
@@ -246,10 +222,6 @@ app.get('/api/ml/metrics', async (req, res) => {
 // REVENUE ROUTES
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * GET /api/revenue/predictions
- * Get all predictions for dashboard
- */
 app.get('/api/revenue/predictions', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -276,10 +248,6 @@ app.get('/api/revenue/predictions', async (req, res) => {
   }
 });
 
-/**
- * GET /api/revenue/historical
- * Get historical revenue data grouped by period
- */
 app.get('/api/revenue/historical', async (req, res) => {
   try {
     const { brandId } = req.query;
@@ -320,10 +288,6 @@ app.get('/api/revenue/historical', async (req, res) => {
   }
 });
 
-/**
- * GET /api/revenue/summary
- * Get revenue summary for KPIs
- */
 app.get('/api/revenue/summary', async (req, res) => {
   try {
     const { brandId } = req.query;
@@ -458,58 +422,113 @@ app.get('/api/team', async (req, res) => {
 // CREATE STAFF
 app.post('/api/team/create-staff', async (req, res) => {
   try {
-    const {
-      name,
-      email,
-      phone,
-      role,
-      status,
-      avatar_url,
-    } = req.body;
+    const { name, email, phone, role, status, avatar_url } = req.body;
 
     const { data, error } = await supabase
       .from('team_members')
-      .insert([
-        {
-          name,
-          email,
-          phone,
-          role_description: role,
-          status,
-          avatar_url,
-          role: 'staff',
-        },
-      ])
+      .insert([{
+        name,
+        email,
+        phone,
+        role_description: role,
+        status,
+        avatar_url,
+        role: 'staff',
+      }])
       .select()
       .single();
 
     if (error) throw error;
 
-    res.json({
-      success: true,
-      data,
-    });
+    res.json({ success: true, data });
   } catch (error) {
     console.error('Create staff error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
-    res.status(500).json({
-      success: false,
-      message: error.message,
+// CREATE ADMIN
+app.post('/api/team/create-admin', async (req, res) => {
+  try {
+    const { name, email, phone, password, role, status, avatar_url } = req.body;
+
+    // 1. Buat akun di Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
     });
+
+    if (authError) throw authError;
+
+    // 2. Simpan ke tabel team_members
+    const { data, error } = await supabase
+      .from('team_members')
+      .insert([{
+        name,
+        email,
+        phone: phone || null,
+        role_description: role || null,
+        status: status || 'active',
+        avatar_url: avatar_url || null,
+        role: role || 'admin',
+        auth_user_id: authData.user.id,
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Create admin error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// CREATE SUPER ADMIN
+app.post('/api/team/create-super-admin', async (req, res) => {
+  try {
+    const { name, email, phone, password, role, status, avatar_url } = req.body;
+
+    // 1. Buat akun di Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+
+    if (authError) throw authError;
+
+    // 2. Simpan ke tabel team_members
+    const { data, error } = await supabase
+      .from('team_members')
+      .insert([{
+        name,
+        email,
+        phone: phone || null,
+        role_description: role || null,
+        status: status || 'active',
+        avatar_url: avatar_url || null,
+        role: role || 'super_admin',
+        auth_user_id: authData.user.id,
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Create super admin error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 // UPDATE MEMBER
 app.post('/api/team/update-member', async (req, res) => {
   try {
-    const {
-      id,
-      name,
-      phone,
-      status,
-      avatar_url,
-      roleDescription,
-    } = req.body;
+    const { id, name, phone, status, avatar_url, roleDescription } = req.body;
 
     const { data, error } = await supabase
       .from('team_members')
@@ -526,17 +545,10 @@ app.post('/api/team/update-member', async (req, res) => {
 
     if (error) throw error;
 
-    res.json({
-      success: true,
-      data,
-    });
+    res.json({ success: true, data });
   } catch (error) {
     console.error('Update member error:', error);
-
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -544,25 +556,33 @@ app.post('/api/team/update-member', async (req, res) => {
 app.post('/api/team/delete-member', async (req, res) => {
   try {
     const { id } = req.body;
+    if (!id) return res.status(400).json({ success: false, message: 'ID is required.' });
+
+    const { data: member, error: fetchError } = await supabase
+      .from('team_members')
+      .select('id, auth_user_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !member) {
+      return res.status(404).json({ success: false, message: 'Member not found.' });
+    }
+
+    if (member.auth_user_id) {
+      const { error: authError } = await supabase.auth.admin.deleteUser(member.auth_user_id);
+      if (authError) throw authError;
+    }
 
     const { error } = await supabase
       .from('team_members')
       .delete()
       .eq('id', id);
-
     if (error) throw error;
 
-    res.json({
-      success: true,
-      message: 'Member deleted',
-    });
+    res.json({ success: true, message: 'Member deleted' });
   } catch (error) {
     console.error('Delete member error:', error);
-
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -616,6 +636,11 @@ app.listen(PORT, () => {
 ║   Revenue Pred: GET  http://localhost:${PORT}/api/revenue/predictions        ║
 ║   Brands:       GET  http://localhost:${PORT}/api/brands                     ║
 ║   Team:         GET  http://localhost:${PORT}/api/team                       ║
+║   Create Staff: POST http://localhost:${PORT}/api/team/create-staff          ║
+║   Create Admin: POST http://localhost:${PORT}/api/team/create-admin          ║
+║   Create SAdmin:POST http://localhost:${PORT}/api/team/create-super-admin    ║
+║   Update Member:POST http://localhost:${PORT}/api/team/update-member         ║
+║   Delete Member:POST http://localhost:${PORT}/api/team/delete-member         ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
 ║   Environment:  ${process.env.NODE_ENV || 'development'}                                      ║
 ║   Status:       Operational                                                   ║
