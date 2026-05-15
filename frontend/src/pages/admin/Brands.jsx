@@ -81,6 +81,7 @@ export default function Brands() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [notification, setNotification] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle');
 
@@ -206,31 +207,44 @@ export default function Brands() {
     });
   }, [filteredBrands, sessions, riskData, brandTotals]);
 
-  const handleDelete = async () => {
-  if (!deleteId) return;
+ const handleDelete = async () => {
+  if (!deleteId || isDeleting) return;
 
-  // delete linked records first
-  await supabase
-    .from("live_sessions")
-    .delete()
-    .eq("brand_id", deleteId);
+  try {
+    setIsDeleting(true);
 
-  await supabase
-    .from("risk_monitor")
-    .delete()
-    .eq("brand_id", deleteId);
+    // delete linked records first
+    await supabase
+      .from("live_sessions")
+      .delete()
+      .eq("brand_id", deleteId);
 
-  // then delete brand
-  const { error } = await supabase
-    .from("brands")
-    .delete()
-    .eq("brand_id", deleteId);
+    await supabase
+      .from("risk_monitor")
+      .delete()
+      .eq("brand_id", deleteId);
 
-  if (error) {
+    // then delete brand
+    const { error } = await supabase
+      .from("brands")
+      .delete()
+      .eq("brand_id", deleteId);
+
+    if (error) {
+      setNotification("Failed to delete brand");
+    } else {
+      setNotification("Brand removed successfully");
+
+      // FIX: close modal immediately after success
+      setDeleteId(null);
+
+      await fetchData();
+    }
+  } catch (err) {
+    console.error("Delete error:", err);
     setNotification("Failed to delete brand");
-  } else {
-    setNotification("Brand removed successfully");
-    fetchData();
+  } finally {
+    setIsDeleting(false);
   }
 };
 
@@ -512,9 +526,22 @@ return (
                     <p className="text-muted-foreground text-sm font-light mt-1">This action cannot be undone. The brand will be permanently removed.</p>
                   </div>
                   <div className="flex gap-3 w-full pt-2">
-                    <button onClick={() => setDeleteId(null)} className="flex-1 px-4 py-2 bg-muted text-muted-foreground rounded-xl text-sm font-bold">Cancel</button>
-                    <button onClick={handleDelete} className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-bold">Delete Permanently</button>
-                  </div>
+  <button
+    onClick={() => !isDeleting && setDeleteId(null)}
+    disabled={isDeleting}
+    className="flex-1 px-4 py-2 bg-muted text-muted-foreground rounded-xl text-sm font-bold disabled:opacity-50"
+  >
+    Cancel
+  </button>
+
+  <button
+    onClick={handleDelete}
+    disabled={isDeleting}
+    className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-bold disabled:opacity-50"
+  >
+    {isDeleting ? 'Deleting...' : 'Delete Permanently'}
+  </button>
+</div>
                 </div>
               </motion.div>
             </div>
