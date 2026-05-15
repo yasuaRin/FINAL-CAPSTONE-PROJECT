@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 
-const SUPABASE_URL = 'https://zzfghscdyvwecxrjzqrn.supabase.co';
-const SUPABASE_SERVICE_KEY = 'sb_secret_iOUCxEy43pQNarDNBUoDFw_4Dq2lITX';
-const GEMINI_KEY = 'AIzaSyDL18_8TjUVBz2v5VU2DP1uZ27MD6Jo_zA';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+const GEMINI_KEY = process.env.GEMINI_KEY;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 

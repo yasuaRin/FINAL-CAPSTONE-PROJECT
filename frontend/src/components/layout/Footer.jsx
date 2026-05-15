@@ -12,7 +12,8 @@ const Footer = () => {
               <img src="/VH-removebg.png" alt="VidHelp Logo" className="w-8 h-8 object-contain" />
               <span className="text-2xl font-black tracking-tighter uppercase font-sans text-black">VidHelp</span>
             </div>
-            <p className="text-black/40 text-[10px] font-bold uppercase tracking-widest leading-loose mb-6">WHERE COMMERCE MEETS HUMAN CONNECTION, Your digital partner to scales up your business</p>
+            <p className="text-black/40 text-[10px] font-bold uppercase tracking-widest leading-loose mb-6">WHERE COMMERCE MEETS HUMAN CONNECTION,<br />
+              Your digital partner to scales up your business</p>
           </div>
           <div>
              <h4 className="font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-primary font-sans">Layanan</h4>

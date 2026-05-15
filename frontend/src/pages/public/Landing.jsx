@@ -57,6 +57,8 @@ function AnimatedNumber({ value, suffix = '' }) {
 const Landing = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [previewSlide, setPreviewSlide] = useState(0);
+  const [liveImageIndex, setLiveImageIndex] = useState(0);
+
 
   useEffect(() => {
     const handleScroll = () => {
@@ -275,12 +277,40 @@ const Landing = () => {
           </div>
           <div className="relative flex justify-center lg:justify-end lg:-translate-x-4">
              <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="relative z-20 w-fit group">
-               <img src="/live-example.png" className="w-[18rem] md:w-[20rem] h-auto object-contain shadow-[0_0_120px_rgba(253,0,84,0.2)] hover:scale-105 transition-transform duration-500" alt="VidHelp Live Production Interface" referrerPolicy="no-referrer" />
+               <div className="flex flex-row items-center gap-6">
+                 <div 
+                   className="w-[18rem] md:w-[20rem] aspect-[1536/2752] flex flex-col overflow-y-auto snap-y snap-mandatory rounded shadow-[0_0_120px_rgba(253,0,84,0.2)] hover:scale-105 transition-transform duration-500 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                   onScroll={(e) => {
+                     const idx = Math.round(e.target.scrollTop / e.target.clientHeight);
+                     setLiveImageIndex(idx);
+                   }}
+                 >
+                   {['/live-example.png', '/live-example2.jpg', '/live-example3.png'].map((src, i) => (
+                     <img 
+                       key={i} 
+                       src={src} 
+                       className="w-full h-full shrink-0 snap-center object-cover" 
+                       alt={`VidHelp Live Production Interface ${i + 1}`} 
+                       referrerPolicy="no-referrer" 
+                     />
+                   ))}
+                 </div>
+
+                 <div className="flex flex-col gap-2">
+                   {[0, 1, 2].map((idx) => (
+                     <div
+                       key={idx}
+                       className={`w-2 h-2 rounded-full transition-all ${liveImageIndex === idx ? 'bg-primary h-4' : 'bg-white/30'}`}
+                     />
+                   ))}
+                 </div>
+               </div>
              </motion.div>
              <div className="absolute inset-0 scale-[1.5] bg-primary/10 blur-[100px] rounded-full -z-10"></div>
           </div>
         </div>
       </section>
+
 
 <section id="results" className="bg-black text-white pt-20 overflow-hidden scroll-mt-24">
   <div className="max-w-6xl mx-auto px-6 mb-10 text-center">
@@ -431,14 +461,6 @@ const Landing = () => {
           <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="relative lg:translate-x-6">
             <div className="relative z-10 bg-white p-3 shadow-2xl rounded-2xl">
               <img src="/tsp.png" alt="TSP" className="w-full rounded-xl" />
-              <div 
-                className="absolute -bottom-4 -right-4 lg:-bottom-8 lg:-right-8 bg-gradient-to-r from-orange-600 via-amber-500 to-orange-600 hover:from-white hover:via-white hover:to-white bg-[length:200%_auto] animate-gradient-slow hover:scale-105 p-4 rounded-xl shadow-2xl transition-all duration-300 cursor-pointer group"
-                onClick={() => window.open('https://wa.me/6285121057706?text=Hi%20Admin!%20Mau%20Konsultasi%20Brand%20aku%20dong!', '_blank')}
-              >
-                <div className="flex items-center justify-center">
-                  <p className="text-white group-hover:text-black font-bold text-xs lg:text-base uppercase tracking-tighter transition-colors">FREE CONSULTATION!</p>
-                </div>
-              </div>
             </div>
             <div className="absolute -inset-10 bg-primary/5 blur-[100px] -z-10"></div>
           </motion.div>
