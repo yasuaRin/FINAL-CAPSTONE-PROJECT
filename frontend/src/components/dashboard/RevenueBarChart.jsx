@@ -193,7 +193,7 @@ export const RevenueBarChart = ({
         {isLoading ? (
           <ChartSkeleton />
         ) : hasData ? (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={300} minHeight={0}>
             <BarChart
               data={chartData}
               margin={{ top: 8, right: 10, left: 10, bottom: 0 }}

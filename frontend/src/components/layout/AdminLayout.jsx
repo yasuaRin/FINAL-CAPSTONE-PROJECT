@@ -15,7 +15,7 @@ const STATIC_ITEMS = [
   { id: 'p2', title: 'Revenue',        category: 'Page',   path: '/admin/revenue',  keywords: 'money income profit analytics reports' },
   { id: 'p3', title: 'Brands',         category: 'Page',   path: '/admin/brands',   keywords: 'clients companies partners' },
   { id: 'p4', title: 'Lead Radar',     category: 'Page',   path: '/admin/leads',    keywords: 'leads prospects pipeline crm' },
-  { id: 'p5', title: 'Staff',          category: 'Page',   path: '/admin/team',     keywords: 'team members employees people' },
+  { id: 'p5', title: 'Team',          category: 'Page',   path: '/admin/team',     keywords: 'team members employees people' },
   { id: 'p6', title: 'My Profile',     category: 'Page',   path: '/admin/profile',  keywords: 'account settings avatar name' },
   { id: 'a1', title: 'Add New Brand',  category: 'Action', path: '/admin/brands',   keywords: 'create new client plus' },
   { id: 'a2', title: 'Add New Staff',  category: 'Action', path: '/admin/team',     keywords: 'create hire new member plus' },
@@ -162,7 +162,7 @@ export const  AdminLayout = () => {
     { icon: <TrendingUp size={20} />,      label: 'Revenue',    path: '/admin/revenue' },
     { icon: <Briefcase size={20} />,       label: 'Brands',     path: '/admin/brands' },
     { icon: <Radar size={20} />,           label: 'Lead Radar', path: '/admin/leads' },
-    { icon: <Users size={20} />,           label: 'Staff',      path: '/admin/team' },
+    { icon: <Users size={20} />,           label: 'Team',      path: '/admin/team' },
     { icon: <User size={20} />,            label: 'My Profile', path: '/admin/profile' },
   ];
 
@@ -345,14 +345,16 @@ export const  AdminLayout = () => {
 
       {/* ========== PDF EXPORT CONTAINERS - ADDED FOR MULTI-PAGE EXPORT ========== */}
       {/* These containers render all pages hidden for PDF export without affecting user experience */}
-      <div style={{ 
+      <div 
+        id="pdf-export-wrapper"
+        style={{ 
         position: 'fixed', 
         left: '-9999px', 
         top: 0, 
         zIndex: -9999,
         width: '1200px',
-        backgroundColor: '#ffffff'
-      }}>
+      }}
+      >
         <div id="dashboard-export-container">
           {/* Dashboard content will be populated by React Router */}
         </div>

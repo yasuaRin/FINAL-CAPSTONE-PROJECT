@@ -2,7 +2,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../../services/supabase";
 import { useAuth } from "../../hooks/useAuth";
-import { UserPlus, Search, Mail, Phone, Edit3, Trash2, AlertTriangle, X, Upload, MoreVertical, Activity, CheckCircle2 } from "lucide-react";
+import { UserPlus, Search, Mail, Phone, Edit3, Trash2, AlertTriangle, X, Upload, MoreVertical, Activity, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 
 const BASE_STYLE = `
   @keyframes spin  { to { transform: rotate(360deg); } }
@@ -56,22 +56,53 @@ const primaryBtn = {
   cursor: "pointer",
 };
 
-const Avatar = ({ src, name, size = 40 }) => (
-  <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
-    <img
-      src={src || `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`}
-      alt={name}
-      referrerPolicy="no-referrer"
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        objectFit: "cover",
-        border: "1px solid var(--border)",
-      }}
-    />
-  </div>
-);
+const Avatar = ({ src, name, size = 40 }) => {
+  const [imageError, setImageError] = useState(false);
+  
+  if (!src || imageError) {
+    const colors = ['#22c55e', '#3b82f6', '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899'];
+    const colorIndex = (name?.length || 0) % colors.length;
+    const bgColor = colors[colorIndex];
+    const initial = name?.charAt(0)?.toUpperCase() || '?';
+    
+    return (
+      <div style={{ 
+        width: size, 
+        height: size, 
+        borderRadius: '50%', 
+        background: bgColor,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        border: '1px solid var(--border)'
+      }}>
+        <span style={{ color: 'white', fontSize: size * 0.4, fontWeight: 'bold' }}>
+          {initial}
+        </span>
+      </div>
+    );
+  }
+  
+  return (
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <img
+        src={src}
+        alt={name}
+        referrerPolicy="no-referrer"
+        crossOrigin="anonymous"
+        onError={() => setImageError(true)}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          objectFit: "cover",
+          border: "1px solid var(--border)",
+        }}
+      />
+    </div>
+  );
+};
 
 const StatusBadge = ({ status }) => (
   <div
@@ -135,11 +166,13 @@ export default function Team() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedRole, setSelectedRole] = useState("staff");
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  // ── Toast notification — same pattern as Brands.jsx ──
   const [notification, setNotification] = useState(null);
 
-  // Auto-clear after 4 seconds
   useEffect(() => {
     if (!notification) return;
     const t = setTimeout(() => setNotification(null), 4000);
@@ -168,7 +201,6 @@ export default function Team() {
         roleDescription: m.role_description || m.role || "Staff",
       }));
 
-      // Stable sort: preserves DB order (newest first) within same role
       memberList.sort((a, b) => (roleOrder[a.role] ?? 2) - (roleOrder[b.role] ?? 2));
 
       setMembers(memberList);
@@ -187,6 +219,18 @@ export default function Team() {
     const q = searchTerm.toLowerCase();
     return members.filter((m) => (m.name || "").toLowerCase().includes(q));
   }, [members, searchTerm]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filtered.length / rowsPerPage);
+  const paginatedMembers = useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return filtered.slice(startIndex, startIndex + rowsPerPage);
+  }, [filtered, currentPage, rowsPerPage]);
+
+  // Reset to first page when search or rowsPerPage changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, rowsPerPage]);
 
   const canEdit = (member) => {
     if (currentRole === "super_admin") return true;
@@ -373,10 +417,10 @@ export default function Team() {
     );
 
   return (
-    <div style={{ paddingTop: 8, paddingBottom: 48 }}>
+    <div id="team-export-container">
+      <div style={{ paddingTop: 8, paddingBottom: 48 }}>
       <style>{BASE_STYLE}</style>
 
-      {/* ── Toast Notification — Brands.jsx style ── */}
       <AnimatePresence>
         {notification && (
           <motion.div
@@ -418,7 +462,6 @@ export default function Team() {
         )}
       </AnimatePresence>
 
-      {/* ── Header ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32, flexWrap: "wrap", gap: 16 }}>
         <div>
           <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "0 0 4px" }}>Pages / team</p>
@@ -432,7 +475,6 @@ export default function Team() {
         )}
       </div>
 
-      {/* ── Main card ── */}
       <div
         style={{
           background: "var(--card)",
@@ -488,7 +530,7 @@ export default function Team() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["PROFILE", "ROLE", "EMPLOYEE STATUS", "LEVEL", "ACTIONS"].map((h, i) => (
+                {["#", "PROFILE", "ROLE", "EMPLOYEE STATUS", "LEVEL", "ACTIONS"].map((h, i) => (
                   <th
                     key={h}
                     style={{
@@ -498,7 +540,8 @@ export default function Team() {
                       color: "var(--muted-foreground)",
                       textTransform: "uppercase",
                       letterSpacing: "0.08em",
-                      textAlign: i === 4 ? "right" : "left",
+                      textAlign: i === 0 ? "center" : i === 5 ? "right" : "left",
+                      width: i === 0 ? "50px" : "auto",
                     }}
                   >
                     {h}
@@ -507,18 +550,57 @@ export default function Team() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((member, idx) => (
+              {paginatedMembers.map((member, idx) => (
                 <tr
                   key={`${member._table}-${member._id}`}
-                  style={{ borderBottom: idx < filtered.length - 1 ? "1px solid var(--border)" : "none", transition: "background 0.15s" }}
+                  style={{ borderBottom: idx < paginatedMembers.length - 1 ? "1px solid var(--border)" : "none", transition: "background 0.15s" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "var(--muted)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
+                  <td style={{ padding: "16px 12px", textAlign: "center" }}>
+                    <span style={{ 
+                      display: "inline-flex", 
+                      alignItems: "center", 
+                      justifyContent: "center",
+                      width: 24,
+                      height: 24,
+                      borderRadius: 8,
+                      background: "var(--surface)",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "var(--primary)"
+                    }}>
+                      {(currentPage - 1) * rowsPerPage + idx + 1}
+                    </span>
+                  </td>
                   <td style={{ padding: "16px 20px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <Avatar src={member.avatar} name={member.name} />
+                      <div style={{ position: "relative" }}>
+                        <Avatar src={member.avatar} name={member.name} />
+                        {/* Bullet point indicator - green dot for active, red for inactive */}
+                        <div style={{
+                          position: "absolute",
+                          bottom: 2,
+                          right: 2,
+                          width: 10,
+                          height: 10,
+                          borderRadius: "50%",
+                          background: member.status === "active" ? "#22c55e" : "#ef4444",
+                          border: "2px solid var(--card)",
+                        }} />
+                      </div>
                       <div>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>{member.name}</p>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)", margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                          {member.name}
+                          {/* Status bullet point next to name */}
+                          <span style={{
+                            display: "inline-block",
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: member.status === "active" ? "#22c55e" : "#ef4444",
+                          }} />
+                        </p>
                         <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "3px 0 0", display: "flex", alignItems: "center", gap: 4 }}>
                           <Mail size={11} /> {member.email || "—"}
                         </p>
@@ -533,13 +615,13 @@ export default function Team() {
                   <td style={{ padding: "16px 20px" }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>{member.roleDescription}</p>
                     <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "3px 0 0" }}>Intelligence Division</p>
-                  </td>
+                   </td>
                   <td style={{ padding: "16px 20px" }}>
                     <StatusBadge status={member.status} />
-                  </td>
+                   </td>
                   <td style={{ padding: "16px 20px" }}>
                     <RoleBadge role={member.role} />
-                  </td>
+                   </td>
                   <td style={{ padding: "16px 20px", textAlign: "right" }}>
                     {canEdit(member) && (
                       <div style={{ display: "inline-flex", gap: 6 }}>
@@ -585,16 +667,143 @@ export default function Team() {
                         </button>
                       </div>
                     )}
-                  </td>
-                </tr>
+                   </td>
+                 </tr>
               ))}
             </tbody>
-          </table>
+           </table>
           {filtered.length === 0 && <div style={{ padding: 48, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>No members found.</div>}
         </div>
+
+        {/* Pagination Controls */}
+        {filtered.length > 0 && (
+          <div style={{
+            padding: "16px 20px",
+            borderTop: "1px solid var(--border)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+          }}>
+            {/* Rows per page selector */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Show:</span>
+              <select
+                value={rowsPerPage}
+                onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: "var(--bg)",
+                  color: "var(--foreground)",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  outline: "none",
+                }}
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+                entries
+              </span>
+            </div>
+
+            {/* Pagination info */}
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+              Showing {(currentPage - 1) * rowsPerPage + 1} to {Math.min(currentPage * rowsPerPage, filtered.length)} of {filtered.length} members
+            </div>
+
+            {/* Page navigation buttons */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: "var(--bg)",
+                  cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                  opacity: currentPage === 1 ? 0.5 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--foreground)",
+                }}
+              >
+                <ChevronLeft size={12} /> Prev
+              </button>
+              
+              {/* Page numbers */}
+              <div style={{ display: "flex", gap: 4 }}>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      style={{
+                        minWidth: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        border: currentPage === pageNum ? "1px solid var(--primary)" : "1px solid var(--border)",
+                        background: currentPage === pageNum ? "var(--primary)" : "var(--bg)",
+                        color: currentPage === pageNum ? "#fff" : "var(--foreground)",
+                        cursor: "pointer",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: "var(--bg)",
+                  cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+                  opacity: currentPage === totalPages ? 0.5 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--foreground)",
+                }}
+              >
+                Next <ChevronRight size={12} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ── Delete Confirm Modal ── */}
+      {/* Delete Confirm Modal */}
       {deleteTarget && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={() => setDeleteTarget(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
@@ -634,7 +843,7 @@ export default function Team() {
         </div>
       )}
 
-      {/* ── Add / Edit Form Modal ── */}
+      {/* Add / Edit Form Modal */}
       {isFormOpen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={closeForm} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
@@ -816,6 +1025,7 @@ export default function Team() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }
