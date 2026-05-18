@@ -605,7 +605,7 @@ export const Dashboard = () => {
               {platformData.length > 0 ? (
                 <div className="flex items-center justify-between">
                   <div className="h-[160px] w-[160px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height={300} minWidth={0}>
                       <PieChart>
                         <Pie
                           data={platformData}

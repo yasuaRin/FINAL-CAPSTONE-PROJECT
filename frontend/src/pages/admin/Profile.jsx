@@ -219,7 +219,7 @@ export default function ProfileSettings() {
           .from('profiles')
           .select('bio')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
         const fetched = {
           full_name: memberData?.name || user.user_metadata?.full_name || '',
@@ -298,7 +298,7 @@ export default function ProfileSettings() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const ext = file.name.split('.').pop();
-      const filePath = `avatars/${user.id}.${ext}`;
+      const filePath = `members/${user.id}.jpg`;
       const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
