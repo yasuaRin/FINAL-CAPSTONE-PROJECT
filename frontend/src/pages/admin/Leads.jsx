@@ -102,6 +102,12 @@ function LeadsInner() {
   const [waOpened,        setWaOpened]        = useState(false);
   const [websiteVisited,  setWebsiteVisited]  = useState(false);
   const [aiInsights,      setAiInsights]      = useState({});
+  // Pagination state
+  const [currentPage,     setCurrentPage]     = useState(1);
+  const [pageSize,        setPageSize]        = useState(10);
+  // Filter state — must be declared BEFORE filteredBrands below
+  const [statusFilter,    setStatusFilter]    = useState('All');
+
   const loadingInsightIds = useRef(new Set());
   const mapSectionRef     = useRef(null);
 
@@ -111,6 +117,17 @@ function LeadsInner() {
   const lastScanPos   = useRef(null);
   const PLACES_KEY    = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
   const GROQ_KEY      = import.meta.env.VITE_GROQ_API_KEY;
+
+  // Pagination computed values
+  const filteredBrands = statusFilter === 'All'
+    ? partneredBrands
+    : partneredBrands.filter(b => b.status === statusFilter);
+
+  const totalPages = Math.max(1, Math.ceil(filteredBrands.length / pageSize));
+  const paginatedBrands = filteredBrands.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const fetchRealPlaces = useCallback(async (lat, lng, industry) => {
     const includedTypes = (() => {
@@ -169,9 +186,7 @@ function LeadsInner() {
     return data.places || [];
   }, [PLACES_KEY]);
 
-  // Fetch a single place by its Place ID to get full details
   const fetchPlaceById = useCallback(async (placeId) => {
-    // placeId stored as "place-XXXX", strip the prefix
     const rawId = placeId.startsWith('place-') ? placeId.slice(6) : placeId;
     const response = await fetch(`https://places.googleapis.com/v1/places/${rawId}`, {
       method: 'GET',
@@ -453,10 +468,7 @@ Be direct. No fluff. No percentages.`;
     return () => clearTimeout(timer);
   }, [selectedLead?.id, generateAiInsight]);
 
-  // When a table row is clicked, try to get full Place data if the lead
-  // is not already in the scan results (e.g. a partner with a real place-xxx ID)
   const handleTableRowClick = useCallback(async (brand) => {
-    // 1. Try to find the full lead in current scan results first
     const existingLead = leadsFound.find(l => l.id === brand.id);
     if (existingLead) {
       setSelectedLead(existingLead);
@@ -464,10 +476,8 @@ Be direct. No fluff. No percentages.`;
       return;
     }
 
-    // 2. If it has a place-xxx ID, fetch full details from Places API
     if (brand.id?.startsWith('place-') && brand.lat && brand.lng) {
       setIsFetchingDetail(true);
-      // Show a placeholder while loading so the panel opens immediately
       setSelectedLead({
         id:             brand.id,
         name:           brand.name,
@@ -489,17 +499,14 @@ Be direct. No fluff. No percentages.`;
       try {
         const place = await fetchPlaceById(brand.id);
         const fullLead = mapPlaceToLead(place, brand.industry, brand.location);
-        // Preserve the same id format
         fullLead.id = brand.id;
         setSelectedLead(fullLead);
-        // Also cache it in leadsFound so future clicks are instant
         setLeadsFound(prev => {
           const existing = new Set(prev.map(l => l.id));
           return existing.has(fullLead.id) ? prev : [...prev, fullLead];
         });
       } catch (err) {
         console.error('Failed to fetch place details:', err);
-        // Fall back to minimal data
         setSelectedLead({
           id:             brand.id,
           name:           brand.name,
@@ -521,7 +528,6 @@ Be direct. No fluff. No percentages.`;
       return;
     }
 
-    // 3. Fallback: minimal data (non-place IDs like manual "4", no coords, etc.)
     if (brand.lat && brand.lng) {
       setSelectedLead({
         id:             brand.id,
@@ -598,6 +604,20 @@ Be direct. No fluff. No percentages.`;
   });
 
   const canMarkSent = emailInput.trim().length > 0 || waOpened;
+
+  // Build page number array with ellipsis for large page counts
+  const getPageNumbers = () => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages = [];
+    if (currentPage <= 4) {
+      pages.push(1, 2, 3, 4, 5, '...', totalPages);
+    } else if (currentPage >= totalPages - 3) {
+      pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+    }
+    return pages;
+  };
 
   return (
   <div id="leads-report-container" className="flex flex-col gap-8 pb-10">
@@ -737,7 +757,6 @@ Be direct. No fluff. No percentages.`;
                 </button>
               </div>
 
-              {/* Loading state while fetching full details */}
               {selectedLead._loading ? (
                 <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-muted-foreground">
                   <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -910,16 +929,25 @@ Be direct. No fluff. No percentages.`;
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mt-0.5">Strategic Pipeline & Partner Registry</p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-6 bg-background/50 px-6 py-3 rounded-full border border-border">
+          <div className="flex flex-wrap items-center gap-2">
             {[
-              { color: 'bg-slate-400',  label: 'In Progress' },
-              { color: 'bg-purple-500', label: 'Dealing' },
-              { color: 'bg-blue-500',   label: 'Partner' },
-            ].map(({ color, label }) => (
-              <div key={label} className="flex items-center gap-2.5">
-                <div className={`w-2.5 h-2.5 rounded-full ${color}`} />
-                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</span>
-              </div>
+              { label: 'All',         dot: 'bg-foreground' },
+              { label: 'In Progress', dot: 'bg-slate-400'  },
+              { label: 'Dealing',     dot: 'bg-purple-500' },
+              { label: 'Partner',     dot: 'bg-blue-500'   },
+            ].map(({ label, dot }) => (
+              <button
+                key={label}
+                onClick={() => { setStatusFilter(label); setCurrentPage(1); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all
+                  ${statusFilter === label
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'bg-background/50 text-muted-foreground border-border hover:border-foreground/40 hover:text-foreground'
+                  }`}
+              >
+                <div className={`w-2 h-2 rounded-full ${dot}`} />
+                {label}
+              </button>
             ))}
           </div>
         </div>
@@ -928,7 +956,7 @@ Be direct. No fluff. No percentages.`;
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-muted/30 border-b border-border">
-                {['Business Name', 'Sector', 'Location', 'Date', 'Outreach', 'Status', 'Actions'].map(h => (
+                {['No', 'Business Name', 'Sector', 'Location', 'Date', 'Outreach', 'Status', 'Actions'].map(h => (
                   <th key={h} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">{h}</th>
                 ))}
               </tr>
@@ -936,7 +964,7 @@ Be direct. No fluff. No percentages.`;
             <tbody className="divide-y divide-border">
               {partneredBrands.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-8 py-32 text-center">
+                  <td colSpan={8} className="px-8 py-32 text-center">
                     <div className="flex flex-col items-center gap-6 opacity-20">
                       <div className="w-20 h-20 border-2 border-dashed border-muted-foreground rounded-full flex items-center justify-center">
                         <Target size={40} />
@@ -949,7 +977,8 @@ Be direct. No fluff. No percentages.`;
                   </td>
                 </tr>
               ) : (
-                partneredBrands.map(brand => {
+                paginatedBrands.map((brand, index) => {
+                  const rowNumber = (currentPage - 1) * pageSize + index + 1;
                   const hasCoords = !!(brand.lat && brand.lng);
                   const isClickable = hasCoords;
                   return (
@@ -958,6 +987,10 @@ Be direct. No fluff. No percentages.`;
                       onClick={() => isClickable && handleTableRowClick(brand)}
                       className={`transition-all border-l-4 border-l-transparent hover:border-l-primary hover:bg-muted/20 ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
                     >
+                      {/* Row number */}
+                      <td className="px-6 py-6">
+                        <span className="text-sm font-bold text-red-500">{rowNumber}</span>
+                      </td>
                       <td className="px-6 py-6">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 bg-foreground text-background flex items-center justify-center font-black text-sm shadow-sm rounded">
@@ -965,7 +998,6 @@ Be direct. No fluff. No percentages.`;
                           </div>
                           <div>
                             <span className="font-bold text-sm tracking-tight block">{brand.name}</span>
-                            <span className="text-[9px] font-mono text-muted-foreground/60 uppercase">ID: {brand.id.split('-').pop()}</span>
                           </div>
                         </div>
                       </td>
@@ -1056,6 +1088,9 @@ Be direct. No fluff. No percentages.`;
                           <button
                             onClick={e => {
                               e.stopPropagation();
+                              if (paginatedBrands.length === 1 && currentPage > 1) {
+                                setCurrentPage(p => p - 1);
+                              }
                               removePartner(brand.id);
                               if (editingId === brand.id) setEditingId(null);
                             }}
@@ -1076,8 +1111,65 @@ Be direct. No fluff. No percentages.`;
           </table>
         </div>
 
-        <div className="p-6 bg-muted/5 border-t border-border flex justify-between items-center">
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">Total Active Partners: {partnerCount}</p>
+        {/* Table Footer: Show entries + info + pagination */}
+        <div className="p-6 bg-muted/5 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
+          {/* Show entries */}
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">Show</span>
+            <select
+              value={pageSize}
+              onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+              className="bg-muted/50 border border-border text-xs font-bold px-3 py-1.5 rounded-md outline-none cursor-pointer hover:bg-muted transition-colors"
+            >
+              {[5, 10, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">entries</span>
+          </div>
+
+          {/* Showing X to Y of Z */}
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">
+            {filteredBrands.length === 0
+              ? statusFilter === 'All' ? 'No entries' : `No ${statusFilter} partners`
+              : `Showing ${(currentPage - 1) * pageSize + 1} to ${Math.min(currentPage * pageSize, filteredBrands.length)} of ${filteredBrands.length} partners`
+            }
+          </p>
+
+          {/* Pagination buttons */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 text-[10px] font-black uppercase tracking-widest border border-border rounded-md bg-muted/30 hover:bg-muted/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                ‹ Prev
+              </button>
+              {getPageNumbers().map((page, i) =>
+                page === '...' ? (
+                  <span key={`ellipsis-${i}`} className="w-9 h-9 flex items-center justify-center text-[10px] text-muted-foreground font-bold">…</span>
+                ) : (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-9 h-9 text-[10px] font-black rounded-md border transition-colors
+                      ${currentPage === page
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-border bg-muted/30 hover:bg-muted/60 text-muted-foreground'
+                      }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 text-[10px] font-black uppercase tracking-widest border border-border rounded-md bg-muted/30 hover:bg-muted/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next ›
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

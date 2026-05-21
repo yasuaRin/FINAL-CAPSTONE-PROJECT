@@ -530,7 +530,7 @@ export default function Team() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["#", "PROFILE", "ROLE", "EMPLOYEE STATUS", "LEVEL", "ACTIONS"].map((h, i) => (
+                {["No", "PROFILE", "ROLE", "EMPLOYEE STATUS", "LEVEL", "ACTIONS"].map((h, i) => (
                   <th
                     key={h}
                     style={{
