@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle2 } from 'lucide-react';
 
 const EyeIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,6 +30,29 @@ const AdminResetPassword = () => {
   const [mfaCode, setMfaCode] = useState('');
   const [factorId, setFactorId] = useState(null);
   const [mfaLoading, setMfaLoading] = useState(false);
+
+  // Dark mode detection
+  const [isDark, setIsDark] = useState(
+    document.documentElement.classList.contains('dark') ||
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  );
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributeFilter: ['class'] });
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const mqHandler = (e) => { if (!document.documentElement.classList.contains('dark')) setIsDark(e.matches); };
+    mq.addEventListener('change', mqHandler);
+    return () => { observer.disconnect(); mq.removeEventListener('change', mqHandler); };
+  }, []);
+
+  // Toast state
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
+  };
 
   useEffect(() => {
     // ─── FIX: pakai window.location.href bukan window.location.hash ───────
@@ -95,11 +120,11 @@ const AdminResetPassword = () => {
     e.preventDefault();
     setError('');
     if (password !== confirm) {
-      setError('Passwords do not match.');
+      showToast('Passwords do not match.');
       return;
     }
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+      showToast('Password must be at least 8 characters.');
       return;
     }
     setLoading(true);
@@ -126,7 +151,7 @@ const AdminResetPassword = () => {
       }
       await updatePassword();
     } catch (err) {
-      setError(err.message || 'Failed to verify session.');
+      showToast(err.message || 'Failed to verify session.');
     } finally {
       setLoading(false);
     }
@@ -149,9 +174,9 @@ const AdminResetPassword = () => {
       await updatePassword();
     } catch (err) {
       if (err.message?.includes('Invalid TOTP') || err.status === 422) {
-        setError('Invalid code. Make sure your device time is correct and try with a fresh code.');
+        showToast('Invalid code. Make sure your device time is correct and try with a fresh code.');
       } else {
-        setError(err.message || 'Invalid or expired MFA code.');
+        showToast(err.message || 'Invalid or expired MFA code.');
       }
       setMfaCode('');
     } finally {
@@ -169,8 +194,43 @@ const AdminResetPassword = () => {
     });
   };
 
+  const ToastNotification = (
+    <AnimatePresence>
+      {toast && (
+        <motion.div
+          initial={{ opacity: 0, y: -20, x: '-50%' }}
+          animate={{ opacity: 1, y: 20, x: '-50%' }}
+          exit={{ opacity: 0, y: -20, x: '-50%' }}
+          style={{
+            position: 'fixed', top: 4, left: '50%', zIndex: 100,
+            background: isDark ? '#1c1c1c' : '#ffffff',
+            color: isDark ? '#f5f5f5' : '#111111',
+            padding: '10px 20px', borderRadius: 16,
+            boxShadow: isDark ? '0 8px 40px rgba(0,0,0,0.5)' : '0 8px 40px rgba(0,0,0,0.18)',
+            display: 'flex', alignItems: 'center', gap: 12,
+            border: isDark ? '1px solid #2e2e2e' : '1px solid #e5e7eb',
+            minWidth: 260,
+          }}
+        >
+          <div style={{
+            borderRadius: '50%', padding: 4, display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            background: toast.type === 'success' ? '#22c55e' : '#ef4444',
+            flexShrink: 0,
+          }}>
+            <CheckCircle2 size={16} color="white" />
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em' }}>
+            {toast.message}
+          </span>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   return (
     <>
+      {ToastNotification}
       <style>{`
         input::-ms-reveal, input::-ms-clear { display: none; }
         input::-webkit-credentials-auto-fill-button,
@@ -191,23 +251,15 @@ const AdminResetPassword = () => {
             </p>
           </div>
 
-          {/* Hanya tampil error kalau session belum ready */}
+          {!sessionReady && !error && (
+            <div className="flex justify-center py-4">
+              <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-700 border-t-[#DB1A1A] rounded-full animate-spin" />
+            </div>
+          )}
+
           {error && !sessionReady && (
             <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">
               {error}
-            </div>
-          )}
-
-          {/* Error saat submit form (session sudah ready) */}
-          {error && sessionReady && (
-            <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">
-              {error}
-            </div>
-          )}
-
-          {!sessionReady && !error && (
-            <div className="flex justify-center py-4">
-              <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-700 border-t-black dark:border-t-white rounded-full animate-spin" />
             </div>
           )}
 
