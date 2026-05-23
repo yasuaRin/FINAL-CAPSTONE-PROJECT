@@ -15,7 +15,7 @@ const STATIC_ITEMS = [
   { id: 'p2', title: 'Revenue',        category: 'Page',   path: '/admin/revenue',  keywords: 'money income profit analytics reports' },
   { id: 'p3', title: 'Brands',         category: 'Page',   path: '/admin/brands',   keywords: 'clients companies partners' },
   { id: 'p4', title: 'Lead Radar',     category: 'Page',   path: '/admin/leads',    keywords: 'leads prospects pipeline crm' },
-  { id: 'p5', title: 'Team',          category: 'Page',   path: '/admin/team',     keywords: 'team members employees people' },
+  { id: 'p5', title: 'Team',           category: 'Page',   path: '/admin/team',     keywords: 'team members employees people' },
   { id: 'p6', title: 'My Profile',     category: 'Page',   path: '/admin/profile',  keywords: 'account settings avatar name' },
   { id: 'a1', title: 'Add New Brand',  category: 'Action', path: '/admin/brands',   keywords: 'create new client plus' },
   { id: 'a2', title: 'Add New Staff',  category: 'Action', path: '/admin/team',     keywords: 'create hire new member plus' },
@@ -30,7 +30,7 @@ const CategoryIcon = ({ category }) => {
   return null;
 };
 
-export const  AdminLayout = () => {
+export const AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen]       = useState(false);
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const avatarMenuRef = useRef(null);
@@ -43,20 +43,17 @@ export const  AdminLayout = () => {
 
   // ── Theme: follow system preference only ─────────────────────────────────
   useEffect(() => {
-    // Clear any stale manual theme from localStorage
     localStorage.removeItem('theme');
     localStorage.removeItem('themeSource');
 
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
 
-    // Apply on mount
     if (mq.matches) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
 
-    // Listen for system changes
     const handler = (e) => {
       if (e.matches) {
         document.documentElement.classList.add('dark');
@@ -68,27 +65,6 @@ export const  AdminLayout = () => {
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
   }, []);
-
-  // ── Toggle (commented out — re-enable if manual override is needed) ──────
-  // const [themeSource, setThemeSource] = useState(() => {
-  //   return localStorage.getItem('themeSource') || 'system';
-  // });
-  // const [systemDark, setSystemDark] = useState(() =>
-  //   window.matchMedia('(prefers-color-scheme: dark)').matches
-  // );
-  // const isDarkMode =
-  //   themeSource === 'system' ? systemDark :
-  //   themeSource === 'dark'   ? true       : false;
-  // const handleThemeToggle = () => {
-  //   setThemeSource(prev => {
-  //     const next = prev === 'system' ? (isDarkMode ? 'light' : 'dark')
-  //                : prev === 'dark'   ? 'light'
-  //                : 'system';
-  //     localStorage.setItem('themeSource', next);
-  //     return next;
-  //   });
-  // };
-  // ─────────────────────────────────────────────────────────────────────────
 
   const { matchCount, currentMatch, goNext, goPrev, clearHighlights } = usePageSearch(highlightQuery, pageContentRef);
 
@@ -162,7 +138,7 @@ export const  AdminLayout = () => {
     { icon: <TrendingUp size={20} />,      label: 'Revenue',    path: '/admin/revenue' },
     { icon: <Briefcase size={20} />,       label: 'Brands',     path: '/admin/brands' },
     { icon: <Radar size={20} />,           label: 'Lead Radar', path: '/admin/leads' },
-    { icon: <Users size={20} />,           label: 'Team',      path: '/admin/team' },
+    { icon: <Users size={20} />,           label: 'Team',       path: '/admin/team' },
     { icon: <User size={20} />,            label: 'My Profile', path: '/admin/profile' },
   ];
 
@@ -203,15 +179,6 @@ export const  AdminLayout = () => {
       </nav>
 
       <div className="p-4 border-t border-sidebar-border space-y-2">
-        {/* Toggle button — commented out, re-enable for manual override */}
-        {/* <button
-          onClick={handleThemeToggle}
-          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all text-sm hover:bg-black/5"
-          style={{ color: '#7b809a' }}
-        >
-          <Moon size={18} />
-          <span>Dark Mode</span>
-        </button> */}
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all text-sm hover:bg-black/5"
@@ -313,12 +280,14 @@ export const  AdminLayout = () => {
           </div>
         </header>
 
-      
-        <section ref={pageContentRef} className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8" style={{ position: 'relative' }}>
-          <div className="max-w-7xl mx-auto pt-4">
+        {/* Page content + footer inside the scrollable section */}
+        <section ref={pageContentRef} className="flex-1 overflow-y-auto" style={{ position: 'relative' }}>
+          {/* Page content — constrained to max-w-7xl */}
+          <div className="max-w-7xl mx-auto pt-4 p-4 sm:p-6 md:p-8">
             <Outlet />
           </div>
-          <Footer /> 
+          {/* Footer — outside the max-w-7xl div so it spans full section width */}
+          <Footer />
         </section>
 
         {highlightQuery && (
@@ -343,33 +312,22 @@ export const  AdminLayout = () => {
         )}
       </main>
 
-      {/* ========== PDF EXPORT CONTAINERS - ADDED FOR MULTI-PAGE EXPORT ========== */}
-      {/* These containers render all pages hidden for PDF export without affecting user experience */}
-      <div 
+      {/* ========== PDF EXPORT CONTAINERS ========== */}
+      <div
         id="pdf-export-wrapper"
-        style={{ 
-        position: 'fixed', 
-        left: '-9999px', 
-        top: 0, 
-        zIndex: -9999,
-        width: '1200px',
-      }}
+        style={{
+          position: 'fixed',
+          left: '-9999px',
+          top: 0,
+          zIndex: -9999,
+          width: '1200px',
+        }}
       >
-        <div id="dashboard-export-container">
-          {/* Dashboard content will be populated by React Router */}
-        </div>
-        <div id="revenue-export-container">
-          {/* Revenue content will be populated by React Router */}
-        </div>
-        <div id="brands-export-container">
-          {/* Brands content will be populated by React Router */}
-        </div>
-        <div id="team-export-container">
-          {/* Team content will be populated by React Router */}
-        </div>
-        <div id="leads-export-container">
-          {/* Leads content will be populated by React Router */}
-        </div>
+        <div id="dashboard-export-container">{/* populated by exportState */}</div>
+        <div id="revenue-export-container">{/* populated by exportState */}</div>
+        <div id="brands-export-container">{/* populated by exportState */}</div>
+        <div id="team-export-container">{/* populated by exportState */}</div>
+        <div id="leads-export-container">{/* populated by exportState */}</div>
       </div>
       {/* ========== END PDF EXPORT CONTAINERS ========== */}
     </div>
