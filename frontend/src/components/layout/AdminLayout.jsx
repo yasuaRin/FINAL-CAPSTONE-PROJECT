@@ -8,6 +8,7 @@ import {
   TrendingUp, Menu, X, Briefcase, User, Radar,
   FileText, Zap, Sun, Moon,
 } from 'lucide-react';
+import AdminAISettings from '../../pages/admin/AdminAISettings';
 import Footer from './Footer';
 
 const STATIC_ITEMS = [
@@ -19,6 +20,7 @@ const STATIC_ITEMS = [
   { id: 'p6', title: 'My Profile',     category: 'Page',   path: '/admin/profile',  keywords: 'account settings avatar name' },
   { id: 'a1', title: 'Add New Brand',  category: 'Action', path: '/admin/brands',   keywords: 'create new client plus' },
   { id: 'a2', title: 'Add New Staff',  category: 'Action', path: '/admin/team',     keywords: 'create hire new member plus' },
+  { id: 'a3', title: 'AI Settings',    category: 'Action', path: '/admin/ai-settings', keywords: 'artificial intelligence settings configuration' },
 ];
 
 const CategoryIcon = ({ category }) => {
@@ -164,6 +166,7 @@ export const  AdminLayout = () => {
     { icon: <Radar size={20} />,           label: 'Lead Radar', path: '/admin/leads' },
     { icon: <Users size={20} />,           label: 'Staff',      path: '/admin/team' },
     { icon: <User size={20} />,            label: 'My Profile', path: '/admin/profile' },
+    { icon: <Zap size={20} />,             label: 'AI Settings', path: '/admin/ai-settings' },
   ];
 
   const handleLogout = async () => { await logout(); navigate('/admin/login', { replace: true }); };
