@@ -58,6 +58,13 @@ const Footer = () => {
                   HIRING
                 </a>
               </li>
+               {user && (
+                <li>
+                  <Link to="/" className="hover:text-primary transition-colors uppercase">
+                    LANDING PAGE
+                  </Link>
+                </li>
+              )}
             </ul>
 
             {!user && (

@@ -24,8 +24,6 @@ const AdminResetPassword = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
-
-  // MFA states
   const [needsMfa, setNeedsMfa] = useState(false);
   const [mfaCode, setMfaCode] = useState('');
   const [factorId, setFactorId] = useState(null);
@@ -35,7 +33,6 @@ const AdminResetPassword = () => {
     const href = window.location.href;
     const codeMatch = href.match(/[?&]code=([^&#]+)/);
     const code = codeMatch ? codeMatch[1] : sessionStorage.getItem('reset_code');
-
     let exchanged = false;
 
     if (code) {
@@ -65,20 +62,22 @@ const AdminResetPassword = () => {
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+      if (event === 'PASSWORD_RECOVERY') {
         exchanged = true;
         setSessionReady(true);
         setError('');
+      } else if (event === 'SIGNED_IN' && session) {
+        // Google OAuth login — bukan reset password, redirect ke callback
+        navigate('/admin/auth/callback', { replace: true });
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
     if (password !== confirm) {
       setError('Passwords do not match.');
       return;
@@ -87,44 +86,31 @@ const AdminResetPassword = () => {
       setError('Password must be at least 8 characters.');
       return;
     }
-
     setLoading(true);
     try {
       const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       const currentLevel = aalData?.currentLevel;
       const nextLevel = aalData?.nextLevel;
 
-      console.log('AAL currentLevel:', currentLevel, '| nextLevel:', nextLevel);
-
-      // ✅ Kalau sudah aal2, langsung update password
       if (currentLevel === 'aal2') {
         await updatePassword();
         return;
       }
 
-      // ✅ Kalau nextLevel aal2, user punya MFA — harus verify dulu
       if (nextLevel === 'aal2') {
         const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
         if (factorsError) throw factorsError;
-
-        console.log('All TOTP factors:', JSON.stringify(factorsData?.totp, null, 2));
-
         const verifiedFactor = factorsData?.totp?.find(f => f.status === 'verified');
         const totpFactor = verifiedFactor || factorsData?.totp?.[0];
-
-        console.log('Using factor:', totpFactor?.id, '| status:', totpFactor?.status);
-
         if (!totpFactor) {
           await updatePassword();
           return;
         }
-
         setFactorId(totpFactor.id);
         setNeedsMfa(true);
         return;
       }
 
-      // Tidak ada MFA — langsung update password
       await updatePassword();
     } catch (err) {
       setError(err.message || 'Failed to verify session.');
@@ -137,31 +123,18 @@ const AdminResetPassword = () => {
     e.preventDefault();
     setError('');
     setMfaLoading(true);
-
     try {
-      const { data: freshChallenge, error: challengeError } = await supabase.auth.mfa.challenge({
-        factorId,
-      });
+      const { data: freshChallenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
       if (challengeError) throw challengeError;
-
-      console.log('Challenge ID:', freshChallenge.id, '| factorId:', factorId);
-
       await new Promise(resolve => setTimeout(resolve, 500));
-
       const { error: verifyError } = await supabase.auth.mfa.verify({
         factorId,
         challengeId: freshChallenge.id,
         code: mfaCode.trim(),
       });
       if (verifyError) throw verifyError;
-
-      // Cek AAL setelah verify
-      const { data: aalCheck } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      console.log('After verify AAL:', aalCheck?.currentLevel);
-
       await updatePassword();
     } catch (err) {
-      console.error('MFA error:', err);
       if (err.message?.includes('Invalid TOTP') || err.status === 422) {
         setError('Invalid code. Make sure your device time is correct and try with a fresh code.');
       } else {
@@ -176,7 +149,6 @@ const AdminResetPassword = () => {
   const updatePassword = async () => {
     const { error: updateError } = await supabase.auth.updateUser({ password });
     if (updateError) throw new Error(updateError.message);
-
     await supabase.auth.signOut();
     navigate('/admin/login', {
       replace: true,
@@ -195,18 +167,14 @@ const AdminResetPassword = () => {
           pointer-events: none;
         }
       `}</style>
-
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0A]">
         <div className="max-w-md w-full space-y-6 p-8 bg-white dark:bg-[#141414] rounded-xl shadow-lg border border-transparent dark:border-[#262626]">
-
           <div>
             <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white">
               {needsMfa ? 'Verify MFA' : 'Set New Password'}
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-              {needsMfa
-                ? 'Enter the code from your authenticator app'
-                : 'Enter your new password below'}
+              {needsMfa ? 'Enter the code from your authenticator app' : 'Enter your new password below'}
             </p>
           </div>
 
@@ -222,7 +190,6 @@ const AdminResetPassword = () => {
             </div>
           )}
 
-          {/* Password form */}
           {sessionReady && !needsMfa && (
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
@@ -243,7 +210,6 @@ const AdminResetPassword = () => {
                   </button>
                 </div>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</label>
                 <div className="relative mt-1">
@@ -262,7 +228,6 @@ const AdminResetPassword = () => {
                   </button>
                 </div>
               </div>
-
               <button type="submit" disabled={loading}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#DB1A1A] hover:bg-[#b81515] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DB1A1A] dark:focus:ring-offset-[#141414] disabled:opacity-50 transition-colors">
                 {loading ? 'Checking...' : 'Save New Password'}
@@ -270,7 +235,6 @@ const AdminResetPassword = () => {
             </form>
           )}
 
-          {/* MFA form */}
           {sessionReady && needsMfa && (
             <form className="space-y-4" onSubmit={handleMfaVerify}>
               <div>
@@ -292,12 +256,10 @@ const AdminResetPassword = () => {
                   Wait for a fresh code before submitting
                 </p>
               </div>
-
               <button type="submit" disabled={mfaLoading || mfaCode.length !== 6}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#DB1A1A] hover:bg-[#b81515] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DB1A1A] dark:focus:ring-offset-[#141414] disabled:opacity-50 transition-colors">
                 {mfaLoading ? 'Verifying...' : 'Verify & Save Password'}
               </button>
-
               <button type="button" onClick={() => { setNeedsMfa(false); setMfaCode(''); setError(''); }}
                 className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
                 ← Back
@@ -311,7 +273,6 @@ const AdminResetPassword = () => {
               ← Back to Sign in
             </button>
           )}
-
         </div>
       </div>
     </>
