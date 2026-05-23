@@ -80,6 +80,10 @@ const Revenue = () => {
   const { brands } = useBrands(brandTotals);
   const { team }   = useTeam();
 
+  // Modal states for staff detail
+  const [selectedStaffForDetail, setSelectedStaffForDetail] = useState(null);
+  const [showStaffDetailModal, setShowStaffDetailModal] = useState(false);
+
   useEffect(() => {
     const handler = (e) => {
       if (globalFilterRef.current && !globalFilterRef.current.contains(e.target)) {
@@ -145,6 +149,7 @@ const Revenue = () => {
         : i.revenue_shopee > 0 ? 'Shopee' : 'TikTok',
       revenue: (i.revenue_shopee ?? 0) + (i.revenue_tiktok ?? 0),
       viewers: (i.viewers_shopee ?? 0) + (i.viewers_tiktok ?? 0),
+      likes: (i.likes_shopee ?? 0) + (i.likes_tiktok ?? 0),
     }));
   }, [revenueData]);
 
@@ -187,21 +192,50 @@ const Revenue = () => {
     return { name, revenue };
   }, [dateFilteredLogs]);
 
-  const bestStaffPerBrand = useMemo(() => {
-    if (!team?.length) return [];
-    const sbr = {};
-    dateFilteredLogs.forEach(log => {
-      if (!log.hostId) return;
-      const key = `${log.brandId}_${log.hostId}`;
-      if (!sbr[key]) sbr[key] = { brandId: log.brandId, brandName: brandMap[log.brandId] || 'Unknown', staffId: log.hostId, staffName: teamMap[log.hostId] || `Host ${log.hostId}`, revenue: 0 };
-      sbr[key].revenue += log.revenue;
-    });
-    const best = {};
-    Object.values(sbr).forEach(item => {
-      if (!best[item.brandId] || item.revenue > best[item.brandId].revenue) best[item.brandId] = item;
-    });
-    return Object.values(best).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
-  }, [dateFilteredLogs, brandMap, teamMap, team]);
+  // Add this state near other useState declarations
+const [topPerformersFromView, setTopPerformersFromView] = useState([]);
+const [loadingPerformers, setLoadingPerformers] = useState(false);
+
+// Add this useEffect to fetch from the view
+useEffect(() => {
+  const fetchTopPerformers = async () => {
+    setLoadingPerformers(true);
+    try {
+      const { data, error } = await supabase
+        .from('team_performance_view')
+        .select('team_name, session_count, total_revenue, total_viewers, total_likes, revenue_score, viewer_score, likes_score, final_score')
+        .limit(5);
+
+      if (error) throw error;
+      
+      // Transform to match your existing format
+      const transformedData = (data || []).map(item => ({
+        staffId: item.team_name,
+        staffName: item.team_name,
+        sessionCount: item.session_count,
+        totalRevenue: item.total_revenue,
+        totalViewers: item.total_viewers,
+        totalLikes: item.total_likes,
+        revenueScore: item.revenue_score,
+        viewerScore: item.viewer_score,
+        likesScore: item.likes_score,
+        finalScore: item.final_score,
+        avgRevenuePerSession: item.session_count > 0 ? item.total_revenue / item.session_count : 0,
+        avgViewersPerSession: item.session_count > 0 ? item.total_viewers / item.session_count : 0,
+        avgLikesPerSession: item.session_count > 0 ? item.total_likes / item.session_count : 0,
+        revenuePerViewer: item.total_viewers > 0 ? item.total_revenue / item.total_viewers : 0,
+      }));
+      
+      setTopPerformersFromView(transformedData);
+    } catch (err) {
+      console.error('Error:', err);
+    } finally {
+      setLoadingPerformers(false);
+    }
+  };
+  
+  fetchTopPerformers();
+}, []);
 
   const brandPerformanceInsights = useMemo(() => {
     const map = {};
@@ -579,23 +613,34 @@ const Revenue = () => {
           </div>
         </div>
 
-        <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
+                 <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
           <div className="flex items-center gap-2 mb-3">
             <Users size={12} className="text-primary shrink-0" />
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Top Performers</p>
           </div>
           <div className="space-y-2">
-            {bestStaffPerBrand.length === 0 ? (
+            {topPerformersFromView.length === 0 ? (
               <p className="text-xs text-muted-foreground">No data in range</p>
-            ) : bestStaffPerBrand.slice(0, 5).map((staff, i) => (
-              <div key={`${staff.staffId}_${staff.brandId}`} className="flex items-center justify-between gap-2 min-w-0">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <span className="text-[8px] font-black text-muted-foreground/50 w-3 shrink-0">{i + 1}</span>
-                  <span className="text-[11px] font-bold text-primary truncate">{staff.staffName}</span>
+            ) : (
+              topPerformersFromView.map((staff, i) => (
+                <div 
+                  key={staff.staffId} 
+                  className="flex items-center justify-between gap-2 min-w-0 cursor-pointer hover:bg-muted/50 p-1 rounded-lg transition-colors"
+                  onClick={() => {
+                    setSelectedStaffForDetail(staff);
+                    setShowStaffDetailModal(true);
+                  }}
+                >
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="text-[8px] font-black text-muted-foreground/50 w-3 shrink-0">{i + 1}</span>
+                    <span className="text-[11px] font-bold text-primary truncate hover:underline">{staff.staffName}</span>
+                  </div>
+                  <span className="text-[9px] font-bold text-foreground truncate">
+                  See details
+                  </span>
                 </div>
-                <span className="text-[9px] font-bold text-foreground truncate max-w-[80px] shrink-0">{staff.brandName}</span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -813,6 +858,110 @@ const Revenue = () => {
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => setSessionToDelete(null)} className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase text-muted-foreground hover:bg-muted transition-all">Cancel</button>
                 <button onClick={confirmDelete} className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase bg-red-500 text-white hover:bg-red-600 transition-all">Delete</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+            {/* Staff Detail Modal - Smaller Version */}
+      <AnimatePresence>
+        {showStaffDetailModal && selectedStaffForDetail && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-card w-full max-w-sm rounded-2xl border border-border shadow-2xl overflow-hidden"
+            >
+              {/* Header - Smaller */}
+              <div className="px-4 py-3 border-b border-border bg-primary/10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-foreground">{selectedStaffForDetail.staffName}</h3>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">Performance Details</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content - Compact */}
+              <div className="p-4 space-y-3">
+                {/* Session Count & Score - Side by side */}
+                <div className="flex items-center justify-between pb-2 border-b border-border/40">
+                  <div>
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Sessions</p>
+                    <p className="text-lg font-bold text-foreground">{selectedStaffForDetail.sessionCount.toLocaleString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Score</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-lg font-bold text-primary">{selectedStaffForDetail.finalScore}</span>
+                      <span className="text-[8px] text-muted-foreground">/100</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3-column mini stats */}
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-muted/30 rounded-lg p-2">
+                    <p className="text-[8px] text-muted-foreground">Revenue</p>
+                    <p className="text-[10px] font-bold text-foreground truncate">{formatCurrency(Math.round(selectedStaffForDetail.totalRevenue / 1000000))}M</p>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-2">
+                    <p className="text-[8px] text-muted-foreground">Viewers</p>
+                    <p className="text-[10px] font-bold text-foreground">{(selectedStaffForDetail.totalViewers / 1000).toFixed(0)}K</p>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-2">
+                    <p className="text-[8px] text-muted-foreground">Likes</p>
+                    <p className="text-[10px] font-bold text-foreground">{(selectedStaffForDetail.totalLikes / 1000).toFixed(0)}K</p>
+                  </div>
+                </div>
+
+                {/* Efficiency - Single line */}
+                <div className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
+                  <span className="text-[8px] font-bold text-muted-foreground">💰 Revenue/Viewer</span>
+                  <span className="text-[10px] font-bold text-foreground">{formatCurrency(Math.round(selectedStaffForDetail.revenuePerViewer))}</span>
+                </div>
+
+                {/* Score Breakdown - Progress bars only */}
+                <div className="space-y-2 pt-1">
+                  <div>
+                    <div className="flex justify-between text-[7px] mb-0.5">
+                      <span>Revenue</span>
+                      <span>{selectedStaffForDetail.revenueScore}%</span>
+                    </div>
+                    <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${selectedStaffForDetail.revenueScore}%` }} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[7px] mb-0.5">
+                      <span>Viewers</span>
+                      <span>{selectedStaffForDetail.viewerScore}%</span>
+                    </div>
+                    <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${selectedStaffForDetail.viewerScore}%` }} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[7px] mb-0.5">
+                      <span>Likes</span>
+                      <span>{selectedStaffForDetail.likesScore}%</span>
+                    </div>
+                    <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-purple-500 rounded-full" style={{ width: `${selectedStaffForDetail.likesScore}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer - Smaller */}
+              <div className="p-3 bg-muted/20 border-t border-border">
+                <button 
+                  onClick={() => setShowStaffDetailModal(false)}
+                  className="w-full py-2 rounded-xl text-[9px] font-bold uppercase bg-primary text-white hover:bg-primary/90 transition-all"
+                >
+                  Close
+                </button>
               </div>
             </motion.div>
           </div>

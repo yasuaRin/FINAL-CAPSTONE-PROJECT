@@ -17,10 +17,11 @@ export default defineConfig({
     open: true,
     watch: {
       usePolling: true,
-      interval: 100,
+      interval: 1000,
     },
     hmr: {
       overlay: true,
+      timeout: 3000,
     },
   },
   // proxy: {

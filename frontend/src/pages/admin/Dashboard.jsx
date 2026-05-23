@@ -17,8 +17,6 @@ import { SortByButton } from '../../components/layout/SortByButton';
 import { usePredictions } from '../../hooks/usePredictions';
 import { supabase } from '../../services/supabase';
 import { RevenueBarChart } from '../../components/dashboard/RevenueBarChart';
-// CHANGED: was exportDashboardReport — that only captured this one page.
-// exportCompleteReport finds all 5 HiddenExportPages containers in App.jsx.
 import { exportCompleteReport } from '../../utils/exportPDF';
 
 // ============================================================================
@@ -63,9 +61,7 @@ const KpiCard = ({ title, value, icon: Icon, badge, badgeStyle, action, onAction
         </div>
       )}
     </div>
-
     <h3 className="text-base font-mono font-bold mt-2 truncate">{value}</h3>
-
     <div className="mt-2.5 flex items-center justify-between">
       {badge && (
         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badgeStyle}`}>
@@ -99,11 +95,8 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
             .order('risk_level', { ascending: false }),
           supabase.from('brands').select('brand_id, brand_name'),
         ]);
-
         if (error) throw error;
-
         const brandMap = new Map(brands?.map((b) => [b.brand_id, b.brand_name]));
-
         setRiskData(
           (data || []).map((item) => ({
             id:      item.brand_id,
@@ -122,9 +115,7 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
   }, []);
 
   const counts = { High: 0, Medium: 0, Low: 0 };
-  riskData.forEach((b) => {
-    if (counts[b.risk] !== undefined) counts[b.risk]++;
-  });
+  riskData.forEach((b) => { if (counts[b.risk] !== undefined) counts[b.risk]++; });
 
   if (loading) {
     return (
@@ -148,15 +139,9 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
             <ShieldAlert size={16} className="text-destructive" />
             <h3 className="text-xs font-bold">Critical Risk Monitor</h3>
           </div>
-          <div className="flex gap-1">
-            {counts.High   > 0 && <span className="text-[9px] font-bold bg-destructive   text-white px-2 py-0.5 rounded-full">{counts.High} High</span>}
-            {counts.Medium > 0 && <span className="text-[9px] font-bold bg-amber-500     text-white px-2 py-0.5 rounded-full">{counts.Medium} Medium</span>}
-            {counts.Low    > 0 && <span className="text-[9px] font-bold bg-emerald-500   text-white px-2 py-0.5 rounded-full">{counts.Low} Low</span>}
-          </div>
         </div>
         <p className="text-[9px] text-muted-foreground mt-2">Click on any brand to filter the chart</p>
       </div>
-
       <div className="p-4 space-y-3 max-h-[400px] overflow-y-auto">
         {riskData.map((brand) => (
           <motion.div
@@ -190,127 +175,69 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
 // ============================================================================
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const [notification, setNotification] = useState(null);
-  const [isExporting, setIsExporting]   = useState(false);
-  const [selectedBrand, setSelectedBrand] = useState(null);
-  const [timedOut, setTimedOut]           = useState(false);
-  const [forceShow, setForceShow]         = useState(false);
-  
-  const [dateRange, setDateRange] = useState({
-    start: null,
-    end: null,
-    preset: 'allData'
-  });
+  const [notification, setNotification]     = useState(null);
+  const [isExporting, setIsExporting]       = useState(false);
+  const [selectedBrand, setSelectedBrand]   = useState(null);
+  const [timedOut, setTimedOut]             = useState(false);
+  const [forceShow, setForceShow]           = useState(false);
+  const [dateRange, setDateRange]           = useState({ start: null, end: null, preset: 'allData' });
 
-  const { data: revenue, loading: revenueLoading, error: revenueError, totalRevenue: aggregatedTotal, brandTotals, yearlyData } = useRevenue();
-  const { brands, loading: brandsLoading }   = useBrands(brandTotals);
-  const { team,   loading: teamLoading }     = useTeam();
+  const { data: revenue, loading: revenueLoading, totalRevenue: aggregatedTotal, brandTotals, yearlyData } = useRevenue();
+  const { brands, loading: brandsLoading } = useBrands(brandTotals);
+  const { team }                           = useTeam();
   const { futurePredictions, retrainModels, isRetraining } = usePredictions();
-  
-  // Partnership data from Supabase (partners table)
+
   const [partneredBrands, setPartneredBrands] = useState([]);
-  
   useEffect(() => {
     const fetchPartneredBrands = async () => {
       try {
-        const { data, error } = await supabase
-          .from('partners')
-          .select('*');
-        
-        if (!error && data) {
-          setPartneredBrands(data);
-        }
-      } catch (err) {
-        setPartneredBrands([]);
-      }
+        const { data, error } = await supabase.from('partners').select('*');
+        if (!error && data) setPartneredBrands(data);
+      } catch { setPartneredBrands([]); }
     };
     fetchPartneredBrands();
   }, []);
 
-  // Partnership counts
   const partnershipStats = {
-    inProgress: partneredBrands.filter(
-      p => p.status === 'In Progress'
-    ).length,
-    dealing: partneredBrands.filter(
-      p => p.status === 'Dealing'
-    ).length,
-    partner: partneredBrands.filter(
-      p => p.status === 'Partner'
-    ).length,
+    inProgress: partneredBrands.filter(p => p.status === 'In Progress').length,
+    dealing:    partneredBrands.filter(p => p.status === 'Dealing').length,
+    partner:    partneredBrands.filter(p => p.status === 'Partner').length,
   };
   const partnerCount = partneredBrands.length;
 
-  // Safety timeouts so a slow DB never freezes the UI
-  useEffect(() => {
-    const t = setTimeout(() => setTimedOut(true), 8000);
-    return () => clearTimeout(t);
-  }, []);
+  useEffect(() => { const t = setTimeout(() => setTimedOut(true),  8000);  return () => clearTimeout(t); }, []);
+  useEffect(() => { const t = setTimeout(() => setForceShow(true), 10000); return () => clearTimeout(t); }, []);
 
-  useEffect(() => {
-    const t = setTimeout(() => setForceShow(true), 10000);
-    return () => clearTimeout(t);
-  }, []);
+  const globalYears = useMemo(() => yearlyData.map((y) => y.year).sort((a, b) => a - b), [yearlyData]);
 
-  // ── DERIVED YEAR LIST ────────────────────────────────────────────────────
-  const globalYears = useMemo(
-    () => yearlyData.map((y) => y.year).sort((a, b) => a - b),
-    [yearlyData]
-  );
-
-  // ── FILTERED REVENUE ─────────────────────────────────────────────────────
   const filteredRevenue = useMemo(() => {
     if (!revenue || revenue.length === 0) return [];
-
     return revenue.filter((item) => {
-      const matchesBrand =
-        !selectedBrand || item.brand_id === selectedBrand;
-
-      const itemDate = item?.date
-        ? new Date(item.date)
-        : null;
-
+      const matchesBrand = !selectedBrand || item.brand_id === selectedBrand;
+      const itemDate = item?.date ? new Date(item.date) : null;
       const matchesDate =
-        !dateRange?.start ||
-        !dateRange?.end ||
-        dateRange.preset === 'allData' ||
-        (
-          itemDate &&
-          itemDate >= dateRange.start &&
-          itemDate <= dateRange.end
-        );
-
+        !dateRange?.start || !dateRange?.end || dateRange.preset === 'allData' ||
+        (itemDate && itemDate >= dateRange.start && itemDate <= dateRange.end);
       return matchesBrand && matchesDate;
     });
   }, [revenue, selectedBrand, dateRange]);
 
   const selectedBrandName = brands?.find((b) => b.brand_id === selectedBrand)?.brand_name;
 
-  // ── TOTAL REVENUE KPI ────────────────────────────────────────────────────
-  const totalRevenue = useMemo(() => {
-    return filteredRevenue.reduce(
-      (sum, item) => sum + sumRevenue(item),
-      0
-    );
-  }, [filteredRevenue]);
+  const totalRevenue = useMemo(
+    () => filteredRevenue.reduce((sum, item) => sum + sumRevenue(item), 0),
+    [filteredRevenue]
+  );
 
-  // ── CHART DATA ───────────────────────────────────────────────────────────
   const chartData = useMemo(() => {
     const yearMap = new Map();
-
     filteredRevenue.forEach((item) => {
       if (!item?.date) return;
       const year = new Date(item.date).getFullYear();
-      const rev = sumRevenue(item);
-      yearMap.set(year, (yearMap.get(year) || 0) + rev);
+      yearMap.set(year, (yearMap.get(year) || 0) + sumRevenue(item));
     });
-
     const result = Array.from(yearMap.entries())
-      .map(([year, rev]) => ({
-        year: year.toString(),
-        actual: rev,
-        forecast: 0,
-      }))
+      .map(([year, rev]) => ({ year: year.toString(), actual: rev, forecast: 0 }))
       .sort((a, b) => parseInt(a.year) - parseInt(b.year));
 
     if (futurePredictions?.length > 0 && !selectedBrand && dateRange.preset === 'allData') {
@@ -321,50 +248,27 @@ export const Dashboard = () => {
           predByYear.set(year, (predByYear.get(year) || 0) + (pred.predicted || 0));
         }
       });
-
       predByYear.forEach((value, year) => {
         const existing = result.find((r) => parseInt(r.year) === year);
-        if (existing) {
-          existing.forecast = value;
-        } else {
-          result.push({ year: year.toString(), actual: 0, forecast: value });
-        }
+        if (existing) existing.forecast = value;
+        else result.push({ year: year.toString(), actual: 0, forecast: value });
       });
     }
-
     return result.sort((a, b) => parseInt(a.year) - parseInt(b.year));
   }, [filteredRevenue, futurePredictions, selectedBrand, dateRange.preset]);
 
-  const totalTeamMembers = useMemo(
-    () => team?.length ?? 0,
-    [team]
-  );
-
-  // ── OTHER KPI VALUES ─────────────────────────────────────────────────────
-  const activeBrands = useMemo(
-    () => brands?.filter((b) => b.brand_status === 'active').length ?? 0,
-    [brands]
-  );
-
-  const atRisk = useMemo(
-    () => brands?.filter((b) => b.risk_level === 'High').length ?? 0,
-    [brands]
-  );
-
-  const hasForecast = useMemo(
-    () => chartData.some((d) => d.forecast > 0),
-    [chartData]
-  );
+  const totalTeamMembers = useMemo(() => team?.length ?? 0, [team]);
+  const activeBrands     = useMemo(() => brands?.filter((b) => b.brand_status === 'active').length ?? 0, [brands]);
+  const atRisk           = useMemo(() => brands?.filter((b) => b.risk_level === 'High').length ?? 0, [brands]);
+  const hasForecast      = useMemo(() => chartData.some((d) => d.forecast > 0), [chartData]);
 
   const forecastDrop = useMemo(() => {
     if (!hasForecast) return null;
-    const lastActual   = [...chartData].reverse().find((d) => d.actual > 0);
+    const lastActual    = [...chartData].reverse().find((d) => d.actual > 0);
     const firstForecast = chartData.find((d) => d.forecast > 0);
     if (!lastActual || !firstForecast) return null;
     const dropPct = ((lastActual.actual - firstForecast.forecast) / lastActual.actual) * 100;
-    return dropPct >= 10
-      ? { dropPct: Math.round(dropPct), forecastYear: firstForecast.year }
-      : null;
+    return dropPct >= 10 ? { dropPct: Math.round(dropPct), forecastYear: firstForecast.year } : null;
   }, [hasForecast, chartData]);
 
   const avgConfidence =
@@ -372,32 +276,68 @@ export const Dashboard = () => {
       ? (futurePredictions.reduce((s, p) => s + (p.model_r2 || 0), 0) / futurePredictions.length) * 100
       : 0;
 
-  // ── PLATFORM CONTRIBUTION ────────────────────────────────────────────────
+  // ── PLATFORM CONTRIBUTION ─────────────────────────────────────────────────
+  // Three fixed segments — always shown if they have any revenue at all:
+  //   • TikTok  = sum of all revenue_tiktok values across every session
+  //   • Shopee  = sum of all revenue_shopee values across every session
+  //   • Multi   = sum of (shopee + tiktok) for sessions where BOTH columns > 0
+  //               (these sessions are counted once in Multi, not split)
+  //
+  // Why this approach:
+  //   Classifying each session as Shopee OR TikTok OR Multi was causing TikTok
+  //   to show 0 whenever most sessions had both columns populated (all went to
+  //   Multi). Instead we track each platform's raw column total independently,
+  //   then subtract Multi from the individual totals to avoid double-counting.
+    // ── PLATFORM CONTRIBUTION ─────────────────────────────────────────────────
+  // Fixed: Shopee, TikTok, and Multi all show correctly
   const platformData = useMemo(() => {
     if (!filteredRevenue || filteredRevenue.length === 0) return [];
 
-    let shopee = 0, tiktok = 0, multi = 0;
+    let totalShopee = 0;
+    let totalTikTok = 0;
+    let totalMulti = 0;
 
     filteredRevenue.forEach((item) => {
       const s = item.revenue_shopee ?? 0;
       const t = item.revenue_tiktok ?? 0;
-      if (s > 0 && t > 0) { multi  += s + t; }
-      else if (s > 0)      { shopee += s; }
-      else if (t > 0)      { tiktok += t; }
+      
+      // Add to individual platform totals
+      totalShopee += s;
+      totalTikTok += t;
+      
+      // For Multi: count sessions where BOTH platforms were used
+      if (s > 0 && t > 0) {
+        totalMulti += (s + t);
+      }
     });
 
-    const total = shopee + tiktok + multi;
+    // Calculate net values (excluding Multi)
+    const shopeeNet = totalShopee;
+    const tiktokNet = totalTikTok;
+
+    const total = shopeeNet + tiktokNet;
+    
     if (total === 0) return [];
 
-    const result = [];
-    if (shopee > 0) result.push({ name: 'Shopee',         value: Math.round((shopee / total) * 100), color: '#ee4d2d' });
-    if (tiktok > 0) result.push({ name: 'TikTok',         value: Math.round((tiktok / total) * 100), color: '#DB1A1A' });
-    if (multi  > 0) result.push({ name: 'Multi-Platform', value: Math.round((multi  / total) * 100), color: '#3b82f6' });
+    const segments = [
+      { name: 'TikTok', value: tiktokNet, color: '#DB1A1A' },
+      { name: 'Shopee', value: shopeeNet, color: '#ee4d2d' },
+    ];
 
-    return result.filter((p) => p.value > 0);
+    // Only add Multi if there are sessions with both platforms
+    if (totalMulti > 0) {
+      segments.push({ name: 'Multi', value: totalMulti, color: '#3b82f6' });
+    }
+
+    // Calculate percentages based on total including Multi if present
+    const grandTotal = total + totalMulti;
+    
+    return segments.map(s => ({ 
+      ...s, 
+      value: Math.round((s.value / grandTotal) * 100) 
+    }));
   }, [filteredRevenue]);
 
-  // ── ACTIONS ──────────────────────────────────────────────────────────────
   const notify = useCallback((msg) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 4000);
@@ -408,8 +348,6 @@ export const Dashboard = () => {
     notify(result.success ? 'ML models retrained successfully!' : `Failed: ${result.error}`);
   }, [retrainModels, notify]);
 
-  // CHANGED: calls exportCompleteReport so all 5 HiddenExportPages containers
-  // (#dashboard-export-container … #leads-export-container) are captured.
   const handleExportReport = useCallback(async () => {
     setIsExporting(true);
     await exportCompleteReport();
@@ -426,13 +364,9 @@ export const Dashboard = () => {
     [selectedBrand, brands, notify]
   );
 
-  // ── LOADING GATE ─────────────────────────────────────────────────────────
   const showLoading =
-    (revenueLoading || brandsLoading) &&
-    !timedOut &&
-    !forceShow &&
-    revenue?.length === 0 &&
-    yearlyData?.length === 0;
+    (revenueLoading || brandsLoading) && !timedOut && !forceShow &&
+    revenue?.length === 0 && yearlyData?.length === 0;
 
   if (showLoading) {
     return (
@@ -444,7 +378,6 @@ export const Dashboard = () => {
     );
   }
 
-  // ── RENDER ───────────────────────────────────────────────────────────────
   return (
     <div id="dashboard-report-container" className="space-y-8 pb-12 relative">
       <AnimatePresence>
@@ -468,7 +401,6 @@ export const Dashboard = () => {
           <p className="text-muted-foreground mt-1">Welcome back, here is what is happening today.</p>
         </div>
         <div className="flex items-center gap-3">
-          {/* CHANGED: onClick now calls handleExportReport → exportCompleteReport */}
           <button
             onClick={handleExportReport}
             disabled={isExporting}
@@ -484,8 +416,7 @@ export const Dashboard = () => {
           >
             {isRetraining
               ? <><Activity size={14} className="animate-spin" /> Training...</>
-              : <><RefreshCw size={14} /> Rerun ML Model</>
-            }
+              : <><RefreshCw size={14} /> Rerun ML Model</>}
           </button>
           <SortByButton
             brands={brands}
@@ -497,17 +428,11 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      {/* Active filter pill */}
       {selectedBrand && selectedBrandName && (
         <div className="flex items-center gap-2 flex-wrap bg-primary/5 border border-primary/20 rounded-lg px-4 py-2">
           <span className="text-[9px] text-muted-foreground">Active filter:</span>
-          <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-            Brand: {selectedBrandName}
-          </span>
-          <button
-            onClick={() => setSelectedBrand(null)}
-            className="text-[9px] text-muted-foreground hover:text-primary transition-colors ml-auto"
-          >
+          <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">Brand: {selectedBrandName}</span>
+          <button onClick={() => setSelectedBrand(null)} className="text-[9px] text-muted-foreground hover:text-primary transition-colors ml-auto">
             Clear filter
           </button>
         </div>
@@ -516,63 +441,37 @@ export const Dashboard = () => {
       {/* KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KpiCard
-          title="Total Revenue"
-          value={formatCurrency(totalRevenue)}
-          icon={ArrowUpRight}
-          badge={selectedBrandName ? `Brand: ${selectedBrandName}` : 'All Time'}
-          badgeStyle="bg-primary/10 text-primary"
-          action={!selectedBrand ? 'View Analysis →' : ''}
-          onAction={() => !selectedBrand && navigate('/admin/revenue')}
+          title="Total Revenue" value={formatCurrency(totalRevenue)} icon={ArrowUpRight}
+          badge={selectedBrandName ? `Brand: ${selectedBrandName}` : 'All Time'} badgeStyle="bg-primary/10 text-primary"
+          action={!selectedBrand ? 'View Analysis →' : ''} onAction={() => !selectedBrand && navigate('/admin/revenue')}
         />
         <KpiCard
-          title="Brands Overview"
-          value={`${activeBrands}/${atRisk}`}
-          icon={AlertTriangle}
-          badge={`${atRisk} High Risk of Churn`}
-          badgeStyle={
-            atRisk > 0
-              ? 'bg-destructive text-white'
-              : 'bg-emerald-500 text-white'
-          }
-          action="Manage Brands →"
-          onAction={() => navigate('/admin/brands')}
+          title="Brands Overview" value={`${activeBrands}/${atRisk}`} icon={AlertTriangle}
+          badge={`${atRisk} High Risk of Churn`} badgeStyle={atRisk > 0 ? 'bg-destructive text-white' : 'bg-emerald-500 text-white'}
+          action="Manage Brands →" onAction={() => navigate('/admin/brands')}
         />
         <KpiCard
-          title="Total Staff"
-          value={totalTeamMembers}
-          icon={Activity}
-          badge="Active Staff"
-          badgeStyle="bg-primary/10 text-primary"
-          action="Manage Team →"
-          onAction={() => navigate('/admin/team')}
+          title="Total Staff" value={totalTeamMembers} icon={Activity}
+          badge="Active Staff" badgeStyle="bg-primary/10 text-primary"
+          action="Manage Team →" onAction={() => navigate('/admin/team')}
         />
         <KpiCard
-          title="Partnership Status"
-          value={partnerCount}
-          icon={Handshake}
-          badge="Total Active Partnerships"
-          badgeStyle="bg-primary/10 text-primary"
-          action="View Partnerships →"
-          onAction={() => navigate('/admin/leads')}
+          title="Partnership Status" value={partnerCount} icon={Handshake}
+          badge="Total Active Partnerships" badgeStyle="bg-primary/10 text-primary"
+          action="View Partnerships →" onAction={() => navigate('/admin/leads')}
         >
           <div className="mt-4 grid grid-cols-3 gap-2">
             <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-3 text-center">
               <p className="text-xs text-gray-400">In Progress</p>
-              <p className="text-lg font-bold text-yellow-400">
-                {partnershipStats.inProgress}
-              </p>
+              <p className="text-lg font-bold text-yellow-400">{partnershipStats.inProgress}</p>
             </div>
             <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3 text-center">
               <p className="text-xs text-gray-400">Dealing</p>
-              <p className="text-lg font-bold text-blue-400">
-                {partnershipStats.dealing}
-              </p>
+              <p className="text-lg font-bold text-blue-400">{partnershipStats.dealing}</p>
             </div>
             <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3 text-center">
               <p className="text-xs text-gray-400">Partner</p>
-              <p className="text-lg font-bold text-green-400">
-                {partnershipStats.partner}
-              </p>
+              <p className="text-lg font-bold text-green-400">{partnershipStats.partner}</p>
             </div>
           </div>
         </KpiCard>
@@ -581,18 +480,13 @@ export const Dashboard = () => {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <RevenueBarChart
-          chartData={chartData}
-          hasForecast={hasForecast}
-          isRetraining={isRetraining}
-          isLoading={false}
-          onRerunModel={handleRerunModel}
-          formatCompactCurrency={formatCompactCurrency}
-          formatCurrency={formatCurrency}
-          selectedBrand={selectedBrandName}
-          forecastDrop={forecastDrop}
+          chartData={chartData} hasForecast={hasForecast} isRetraining={isRetraining} isLoading={false}
+          onRerunModel={handleRerunModel} formatCompactCurrency={formatCompactCurrency} formatCurrency={formatCurrency}
+          selectedBrand={selectedBrandName} forecastDrop={forecastDrop}
         />
 
         <div className="space-y-8">
+
           {/* Platform Contribution */}
           <div className="dashboard-card p-0 overflow-hidden">
             <div className="p-4 border-b border-border bg-muted/20">
@@ -603,17 +497,17 @@ export const Dashboard = () => {
             </div>
             <div className="p-4">
               {platformData.length > 0 ? (
-                <div className="flex items-center justify-between">
-                  <div className="h-[160px] w-[160px]">
-                    <ResponsiveContainer width="100%" height={300} minWidth={0}>
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-full h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={platformData}
                           cx="50%"
                           cy="50%"
-                          innerRadius={40}
-                          outerRadius={60}
-                          paddingAngle={5}
+                          innerRadius={55}
+                          outerRadius={80}
+                          paddingAngle={4}
                           dataKey="value"
                         >
                           {platformData.map((entry, i) => (
@@ -636,16 +530,12 @@ export const Dashboard = () => {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
                     {platformData.map((p) => (
-                      <div key={p.name} className="flex items-center gap-2 group cursor-pointer">
-                        <div
-                          className="w-2 h-2 rounded-full transition-all group-hover:scale-125"
-                          style={{ backgroundColor: p.color }}
-                        />
-                        <span className="text-[10px] font-bold text-muted-foreground group-hover:text-foreground transition-colors">
-                          {p.name}
-                        </span>
+                      <div key={p.name} className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                        <span className="text-[11px] font-semibold text-muted-foreground">{p.name}</span>
+                        <span className="text-[11px] font-bold text-foreground">{p.value}%</span>
                       </div>
                     ))}
                   </div>
@@ -659,7 +549,6 @@ export const Dashboard = () => {
           <CriticalRiskMonitor onBrandClick={handleBrandClick} />
         </div>
       </div>
-
     </div>
   );
 };
