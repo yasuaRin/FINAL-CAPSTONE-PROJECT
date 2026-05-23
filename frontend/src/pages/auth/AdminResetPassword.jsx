@@ -30,11 +30,16 @@ const AdminResetPassword = () => {
   const [mfaLoading, setMfaLoading] = useState(false);
 
   useEffect(() => {
-    const fullHash = window.location.hash;
+    // ─── FIX: pakai window.location.href bukan window.location.hash ───────
+    // Karena URL-nya punya dua '#':
+    // /#/admin/auth/reset-password#access_token=...
+    // window.location.hash hanya baca sampai '#' pertama, token tidak kebaca
+    const fullUrl = window.location.href;
 
-    if (fullHash.includes('access_token=')) {
-      const tokenPart = fullHash.substring(fullHash.indexOf('access_token=') - 1);
-      const params = new URLSearchParams(tokenPart.startsWith('#') ? tokenPart.slice(1) : tokenPart);
+    if (fullUrl.includes('access_token=')) {
+      const tokenStart = fullUrl.indexOf('access_token=');
+      const tokenString = fullUrl.substring(tokenStart);
+      const params = new URLSearchParams(tokenString);
       const accessToken = params.get('access_token');
       const refreshToken = params.get('refresh_token');
 
@@ -52,6 +57,7 @@ const AdminResetPassword = () => {
       }
     }
 
+    // ─── Sisanya sama persis dengan original ──────────────────────────────
     const code = sessionStorage.getItem('reset_code');
     if (code) {
       sessionStorage.removeItem('reset_code');
