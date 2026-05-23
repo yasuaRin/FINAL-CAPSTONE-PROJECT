@@ -21,6 +21,7 @@ export const useTeam = () => {
         const { data, timestamp, totals } = JSON.parse(cached);
         const isExpired = Date.now() - timestamp > CACHE_DURATION;
         if (!isExpired && data?.length > 0) {
+          // console.log('📦 Using cached team data:', data.length, 'members');
           setTeam(data);
           setTotalStaff(totals.total);
           setActiveStaff(totals.active);
@@ -30,7 +31,7 @@ export const useTeam = () => {
       }
 
       setLoading(true);
-
+      
       // Query the unified team_members table
       const { data: teamMembers, error: teamError } = await supabase
         .from('team_members')
@@ -38,6 +39,8 @@ export const useTeam = () => {
         .order('created_at', { ascending: false });
 
       if (teamError) throw teamError;
+
+      // console.log('📊 Fetched team members:', teamMembers?.length || 0);
 
       // Transform to match expected format
       const allMembers = (teamMembers || []).map(member => ({
@@ -50,8 +53,8 @@ export const useTeam = () => {
         status: member.status === 'active' ? 'active' : 'inactive',
         avatar: member.avatar_url,
         roleDescription: member.role_description || (
-          member.role === 'super_admin' ? 'Super Admin' :
-          member.role === 'admin' ? 'Admin' :
+          member.role === 'super_admin' ? 'Super Admin' : 
+          member.role === 'admin' ? 'Admin' : 
           'Staff'
         ),
         joinDate: member.join_date,
@@ -60,19 +63,22 @@ export const useTeam = () => {
 
       const total = allMembers.length;
       const active = allMembers.filter(m => m.status === 'active').length;
-
+      
+      // console.log('👥 Team stats - Total:', total, 'Active:', active);
+      
       setTeam(allMembers);
       setTotalStaff(total);
       setActiveStaff(active);
-
+      
       // Cache the data
       sessionStorage.setItem(CACHE_KEY, JSON.stringify({
         data: allMembers,
         totals: { total, active },
         timestamp: Date.now()
       }));
-
+      
     } catch (err) {
+      // console.error('useTeam fetch error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -83,10 +89,10 @@ export const useTeam = () => {
     fetchTeam();
   }, [fetchTeam]);
 
-  return {
-    team,
-    loading,
-    error,
+  return { 
+    team, 
+    loading, 
+    error, 
     refetch: fetchTeam,
     totalStaff,
     activeStaff

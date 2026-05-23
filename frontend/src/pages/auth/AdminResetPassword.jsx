@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle2 } from 'lucide-react';
 
 const EyeIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -24,67 +26,115 @@ const AdminResetPassword = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
-
-  // MFA states
   const [needsMfa, setNeedsMfa] = useState(false);
   const [mfaCode, setMfaCode] = useState('');
   const [factorId, setFactorId] = useState(null);
   const [mfaLoading, setMfaLoading] = useState(false);
 
+  const [isDark, setIsDark] = useState(
+    document.documentElement.classList.contains('dark') ||
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  );
   useEffect(() => {
-    const href = window.location.href;
-    const codeMatch = href.match(/[?&]code=([^&#]+)/);
-    const code = codeMatch ? codeMatch[1] : sessionStorage.getItem('reset_code');
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributeFilter: ['class'] });
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const mqHandler = (e) => { if (!document.documentElement.classList.contains('dark')) setIsDark(e.matches); };
+    mq.addEventListener('change', mqHandler);
+    return () => { observer.disconnect(); mq.removeEventListener('change', mqHandler); };
+  }, []);
 
-    let exchanged = false;
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
+  };
 
+  useEffect(() => {
+    const fullUrl = window.location.href;
+
+    if (fullUrl.includes('access_token=')) {
+      const tokenStart = fullUrl.indexOf('access_token=');
+      const tokenString = fullUrl.substring(tokenStart);
+      const params = new URLSearchParams(tokenString);
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+
+      if (accessToken) {
+        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+          .then(({ data, error }) => {
+            if (data?.session) {
+              setSessionReady(true);
+              setError('');
+            } else {
+              setError('Session not found. Please request a new reset link.');
+            }
+          });
+        return;
+      }
+    }
+
+    const code = sessionStorage.getItem('reset_code');
     if (code) {
       sessionStorage.removeItem('reset_code');
       supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
         if (data?.session) {
-          exchanged = true;
           setSessionReady(true);
           setError('');
         } else {
           setError('Session not found. Please request a new reset link.');
         }
       });
-    } else {
-      supabase.auth.getSession().then(({ data }) => {
-        if (data?.session) {
-          exchanged = true;
-          setSessionReady(true);
-        } else {
-          setTimeout(() => {
-            if (!exchanged) {
-              setError('Session not found. Please request a new reset link.');
-            }
-          }, 5000);
-        }
-      });
+      return;
     }
 
+    supabase.auth.getSession().then(({ data }) => {
+      if (data?.session) {
+        setSessionReady(true);
+        setError('');
+      } else {
+        setError('Session not found. Please request a new reset link.');
+      }
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
-        exchanged = true;
+      if (event === 'PASSWORD_RECOVERY') {
         setSessionReady(true);
         setError('');
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
+
+  // ✅ Validasi password lengkap
+  const validatePassword = (pwd) => {
+    const rules = [
+      { test: pwd.length >= 8,              msg: 'at least 8 characters' },
+      { test: /[A-Z]/.test(pwd),            msg: 'one uppercase letter (A-Z)' },
+      { test: /[a-z]/.test(pwd),            msg: 'one lowercase letter (a-z)' },
+      { test: /[0-9]/.test(pwd),            msg: 'one number (0-9)' },
+      { test: /[^A-Za-z0-9]/.test(pwd),    msg: 'one symbol (!@#$%^&*...)' },
+    ];
+    const failed = rules.filter(r => !r.test);
+    return failed;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     if (password !== confirm) {
-      setError('Passwords do not match.');
+      showToast('Passwords do not match.');
       return;
     }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+
+    // ✅ Pakai validatePassword, bukan cuma cek length
+    const failed = validatePassword(password);
+    if (failed.length > 0) {
+      showToast(`Password must contain ${failed.map(r => r.msg).join(', ')}.`);
       return;
     }
 
@@ -93,41 +143,26 @@ const AdminResetPassword = () => {
       const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       const currentLevel = aalData?.currentLevel;
       const nextLevel = aalData?.nextLevel;
-
-      console.log('AAL currentLevel:', currentLevel, '| nextLevel:', nextLevel);
-
-      // ✅ Kalau sudah aal2, langsung update password
       if (currentLevel === 'aal2') {
         await updatePassword();
         return;
       }
-
-      // ✅ Kalau nextLevel aal2, user punya MFA — harus verify dulu
       if (nextLevel === 'aal2') {
         const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
         if (factorsError) throw factorsError;
-
-        console.log('All TOTP factors:', JSON.stringify(factorsData?.totp, null, 2));
-
         const verifiedFactor = factorsData?.totp?.find(f => f.status === 'verified');
         const totpFactor = verifiedFactor || factorsData?.totp?.[0];
-
-        console.log('Using factor:', totpFactor?.id, '| status:', totpFactor?.status);
-
         if (!totpFactor) {
           await updatePassword();
           return;
         }
-
         setFactorId(totpFactor.id);
         setNeedsMfa(true);
         return;
       }
-
-      // Tidak ada MFA — langsung update password
       await updatePassword();
     } catch (err) {
-      setError(err.message || 'Failed to verify session.');
+      showToast(err.message || 'Failed to verify session.');
     } finally {
       setLoading(false);
     }
@@ -137,35 +172,22 @@ const AdminResetPassword = () => {
     e.preventDefault();
     setError('');
     setMfaLoading(true);
-
     try {
-      const { data: freshChallenge, error: challengeError } = await supabase.auth.mfa.challenge({
-        factorId,
-      });
+      const { data: freshChallenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
       if (challengeError) throw challengeError;
-
-      console.log('Challenge ID:', freshChallenge.id, '| factorId:', factorId);
-
       await new Promise(resolve => setTimeout(resolve, 500));
-
       const { error: verifyError } = await supabase.auth.mfa.verify({
         factorId,
         challengeId: freshChallenge.id,
         code: mfaCode.trim(),
       });
       if (verifyError) throw verifyError;
-
-      // Cek AAL setelah verify
-      const { data: aalCheck } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      console.log('After verify AAL:', aalCheck?.currentLevel);
-
       await updatePassword();
     } catch (err) {
-      console.error('MFA error:', err);
       if (err.message?.includes('Invalid TOTP') || err.status === 422) {
-        setError('Invalid code. Make sure your device time is correct and try with a fresh code.');
+        showToast('Invalid code. Make sure your device time is correct and try with a fresh code.');
       } else {
-        setError(err.message || 'Invalid or expired MFA code.');
+        showToast(err.message || 'Invalid or expired MFA code.');
       }
       setMfaCode('');
     } finally {
@@ -176,7 +198,6 @@ const AdminResetPassword = () => {
   const updatePassword = async () => {
     const { error: updateError } = await supabase.auth.updateUser({ password });
     if (updateError) throw new Error(updateError.message);
-
     await supabase.auth.signOut();
     navigate('/admin/login', {
       replace: true,
@@ -184,8 +205,43 @@ const AdminResetPassword = () => {
     });
   };
 
+  const ToastNotification = (
+    <AnimatePresence>
+      {toast && (
+        <motion.div
+          initial={{ opacity: 0, y: -20, x: '-50%' }}
+          animate={{ opacity: 1, y: 20, x: '-50%' }}
+          exit={{ opacity: 0, y: -20, x: '-50%' }}
+          style={{
+            position: 'fixed', top: 4, left: '50%', zIndex: 100,
+            background: isDark ? '#1c1c1c' : '#ffffff',
+            color: isDark ? '#f5f5f5' : '#111111',
+            padding: '10px 20px', borderRadius: 16,
+            boxShadow: isDark ? '0 8px 40px rgba(0,0,0,0.5)' : '0 8px 40px rgba(0,0,0,0.18)',
+            display: 'flex', alignItems: 'center', gap: 12,
+            border: isDark ? '1px solid #2e2e2e' : '1px solid #e5e7eb',
+            minWidth: 260,
+          }}
+        >
+          <div style={{
+            borderRadius: '50%', padding: 4, display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            background: toast.type === 'success' ? '#22c55e' : '#ef4444',
+            flexShrink: 0,
+          }}>
+            <CheckCircle2 size={16} color="white" />
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em' }}>
+            {toast.message}
+          </span>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   return (
     <>
+      {ToastNotification}
       <style>{`
         input::-ms-reveal, input::-ms-clear { display: none; }
         input::-webkit-credentials-auto-fill-button,
@@ -195,34 +251,29 @@ const AdminResetPassword = () => {
           pointer-events: none;
         }
       `}</style>
-
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0A]">
         <div className="max-w-md w-full space-y-6 p-8 bg-white dark:bg-[#141414] rounded-xl shadow-lg border border-transparent dark:border-[#262626]">
-
           <div>
             <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white">
               {needsMfa ? 'Verify MFA' : 'Set New Password'}
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-              {needsMfa
-                ? 'Enter the code from your authenticator app'
-                : 'Enter your new password below'}
+              {needsMfa ? 'Enter the code from your authenticator app' : 'Enter your new password below'}
             </p>
           </div>
 
-          {error && (
+          {!sessionReady && !error && (
+            <div className="flex justify-center py-4">
+              <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-700 border-t-[#DB1A1A] rounded-full animate-spin" />
+            </div>
+          )}
+
+          {error && !sessionReady && (
             <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">
               {error}
             </div>
           )}
 
-          {!sessionReady && !error && (
-            <div className="flex justify-center py-4">
-              <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-700 border-t-black dark:border-t-white rounded-full animate-spin" />
-            </div>
-          )}
-
-          {/* Password form */}
           {sessionReady && !needsMfa && (
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
@@ -243,7 +294,6 @@ const AdminResetPassword = () => {
                   </button>
                 </div>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</label>
                 <div className="relative mt-1">
@@ -262,7 +312,6 @@ const AdminResetPassword = () => {
                   </button>
                 </div>
               </div>
-
               <button type="submit" disabled={loading}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#DB1A1A] hover:bg-[#b81515] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DB1A1A] dark:focus:ring-offset-[#141414] disabled:opacity-50 transition-colors">
                 {loading ? 'Checking...' : 'Save New Password'}
@@ -270,7 +319,6 @@ const AdminResetPassword = () => {
             </form>
           )}
 
-          {/* MFA form */}
           {sessionReady && needsMfa && (
             <form className="space-y-4" onSubmit={handleMfaVerify}>
               <div>
@@ -292,12 +340,10 @@ const AdminResetPassword = () => {
                   Wait for a fresh code before submitting
                 </p>
               </div>
-
               <button type="submit" disabled={mfaLoading || mfaCode.length !== 6}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#DB1A1A] hover:bg-[#b81515] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DB1A1A] dark:focus:ring-offset-[#141414] disabled:opacity-50 transition-colors">
                 {mfaLoading ? 'Verifying...' : 'Verify & Save Password'}
               </button>
-
               <button type="button" onClick={() => { setNeedsMfa(false); setMfaCode(''); setError(''); }}
                 className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
                 ← Back
@@ -305,13 +351,12 @@ const AdminResetPassword = () => {
             </form>
           )}
 
-          {error && !needsMfa && (
+          {error && !sessionReady && !needsMfa && (
             <button onClick={() => navigate('/admin/login', { replace: true })}
               className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
               ← Back to Sign in
             </button>
           )}
-
         </div>
       </div>
     </>

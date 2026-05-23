@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import fs from 'fs'
 
 export default defineConfig({
   plugins: [react()],
@@ -12,13 +13,21 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: false,
-    host: true,
+    host: true, 
     open: true,
-    // proxy: {
-    //   '/api': {
-    //     target: 'http://localhost:5000',
-    //     changeOrigin: true
-    //   }
-    // }
-  }
+    watch: {
+      usePolling: true,
+      interval: 1000,
+    },
+    hmr: {
+      overlay: true,
+      timeout: 3000,
+    },
+  },
+  // proxy: {
+  //   '/api': {
+  //     target: 'http://localhost:5000',
+  //     changeOrigin: true
+  //   }
+  // }
 })
