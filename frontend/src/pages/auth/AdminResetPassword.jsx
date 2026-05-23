@@ -30,45 +30,55 @@ const AdminResetPassword = () => {
   const [mfaLoading, setMfaLoading] = useState(false);
 
   useEffect(() => {
-    const href = window.location.href;
-    const codeMatch = href.match(/[?&]code=([^&#]+)/);
-    const code = codeMatch ? codeMatch[1] : sessionStorage.getItem('reset_code');
-    let exchanged = false;
+    const fullHash = window.location.hash;
 
+    if (fullHash.includes('access_token=')) {
+      const tokenPart = fullHash.substring(fullHash.indexOf('access_token=') - 1);
+      const params = new URLSearchParams(tokenPart.startsWith('#') ? tokenPart.slice(1) : tokenPart);
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+
+      if (accessToken) {
+        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+          .then(({ data, error }) => {
+            if (data?.session) {
+              setSessionReady(true);
+              setError('');
+            } else {
+              setError('Session not found. Please request a new reset link.');
+            }
+          });
+        return;
+      }
+    }
+
+    const code = sessionStorage.getItem('reset_code');
     if (code) {
       sessionStorage.removeItem('reset_code');
       supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
         if (data?.session) {
-          exchanged = true;
           setSessionReady(true);
           setError('');
         } else {
           setError('Session not found. Please request a new reset link.');
         }
       });
-    } else {
-      supabase.auth.getSession().then(({ data }) => {
-        if (data?.session) {
-          exchanged = true;
-          setSessionReady(true);
-        } else {
-          setTimeout(() => {
-            if (!exchanged) {
-              setError('Session not found. Please request a new reset link.');
-            }
-          }, 5000);
-        }
-      });
+      return;
     }
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (data?.session) {
+        setSessionReady(true);
+        setError('');
+      } else {
+        setError('Session not found. Please request a new reset link.');
+      }
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-        exchanged = true;
         setSessionReady(true);
         setError('');
-      } else if (event === 'SIGNED_IN' && session) {
-        // Google OAuth login — bukan reset password, redirect ke callback
-        navigate('/admin/auth/callback', { replace: true });
       }
     });
 
@@ -91,12 +101,10 @@ const AdminResetPassword = () => {
       const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       const currentLevel = aalData?.currentLevel;
       const nextLevel = aalData?.nextLevel;
-
       if (currentLevel === 'aal2') {
         await updatePassword();
         return;
       }
-
       if (nextLevel === 'aal2') {
         const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
         if (factorsError) throw factorsError;
@@ -110,7 +118,6 @@ const AdminResetPassword = () => {
         setNeedsMfa(true);
         return;
       }
-
       await updatePassword();
     } catch (err) {
       setError(err.message || 'Failed to verify session.');
@@ -178,7 +185,15 @@ const AdminResetPassword = () => {
             </p>
           </div>
 
-          {error && (
+          {/* Hanya tampil error kalau session belum ready */}
+          {error && !sessionReady && (
+            <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">
+              {error}
+            </div>
+          )}
+
+          {/* Error saat submit form (session sudah ready) */}
+          {error && sessionReady && (
             <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">
               {error}
             </div>
@@ -267,7 +282,7 @@ const AdminResetPassword = () => {
             </form>
           )}
 
-          {error && !needsMfa && (
+          {error && !sessionReady && !needsMfa && (
             <button onClick={() => navigate('/admin/login', { replace: true })}
               className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
               ← Back to Sign in
