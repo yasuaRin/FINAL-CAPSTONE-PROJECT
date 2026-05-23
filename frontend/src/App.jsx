@@ -12,9 +12,12 @@ import AdminAuthCallback from './pages/auth/AdminAuthCallback';
 import Leads from './pages/admin/Leads';
 import { useState, useEffect } from 'react';
 import { setExportHandlers } from './utils/exportState';
+import Landing from './pages/public/Landing'; 
+import PublicLayout from './components/layout/PublicLayout';
+import AdminAISettings from './pages/admin/AdminAISettings';
 
 function App() {
-  const [isExporting, setIsExporting] = useState(false);
+   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     setExportHandlers(
@@ -45,6 +48,10 @@ function App() {
       )}
 
       <Routes>
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<Landing />} />
+        </Route>
+
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/auth/reset-password" element={<AdminResetPassword />} />
         <Route path="/admin/auth/callback" element={<AdminAuthCallback />} />
@@ -59,6 +66,7 @@ function App() {
           <Route path="team" element={<Team />} />
           <Route path="profile" element={<Profile />} />
           <Route path="leads" element={<Leads />} />
+          <Route path="ai-settings" element={<AdminAISettings />} />
         </Route>
         <Route path="/" element={<Navigate to="/admin" replace />} />
         <Route path="*" element={<Navigate to="/admin" replace />} />
