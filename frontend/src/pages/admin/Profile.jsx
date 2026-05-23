@@ -312,12 +312,12 @@ export default function ProfileSettings() {
     }
   };
 
-  const handlePasswordReset = async () => {
-    setPasswordLoading(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
-        redirectTo: `${window.location.origin}/`,
-      });
+ const handlePasswordReset = async () => {
+  setPasswordLoading(true);
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
+      redirectTo: `${window.location.origin}/#/admin/auth/reset-password`, // ← fix ini
+    });
       if (error) throw error;
       showToast(`Password reset email sent to ${profile.email}.`);
     } catch (err) {
