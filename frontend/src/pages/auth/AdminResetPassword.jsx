@@ -31,7 +31,6 @@ const AdminResetPassword = () => {
   const [factorId, setFactorId] = useState(null);
   const [mfaLoading, setMfaLoading] = useState(false);
 
-  // Dark mode detection
   const [isDark, setIsDark] = useState(
     document.documentElement.classList.contains('dark') ||
     window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -47,7 +46,6 @@ const AdminResetPassword = () => {
     return () => { observer.disconnect(); mq.removeEventListener('change', mqHandler); };
   }, []);
 
-  // Toast state
   const [toast, setToast] = useState(null);
   const showToast = (message, type = 'error') => {
     setToast({ message, type });
@@ -55,10 +53,6 @@ const AdminResetPassword = () => {
   };
 
   useEffect(() => {
-    // ─── FIX: pakai window.location.href bukan window.location.hash ───────
-    // Karena URL-nya punya dua '#':
-    // /#/admin/auth/reset-password#access_token=...
-    // window.location.hash hanya baca sampai '#' pertama, token tidak kebaca
     const fullUrl = window.location.href;
 
     if (fullUrl.includes('access_token=')) {
@@ -82,7 +76,6 @@ const AdminResetPassword = () => {
       }
     }
 
-    // ─── Sisanya sama persis dengan original ──────────────────────────────
     const code = sessionStorage.getItem('reset_code');
     if (code) {
       sessionStorage.removeItem('reset_code');
@@ -116,17 +109,35 @@ const AdminResetPassword = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // ✅ Validasi password lengkap
+  const validatePassword = (pwd) => {
+    const rules = [
+      { test: pwd.length >= 8,              msg: 'at least 8 characters' },
+      { test: /[A-Z]/.test(pwd),            msg: 'one uppercase letter (A-Z)' },
+      { test: /[a-z]/.test(pwd),            msg: 'one lowercase letter (a-z)' },
+      { test: /[0-9]/.test(pwd),            msg: 'one number (0-9)' },
+      { test: /[^A-Za-z0-9]/.test(pwd),    msg: 'one symbol (!@#$%^&*...)' },
+    ];
+    const failed = rules.filter(r => !r.test);
+    return failed;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
     if (password !== confirm) {
       showToast('Passwords do not match.');
       return;
     }
-    if (password.length < 8) {
-      showToast('Password must be at least 8 characters.');
+
+    // ✅ Pakai validatePassword, bukan cuma cek length
+    const failed = validatePassword(password);
+    if (failed.length > 0) {
+      showToast(`Password must contain ${failed.map(r => r.msg).join(', ')}.`);
       return;
     }
+
     setLoading(true);
     try {
       const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
