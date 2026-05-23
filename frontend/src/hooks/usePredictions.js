@@ -24,12 +24,12 @@ export const usePredictions = () => {
       const future = (data || []).filter(p => p.is_future === true);
       const historical = (data || []).filter(p => p.is_future === false);
 
-      console.log('📊 Future predictions:', future.length);
+      //console.log('📊 Future predictions:', future.length);
       setFuturePredictions(future);
       setHistoricalPredictions(historical);
       
     } catch (err) {
-      console.error('Fetch error:', err);
+      //console.error('Fetch error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -46,7 +46,7 @@ export const usePredictions = () => {
     
     try {
       // Step 1: Call ML API to retrain
-      console.log('🔄 Starting ML retraining...');
+      // console.log('🔄 Starting ML retraining...');
       
       const response = await fetch(`${ML_API_URL}/api/ml/retrain`, {
         method: 'POST',
@@ -62,7 +62,7 @@ export const usePredictions = () => {
       }
 
       const result = await response.json();
-      console.log('✅ ML retraining completed:', result);
+     // console.log('✅ ML retraining completed:', result);
 
       // Step 2: Fetch updated predictions
       await fetchPredictions();
@@ -70,7 +70,7 @@ export const usePredictions = () => {
       return { success: true, message: 'Models retrained successfully' };
       
     } catch (err) {
-      console.error('❌ Retrain error:', err);
+     // console.error('❌ Retrain error:', err);
       setError(err.message);
       return { success: false, error: err.message };
     } finally {

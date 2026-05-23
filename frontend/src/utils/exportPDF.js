@@ -2,7 +2,96 @@ import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 import { triggerExportRender, dismissExportRender } from './exportState';
 
-// Wait until element exists and has real content height
+// ── Abort flag ───────────────────────────────────────────────────────────────
+let _aborted = false;
+const resetAbort = () => { _aborted = false; };
+const abort     = () => { _aborted = true; };
+const isAborted = () => _aborted;
+
+// ── Dark mode detection ───────────────────────────────────────────────────────
+const isDarkMode = () => document.documentElement.classList.contains('dark');
+
+// Read --background CSS variable so the bg exactly matches what the user sees.
+// Shadcn/Tailwind stores it as bare HSL numbers e.g. "222.2 84% 4.9%"
+const getExportBg = () => {
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue('--background')
+    .trim();
+  if (!raw) return isDarkMode() ? '#000000' : '#ffffff';
+  if (/^\d/.test(raw)) return `hsl(${raw})`;
+  return raw;
+};
+
+// ── Helper: Temporarily fix overflow containers ──────────────────────────────
+const fixOverflowContainers = (element, fix) => {
+  // Find all overflow containers that might cause capture issues
+  const overflowElements = [];
+  let current = element;
+  
+  while (current && current !== document.body) {
+    const style = getComputedStyle(current);
+    if (style.overflowY === 'auto' || style.overflowY === 'scroll' || style.overflow === 'auto') {
+      overflowElements.push(current);
+      if (fix) {
+        // Store original styles
+        current.dataset.originalOverflow = style.overflowY;
+        current.dataset.originalMaxHeight = style.maxHeight;
+        current.dataset.originalHeight = style.height;
+        // Temporarily remove overflow restrictions
+        current.style.overflow = 'visible';
+        current.style.maxHeight = 'none';
+        current.style.height = 'auto';
+      } else {
+        // Restore original styles
+        if (current.dataset.originalOverflow) {
+          current.style.overflow = current.dataset.originalOverflow;
+          delete current.dataset.originalOverflow;
+        }
+        if (current.dataset.originalMaxHeight) {
+          current.style.maxHeight = current.dataset.originalMaxHeight;
+          delete current.dataset.originalMaxHeight;
+        }
+        if (current.dataset.originalHeight) {
+          current.style.height = current.dataset.originalHeight;
+          delete current.dataset.originalHeight;
+        }
+      }
+    }
+    current = current.parentElement;
+  }
+};
+
+// ── Resolve the real capture target ──────────────────────────────────────────
+// Priority:
+//   1. Named id on the page's own root element (e.g. team-export-container
+//      added directly to Team.jsx's root div) — most reliable, exact content.
+//   2. The page's main content wrapper (the actual page component)
+const resolveTarget = (id) => {
+  const named = document.getElementById(id);
+  if (named && named.scrollHeight >= 100) return named;
+
+  // For Team page specifically, look for the Team component's main div
+  if (id === 'team-export-container') {
+    // Try to find Team page's main container (first div inside the exported area)
+    const teamContainer = document.querySelector('#team-export-container > div');
+    if (teamContainer && teamContainer.scrollHeight >= 100) return teamContainer;
+    
+    // Fallback: find any div that contains the Team table
+    const teamTable = document.querySelector('table');
+    if (teamTable) {
+      const tableContainer = teamTable.closest('div[style*="padding"]');
+      if (tableContainer && tableContainer.scrollHeight >= 100) return tableContainer;
+    }
+  }
+
+  // Fall back to the page's main content area
+  const pageContent = document.querySelector('main > section > div');
+  if (pageContent && pageContent.scrollHeight >= 100) return pageContent;
+
+  return named ?? null;
+};
+
+// ── Wait until element exists and has real content height ────────────────────
 const waitForElement = (id, minHeight = 200, timeoutMs = 20000) => {
   return new Promise((resolve) => {
     const start = Date.now();
@@ -10,16 +99,18 @@ const waitForElement = (id, minHeight = 200, timeoutMs = 20000) => {
     let stableCount = 0;
 
     const check = () => {
+      if (isAborted()) return resolve(null);
       const el = document.getElementById(id);
       if (el) {
-        const currentHeight = el.scrollHeight;
+        // Get the actual content element
+        const targetEl = id === 'team-export-container' && el.firstChild ? el.firstChild : el;
+        const currentHeight = targetEl.scrollHeight;
         if (currentHeight === lastHeight && currentHeight >= minHeight) {
           stableCount++;
         } else {
           stableCount = 0;
           lastHeight = currentHeight;
         }
-        // Resolve if height is stable for 3 checks OR we hit minHeight
         if (stableCount >= 3 || currentHeight >= minHeight) {
           return resolve(el);
         }
@@ -35,8 +126,8 @@ const waitForElement = (id, minHeight = 200, timeoutMs = 20000) => {
   });
 };
 
-// Toast helper
-const createToast = (message) => {
+// ── Toast ─────────────────────────────────────────────────────────────────────
+const createToast = (message, showStop = false) => {
   const existing = document.getElementById('pdf-export-toast');
   if (existing) existing.remove();
 
@@ -47,45 +138,62 @@ const createToast = (message) => {
     document.head.appendChild(style);
   }
 
+  const backdrop = document.createElement('div');
+  backdrop.id = 'pdf-export-backdrop';
+  backdrop.style.cssText = `
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(2px);
+    z-index: 999998;
+  `;
+
   const toast = document.createElement('div');
   toast.id = 'pdf-export-toast';
   toast.style.cssText = `
-    position: fixed;
-    bottom: 1.25rem;
-    right: 1.25rem;
-    background-color: #111827;
-    color: #ffffff;
-    font-size: 0.875rem;
-    font-weight: 700;
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.75rem;
-    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
-    z-index: 999999;
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    transition: all 0.2s ease;
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: #111827; color: #ffffff;
+    font-size: 0.875rem; font-weight: 700;
+    padding: 1.25rem 2rem; border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    z-index: 999999; display: flex; flex-direction: column;
+    align-items: center; gap: 0.875rem;
+    min-width: 260px; text-align: center;
   `;
 
   const spinner = document.createElement('span');
-  spinner.id = 'pdf-toast-spinner';
   spinner.style.cssText = `
-    display: inline-block;
-    width: 0.875rem;
-    height: 0.875rem;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: #ffffff;
-    border-radius: 9999px;
-    animation: _toast_spin 0.7s linear infinite;
-    flex-shrink: 0;
+    display: inline-block; width: 1.75rem; height: 1.75rem;
+    border: 3px solid rgba(255,255,255,0.2);
+    border-top-color: #ffffff; border-radius: 9999px;
+    animation: _toast_spin 0.7s linear infinite; flex-shrink: 0;
   `;
 
   const text = document.createElement('span');
   text.id = 'pdf-toast-text';
   text.innerText = message;
+  text.style.cssText = `font-size: 0.875rem; font-weight: 700; line-height: 1.4;`;
 
   toast.appendChild(spinner);
   toast.appendChild(text);
+
+  if (showStop) {
+    const stopBtn = document.createElement('button');
+    stopBtn.id = 'pdf-stop-btn';
+    stopBtn.innerText = 'Stop Export';
+    stopBtn.style.cssText = `
+      margin-top: 0.25rem; background: #ef4444; color: #ffffff;
+      border: none; border-radius: 0.5rem; padding: 0.4rem 1.25rem;
+      font-size: 0.75rem; font-weight: 700; cursor: pointer;
+      letter-spacing: 0.03em; transition: background 0.15s;
+    `;
+    stopBtn.onmouseenter = () => { stopBtn.style.background = '#dc2626'; };
+    stopBtn.onmouseleave = () => { stopBtn.style.background = '#ef4444'; };
+    stopBtn.onclick = () => { abort(); updateToast('Stopping export...'); hideStopButton(); };
+    toast.appendChild(stopBtn);
+  }
+
+  document.body.appendChild(backdrop);
   document.body.appendChild(toast);
   return toast;
 };
@@ -95,14 +203,76 @@ const updateToast = (message) => {
   if (text) text.innerText = message;
 };
 
-const removeToast = () => {
-  const toast = document.getElementById('pdf-export-toast');
-  if (toast) toast.remove();
+const hideStopButton = () => {
+  const btn = document.getElementById('pdf-stop-btn');
+  if (btn) btn.remove();
 };
 
-// ── Complete multi-page export ──────────────────────────────────────────────
+const removeToast = () => {
+  document.getElementById('pdf-export-toast')?.remove();
+  document.getElementById('pdf-export-backdrop')?.remove();
+};
+
+// ── Capture element as PNG with overflow fix ────────────────────────────────────
+const captureElement = async (element, exportBg) => {
+  // Get the actual content to capture (for Team page, use the inner div)
+  let captureTarget = element;
+  
+  // If this is team-export-container, use its first child (the actual content)
+  if (element.id === 'team-export-container' && element.firstChild) {
+    captureTarget = element.firstChild;
+  }
+  
+  // Temporarily fix overflow containers
+  fixOverflowContainers(captureTarget, true);
+  
+  try {
+    // Wait a tick for styles to apply
+    await new Promise(r => setTimeout(r, 50));
+    
+    // Get actual dimensions after removing overflow restrictions
+    const rect = captureTarget.getBoundingClientRect();
+    const actualHeight = captureTarget.scrollHeight;
+    const actualWidth = captureTarget.scrollWidth;
+    
+    const dataUrl = await toPng(captureTarget, {
+      quality: 1,
+      pixelRatio: 2,
+      cacheBust: true,
+      backgroundColor: exportBg,
+      skipAutoScale: false,
+      width: actualWidth,
+      height: actualHeight,
+    });
+    
+    return dataUrl;
+  } finally {
+    // Restore overflow settings
+    fixOverflowContainers(captureTarget, false);
+  }
+};
+
+// ── Add image to PDF — exact content height, no trailing white space ──────────
+const addImageToPdf = (pdf, dataUrl, elementWidth, elementHeight, pdfWidth, pdfPageHeight, isFirst) => {
+  const scale       = pdfWidth / elementWidth;
+  const imgHeightMm = elementHeight * scale;
+
+  if (!isFirst) pdf.addPage();
+
+  let remainingHeight = imgHeightMm;
+  let yOffset = 0;
+
+  while (remainingHeight > 0) {
+    const sliceHeight = Math.min(remainingHeight, pdfPageHeight);
+    pdf.addImage(dataUrl, 'PNG', 0, -yOffset, pdfWidth, imgHeightMm);
+    yOffset         += sliceHeight;
+    remainingHeight -= sliceHeight;
+    if (remainingHeight > 0) pdf.addPage();
+  }
+};
+
+// ── Complete multi-page export ────────────────────────────────────────────────
 export const exportCompleteReport = async () => {
-  // These IDs must match the wrapper divs in App.jsx isExporting block
   const pages = [
     { id: 'dashboard-export-container', name: 'Dashboard' },
     { id: 'revenue-export-container',   name: 'Revenue'   },
@@ -111,63 +281,71 @@ export const exportCompleteReport = async () => {
     { id: 'leads-export-container',     name: 'Leads'     },
   ];
 
-  createToast('Mounting all pages...');
+  resetAbort();
+
+  const exportBg = getExportBg();
+
+  const exportWrapper = document.getElementById('pdf-export-wrapper');
+  if (exportWrapper) {
+    isDarkMode()
+      ? exportWrapper.classList.add('dark')
+      : exportWrapper.classList.remove('dark');
+  }
+
+  createToast('Mounting all pages...', true);
 
   try {
-    // 1. Mount hidden pages
     triggerExportRender();
 
-    // 2. Give React time to mount the components
     updateToast('Waiting for pages to mount...');
     await new Promise((r) => setTimeout(r, 1500));
+    if (isAborted()) throw new Error('__aborted__');
 
-    // 3. Wait for each page to have real content
     updateToast('Waiting for data to load...');
     await Promise.all(pages.map((p) => waitForElement(p.id, 400, 20000)));
+    if (isAborted()) throw new Error('__aborted__');
 
-    // 4. Extra buffer for charts, images, animations
     updateToast('Rendering charts...');
     await new Promise((r) => setTimeout(r, 3000));
+    if (isAborted()) throw new Error('__aborted__');
 
-    // 5. Capture each page
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pdf      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pdfWidth = 210;
-    let isFirstSection = true;
+    const pdfPageH = 297;
+    let isFirst    = true;
     let capturedCount = 0;
 
     for (let i = 0; i < pages.length; i++) {
-      const page = pages[i];
-      const element = document.getElementById(page.id);
+      if (isAborted()) throw new Error('__aborted__');
+
+      const page    = pages[i];
+      const element = resolveTarget(page.id);
 
       if (!element) {
         console.warn(`Skipping ${page.name} — element not found`);
         continue;
       }
-
-      if (element.scrollHeight < 50) {
-        console.warn(`Skipping ${page.name} — no content (height: ${element.scrollHeight}px)`);
+      
+      // Get the actual content element for height check
+      let contentElement = element;
+      if (page.id === 'team-export-container' && element.firstChild) {
+        contentElement = element.firstChild;
+      }
+      
+      if (contentElement.scrollHeight < 50) {
+        console.warn(`Skipping ${page.name} — no content (height: ${contentElement.scrollHeight}px)`);
         continue;
       }
 
-      updateToast(`Capturing ${page.name} (${i + 1}/${pages.length})...`);
+      updateToast(`Capturing ${page.name}\n(${i + 1} of ${pages.length})...`);
       await new Promise((r) => setTimeout(r, 300));
 
       try {
-        const dataUrl = await toPng(element, {
-          quality: 1,
-          pixelRatio: 2,
-          cacheBust: true,
-          backgroundColor: '#ffffff',
-          skipAutoScale: false,
-        });
-
-        const imgHeight = (element.scrollHeight * pdfWidth) / element.scrollWidth;
-
-        if (!isFirstSection) pdf.addPage();
-        pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, imgHeight);
-        isFirstSection = false;
+        const dataUrl = await captureElement(element, exportBg);
+        addImageToPdf(pdf, dataUrl, contentElement.scrollWidth, contentElement.scrollHeight, pdfWidth, pdfPageH, isFirst);
+        isFirst = false;
         capturedCount++;
-        console.log(`✅ Captured ${page.name} (${element.scrollHeight}px)`);
+        console.log(`✅ Captured ${page.name} (${contentElement.scrollHeight}px)`);
       } catch (err) {
         console.error(`Failed to capture ${page.name}:`, err);
       }
@@ -177,25 +355,33 @@ export const exportCompleteReport = async () => {
       throw new Error('No pages were captured — check console for details');
     }
 
+    hideStopButton();
     updateToast(`Saving PDF (${capturedCount} pages)...`);
-    pdf.save(`complete_report_${new Date().toISOString().split('T')[0]}.pdf`);
+    pdf.save(`vidhelp_report_${new Date().toISOString().split('T')[0]}.pdf`);
 
     updateToast(`✅ Done! ${capturedCount} pages saved.`);
     setTimeout(removeToast, 3000);
     return true;
 
   } catch (error) {
+    if (error.message === '__aborted__') {
+      console.log('Export cancelled by user.');
+      updateToast('Export cancelled.');
+      setTimeout(removeToast, 2500);
+      return false;
+    }
     console.error('Export failed:', error);
-    updateToast(`❌ Export failed: ${error.message}`);
+    updateToast(`❌ Export failed:\n${error.message}`);
     setTimeout(removeToast, 4000);
     return false;
   } finally {
-    // Always unmount hidden pages
+    hideStopButton();
     dismissExportRender();
+    resetAbort();
   }
 };
 
-// ── Single page export ──────────────────────────────────────────────────────
+// ── Single page export ────────────────────────────────────────────────────────
 export const exportToPDF = async (elementId, filename, pageTitle = '') => {
   const element = document.getElementById(elementId);
   if (!element) {
@@ -203,48 +389,52 @@ export const exportToPDF = async (elementId, filename, pageTitle = '') => {
     return false;
   }
 
-  createToast(`Generating ${pageTitle || filename} PDF...`);
+  resetAbort();
+
+  const exportBg = getExportBg();
+
+  createToast(`Generating ${pageTitle || filename} PDF...`, true);
 
   try {
     await new Promise((r) => setTimeout(r, 300));
+    if (isAborted()) throw new Error('__aborted__');
 
-    const dataUrl = await toPng(element, {
-      quality: 1,
-      pixelRatio: 2,
-      cacheBust: true,
-      backgroundColor: '#ffffff',
-      skipAutoScale: false,
-      width: element.scrollWidth,
-      height: element.scrollHeight,
-    });
-
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pdfWidth = 210;
-    const pdfHeight = 297;
-    const imgHeight = (element.scrollHeight * pdfWidth) / element.scrollWidth;
-
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    pdf.addImage(dataUrl, 'PNG', 0, position, pdfWidth, imgHeight);
-    heightLeft -= pdfHeight;
-
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(dataUrl, 'PNG', 0, position, pdfWidth, imgHeight);
-      heightLeft -= pdfHeight;
+    const dataUrl = await captureElement(element, exportBg);
+    
+    // Get the actual content element for dimensions
+    let contentElement = element;
+    if (elementId === 'team-export-container' && element.firstChild) {
+      contentElement = element.firstChild;
     }
 
+    if (isAborted()) throw new Error('__aborted__');
+
+    const pdf      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pdfWidth = 210;
+    const pdfPageH = 297;
+
+    addImageToPdf(pdf, dataUrl, contentElement.scrollWidth, contentElement.scrollHeight, pdfWidth, pdfPageH, true);
+
+    hideStopButton();
     pdf.save(`${filename}_${new Date().toISOString().split('T')[0]}.pdf`);
     updateToast(`✅ ${pageTitle} saved!`);
     setTimeout(removeToast, 2000);
     return true;
+
   } catch (error) {
+    if (error.message === '__aborted__') {
+      console.log('Export cancelled by user.');
+      updateToast('Export cancelled.');
+      setTimeout(removeToast, 2500);
+      return false;
+    }
     console.error('Export PDF Error:', error);
-    updateToast(`❌ Failed: ${error.message}`);
+    updateToast(`❌ Failed:\n${error.message}`);
     setTimeout(removeToast, 3000);
     return false;
+  } finally {
+    hideStopButton();
+    resetAbort();
   }
 };
 

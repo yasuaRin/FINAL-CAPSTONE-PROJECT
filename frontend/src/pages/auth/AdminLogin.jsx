@@ -1,7 +1,9 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle2 } from 'lucide-react';
 
 const ROLES = [
   { value: 'admin', label: 'Admin' },
@@ -28,7 +30,6 @@ const EyeOffIcon = () => (
 
 const LeftPanel = () => (
   <div className="hidden lg:flex flex-col items-center justify-center w-1/2 min-h-screen bg-white dark:bg-[#0A0A0A] relative overflow-hidden px-12">
-    {/* Balls */}
     <div className="absolute top-[-100px] left-[-100px] w-96 h-96 rounded-full"
       style={{ background: 'radial-gradient(circle at 35% 35%, #ff6b6b, #DB1A1A, #8b0000)', opacity: 0.15, filter: 'blur(2px)' }} />
     <div className="absolute bottom-[-80px] right-[-80px] w-[420px] h-[420px] rounded-full"
@@ -43,18 +44,11 @@ const LeftPanel = () => (
       style={{ background: 'radial-gradient(circle at 30% 30%, #ffaaaa, #DB1A1A, #7a0000)', opacity: 0.2 }} />
     <div className="absolute bottom-[35%] right-[15%] w-10 h-10 rounded-full"
       style={{ background: 'radial-gradient(circle at 30% 30%, #ff6b6b, #DB1A1A, #8b0000)', opacity: 0.25 }} />
-
-    {/* Content */}
     <div className="relative z-10 text-center">
       <div className="mb-8 flex items-center justify-center">
         <div className="relative">
-          <span
-            className="text-[120px] font-black leading-none tracking-tighter select-none"
-            style={{
-              color: '#DB1A1A',
-              textShadow: '0 8px 32px rgba(219,26,26,0.2), 0 2px 4px rgba(219,26,26,0.3)',
-            }}
-          >
+          <span className="text-[120px] font-black leading-none tracking-tighter select-none"
+            style={{ color: '#DB1A1A', textShadow: '0 8px 32px rgba(219,26,26,0.2), 0 2px 4px rgba(219,26,26,0.3)' }}>
             VH
           </span>
           <div className="absolute -bottom-2 left-0 right-0 h-1 bg-[#DB1A1A] opacity-30 rounded-full" />
@@ -79,16 +73,55 @@ export const AdminLogin = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('admin');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [validated, setValidated] = useState(false);
 
+  // Dark mode detection (reactive)
+  const [isDark, setIsDark] = useState(
+    document.documentElement.classList.contains('dark') ||
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  );
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributeFilter: ['class'] });
+
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const mqHandler = (e) => {
+      if (!document.documentElement.classList.contains('dark')) setIsDark(e.matches);
+    };
+    mq.addEventListener('change', mqHandler);
+
+    return () => {
+      observer.disconnect();
+      mq.removeEventListener('change', mqHandler);
+    };
+  }, []);
+
+  // Toast state
+  const [toast, setToast] = useState(null); // { message, type }
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
+  };
+
+  const hideToast = () => setToast(null);
+
+  // Show success message from navigation state (e.g. after reset password)
   const successMessage = location.state?.message;
+  useEffect(() => {
+    if (successMessage) {
+      showToast(successMessage, 'success');
+      window.history.replaceState({}, document.title);
+    }
+  }, [successMessage]);
 
   useEffect(() => {
     if (!authLoading && user && validated) {
-      navigate('/admin/dashboard', { replace: true });
+      navigate('/admin', { replace: true });
     }
   }, [user, authLoading, validated, navigate]);
 
@@ -135,7 +168,6 @@ export const AdminLogin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
     setValidated(false);
     try {
@@ -145,13 +177,12 @@ export const AdminLogin = () => {
       await validateAdminAccess(data.user, role);
       setValidated(true);
     } catch (err) {
-      setError(err.message || 'Login failed.');
+      showToast(err.message || 'Login failed.', 'error');
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    setError('');
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -163,24 +194,22 @@ export const AdminLogin = () => {
       });
       if (error) throw new Error(error.message);
     } catch (err) {
-      setError(err.message || 'Google login failed.');
+      showToast(err.message || 'Google login failed.', 'error');
       setLoading(false);
     }
   };
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
     setLoading(true);
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/#/admin/auth/reset-password`,
       });
       if (resetError) throw new Error(resetError.message);
-      setSuccess('If this email is registered, a password reset link has been sent. Please check your inbox.');
+      showToast('If this email is registered, a password reset link has been sent. Please check your inbox.', 'success');
     } catch (err) {
-      setError(err.message || 'Failed to send reset email.');
+      showToast(err.message || 'Failed to send reset email.', 'error');
     } finally {
       setLoading(false);
     }
@@ -188,8 +217,7 @@ export const AdminLogin = () => {
 
   const switchView = (newView) => {
     setView(newView);
-    setError('');
-    setSuccess('');
+    hideToast();
     setEmail('');
   };
 
@@ -203,15 +231,60 @@ export const AdminLogin = () => {
 
   if (user && validated) return null;
 
+  // ─── Shared Toast (AnimatePresence) ───────────────────────────────────────
+  const ToastNotification = (
+    <AnimatePresence>
+      {toast && (
+        <motion.div
+          initial={{ opacity: 0, y: -20, x: '-50%' }}
+          animate={{ opacity: 1, y: 20, x: '-50%' }}
+          exit={{ opacity: 0, y: -20, x: '-50%' }}
+          style={{
+            position: 'fixed',
+            top: 4,
+            left: '50%',
+            zIndex: 100,
+            background: isDark ? '#1c1c1c' : '#ffffff',
+            color: isDark ? '#f5f5f5' : '#111111',
+            padding: '10px 20px',
+            borderRadius: 16,
+            boxShadow: isDark
+              ? '0 8px 40px rgba(0,0,0,0.5)'
+              : '0 8px 40px rgba(0,0,0,0.18)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            border: isDark ? '1px solid #2e2e2e' : '1px solid #e5e7eb',
+            minWidth: 260,
+          }}
+        >
+          <div style={{
+            borderRadius: '50%',
+            padding: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: toast.type === 'error' ? '#ef4444' : '#22c55e',
+            flexShrink: 0,
+          }}>
+            <CheckCircle2 size={16} color="white" />
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em' }}>
+            {toast.message}
+          </span>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   // ─── Forgot Password View ──────────────────────────────────────────────────
   if (view === VIEW.FORGOT) {
     return (
       <div className="min-h-screen flex">
+        {ToastNotification}
         <LeftPanel />
-
         <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0A] px-6 py-12">
           <div className="w-full max-w-md space-y-6">
-
             <div>
               <button
                 onClick={() => navigate('/')}
@@ -228,13 +301,6 @@ export const AdminLogin = () => {
               </p>
             </div>
 
-            {error && (
-              <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">{error}</div>
-            )}
-            {success && (
-              <div className="bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 p-3 rounded-lg text-sm border border-green-100 dark:border-green-900/50">{success}</div>
-            )}
-
             <form className="space-y-4" onSubmit={handleForgotPassword}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email address</label>
@@ -249,7 +315,7 @@ export const AdminLogin = () => {
               </div>
               <button
                 type="submit"
-                disabled={loading || !!success}
+                disabled={loading}
                 className="w-full py-2 px-4 rounded-md text-sm font-medium text-white bg-[#DB1A1A] hover:bg-[#b81515] disabled:opacity-50 transition-colors"
               >
                 {loading ? 'Sending...' : 'Send Reset Link'}
@@ -271,11 +337,10 @@ export const AdminLogin = () => {
   // ─── Login View ────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex">
+      {ToastNotification}
       <LeftPanel />
-
       <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0A] px-6 py-12">
         <div className="w-full max-w-md space-y-6">
-
           <div>
             <button
               onClick={() => navigate('/')}
@@ -290,15 +355,7 @@ export const AdminLogin = () => {
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Sign in to your VIDHELP Admin account</p>
           </div>
 
-          {error && (
-            <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">{error}</div>
-          )}
-          {successMessage && !error && (
-            <div className="bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 p-3 rounded-lg text-sm border border-green-100 dark:border-green-900/50">{successMessage}</div>
-          )}
-
           <form className="space-y-4" onSubmit={handleSubmit}>
-
             {/* Access Level */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Access Level</label>
@@ -398,13 +455,11 @@ export const AdminLogin = () => {
               </svg>
               Sign in with Google
             </button>
-
           </form>
 
           <p className="text-center text-xs text-gray-400 dark:text-gray-600">
             Contact your Super Admin if you need access credentials.
           </p>
-
         </div>
       </div>
     </div>

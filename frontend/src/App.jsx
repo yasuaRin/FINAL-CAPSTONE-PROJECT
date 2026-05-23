@@ -28,7 +28,7 @@ function App() {
 
   return (
     <HashRouter>
-      {/* ✅ MOVED: now inside HashRouter so router hooks work in page components */}
+      {/*  MOVED: now inside HashRouter so router hooks work in page components */}
       {isExporting && (
         <div style={{
           position: 'fixed',

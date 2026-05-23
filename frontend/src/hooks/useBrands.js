@@ -32,7 +32,7 @@ export function useBrands(brandTotals = new Map()) {
         if (cached) {
           const { brands: cachedBrands, kpis: cachedKpis, timestamp } = JSON.parse(cached);
           if (Date.now() - timestamp < CACHE_DURATION && cachedBrands?.length > 0) {
-            console.log('📦 Using cached brands data');
+            // console.log('📦 Using cached brands data');
             if (isMounted.current) {
               setBrands(cachedBrands);
               setKpis(cachedKpis);
@@ -114,7 +114,7 @@ export function useBrands(brandTotals = new Map()) {
         setKpis(newKpis);
       }
     } catch (err) {
-      console.error("[useBrands] Error:", err);
+     // console.error("[useBrands] Error:", err);
       if (isMounted.current) setError(err.message);
     } finally {
       if (isMounted.current) setIsLoading(false);
@@ -188,7 +188,7 @@ export function useBrands(brandTotals = new Map()) {
       sessionStorage.removeItem(CACHE_KEY);
       await fetchAll(brandTotals);
     } catch (err) {
-      console.error('FULL DELETE ERROR:', err);
+      // console.error('FULL DELETE ERROR:', err);
       alert(err.message || 'Delete failed');
       throw err;
     }
