@@ -368,7 +368,7 @@ export default function Team() {
       setNotification("Member removed successfully.");
     } catch (err) {
       console.error("Delete error:", err);
-      setNotification("❌ Failed to remove member.");
+      setNotification("Failed to remove member.");
     } finally {
       setDeleteTarget(null);
     }
@@ -412,7 +412,7 @@ export default function Team() {
               initial={{ opacity: 0, y: -20, x: "-50%" }} animate={{ opacity: 1, y: 20, x: "-50%" }} exit={{ opacity: 0, y: -20, x: "-50%" }}
               style={{ position: "fixed", top: 4, left: "50%", zIndex: 100, background: "var(--card)", color: "var(--foreground)", padding: "12px 24px", borderRadius: 16, boxShadow: "0 8px 40px rgba(0,0,0,0.18)", display: "flex", alignItems: "center", gap: 12, border: "1px solid var(--border)", minWidth: 260 }}
             >
-              <div style={{ borderRadius: "50%", padding: 4, display: "flex", alignItems: "center", justifyContent: "center", background: notification.includes("❌") ? "#ef4444" : "#22c55e", flexShrink: 0 }}>
+              <div style={{ borderRadius: "50%", padding: 4, display: "flex", alignItems: "center", justifyContent: "center", background: notification.includes("Failed") ? "#ef4444" : "#22c55e", flexShrink: 0 }}>
                 <CheckCircle2 size={16} color="white" />
               </div>
               <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em" }}>{notification}</span>
@@ -420,6 +420,7 @@ export default function Team() {
           )}
         </AnimatePresence>
 
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32, flexWrap: "wrap", gap: 16 }}>
         {/* Page Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 16 }}>
           <div>
@@ -432,6 +433,82 @@ export default function Team() {
           )}
         </div>
 
+        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, overflow: "hidden", boxShadow: "0 1px 8px rgba(0,0,0,0.06)" }}>
+          <div style={{ padding: "16px 24px", background: "var(--primary)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <p style={{ color: "#fff", fontWeight: 700, fontSize: 13, margin: 0 }}>Team Management</p>
+              <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 10, margin: "2px 0 0" }}>Manage team members and administrative oversight.</p>
+            </div>
+            <MoreVertical size={16} style={{ color: "rgba(255,255,255,0.5)" }} />
+          </div>
+
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ position: "relative", width: "100%", maxWidth: 340 }}>
+              <Search size={15} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted-foreground)" }} />
+              <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search members..." style={{ ...inputStyle, paddingLeft: 36, paddingRight: 16 }} />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: "var(--foreground)" }}>
+              <Activity size={13} style={{ color: "var(--primary)" }} />
+              {filtered.length} members found
+            </div>
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--muted)/30" }}>
+                  <th style={{ padding: "14px 12px", width: 50, textAlign: "center", fontSize: 10, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em" }}>No</th>
+                  <th style={{ padding: "14px 20px", fontSize: 10, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "left" }}>Profile</th>
+                  <th style={{ padding: "14px 20px", textAlign: "left" }}>
+                    <HeaderFilter
+                      label="Role"
+                      value={roleFilter}
+                      options={roleOptions}
+                      onChange={(v) => { setRoleFilter(v); setCurrentPage(1); }}
+                    />
+                  </th>
+                  <th style={{ padding: "14px 20px", textAlign: "left" }}>
+                    <HeaderFilter
+                      label="Employee Status"
+                      value={statusFilter}
+                      options={statusOptions}
+                      onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}
+                    />
+                  </th>
+                  <th style={{ padding: "14px 20px", textAlign: "left" }}>
+                    <HeaderFilter
+                      label="Level"
+                      value={levelFilter}
+                      options={levelOptions}
+                      onChange={(v) => { setLevelFilter(v); setCurrentPage(1); }}
+                    />
+                  </th>
+                  <th style={{ padding: "14px 20px", fontSize: 10, fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedMembers.map((member, idx) => (
+                  <tr
+                    key={`${member._table}-${member._id}`}
+                    style={{ borderBottom: idx < paginatedMembers.length - 1 ? "1px solid var(--border)" : "none", transition: "background 0.15s" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--muted)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <td style={{ padding: "16px 12px", textAlign: "center" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 8, background: "var(--surface)", fontSize: 11, fontWeight: 700, color: "var(--primary)" }}>
+                        {(currentPage - 1) * rowsPerPage + idx + 1}
+                      </span>
+                    </td>
+                    <td style={{ padding: "16px 20px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ position: "relative" }}>
+                          <Avatar src={member.avatar} name={member.name} />
+                          <div style={{ position: "absolute", bottom: 2, right: 2, width: 10, height: 10, borderRadius: "50%", background: member.status === "active" ? "#22c55e" : "#ef4444", border: "2px solid var(--card)" }} />
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>{member.name}</p>
+                          <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "3px 0 0", display: "flex", alignItems: "center", gap: 4 }}>
+                            <Mail size={11} /> {member.email || "—"}
         {/* Search + Count — di luar card, di bawah page header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
           <div style={{ position: "relative", width: "100%", maxWidth: 340 }}>
@@ -534,6 +611,41 @@ export default function Team() {
                           </p>
                         )}
                       </div>
+                    </td>
+                    <td style={{ padding: "16px 20px" }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>{member.roleDescription}</p>
+                      <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "3px 0 0" }}>Intelligence Division</p>
+                    </td>
+                    <td style={{ padding: "16px 20px" }}>
+                      <StatusBadge status={member.status} />
+                    </td>
+                    <td style={{ padding: "16px 20px" }}>
+                      <RoleBadge role={member.role} />
+                    </td>
+                    <td style={{ padding: "16px 20px", textAlign: "right" }}>
+                      {canEdit(member) && (
+                        <div style={{ display: "inline-flex", gap: 6 }}>
+                          <button onClick={() => openForm(member)}
+                            style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(37,99,235,0.08)", cursor: "pointer", color: "var(--primary)", transition: "all 0.15s", display: "flex", alignItems: "center", justifyContent: "center" }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(37,99,235,0.18)")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(37,99,235,0.08)")}>
+                            <Edit3 size={14} />
+                          </button>
+                          <button onClick={() => setDeleteTarget(member)}
+                            style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(239,68,68,0.08)", cursor: "pointer", color: "#ef4444", transition: "all 0.15s", display: "flex", alignItems: "center", justifyContent: "center" }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(239,68,68,0.18)")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(239,68,68,0.08)")}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filtered.length === 0 && (
+              <div style={{ padding: 48, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>No members found.</div>
                     </div>
                   </div>
 
@@ -582,7 +694,6 @@ export default function Team() {
           </div>
         </div>
 
-          {/* Pagination */}
           {filtered.length > 0 && (
             <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -628,14 +739,13 @@ export default function Team() {
           )}
         </div>
 
-        {/* Delete Modal */}
         {deleteTarget && (
           <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
             <div onClick={() => setDeleteTarget(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
             <div style={{ position: "relative", zIndex: 10, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: 32, maxWidth: 420, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center" }}>
-                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(219,26,26,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <AlertTriangle size={24} color="var(--primary)" />
+                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(239,68,68,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <AlertTriangle size={24} color="#ef4444" />
                 </div>
                 <div>
                   <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>Delete Member?</h3>
@@ -645,14 +755,13 @@ export default function Team() {
                 </div>
                 <div style={{ display: "flex", gap: 12, width: "100%" }}>
                   <button onClick={() => setDeleteTarget(null)} style={cancelBtn}>Cancel</button>
-                  <button onClick={handleDelete} style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "var(--primary)", color: "var(--primary-foreground)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Confirm</button>
+                  <button onClick={handleDelete} style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "#ef4444", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Confirm</button>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Add / Edit Modal */}
         {isFormOpen && (
           <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
             <div onClick={closeForm} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
@@ -663,7 +772,7 @@ export default function Team() {
               </div>
               <div style={{ padding: 28, overflowY: "auto", maxHeight: "calc(90vh - 60px)" }}>
                 {formError && (
-                  <div style={{ marginBottom: 20, padding: "10px 14px", background: "rgba(219,26,26,0.08)", border: "1px solid rgba(219,26,26,0.2)", borderRadius: 10, color: "var(--primary)", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ marginBottom: 20, padding: "10px 14px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10, color: "#ef4444", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
                     <AlertTriangle size={14} /> {formError}
                   </div>
                 )}

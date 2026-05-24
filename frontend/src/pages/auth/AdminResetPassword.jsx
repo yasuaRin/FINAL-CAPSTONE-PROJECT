@@ -264,7 +264,7 @@ const AdminResetPassword = () => {
 
           {!sessionReady && !error && (
             <div className="flex justify-center py-4">
-              <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-700 border-t-[#DB1A1A] rounded-full animate-spin" />
+              <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-700 border-t-[#2563eb] rounded-full animate-spin" />
             </div>
           )}
 
@@ -286,7 +286,7 @@ const AdminResetPassword = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     autoComplete="new-password"
-                    className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
+                    className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
                   />
                   <button type="button" onClick={() => setShowPassword(!showPassword)}
                     className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10">
@@ -304,7 +304,7 @@ const AdminResetPassword = () => {
                     onChange={(e) => setConfirm(e.target.value)}
                     placeholder="••••••••"
                     autoComplete="new-password"
-                    className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
+                    className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
                   />
                   <button type="button" onClick={() => setShowConfirm(!showConfirm)}
                     className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10">
@@ -313,7 +313,7 @@ const AdminResetPassword = () => {
                 </div>
               </div>
               <button type="submit" disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#DB1A1A] hover:bg-[#b81515] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DB1A1A] dark:focus:ring-offset-[#141414] disabled:opacity-50 transition-colors">
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#2563eb] hover:bg-[#b81515] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2563eb] dark:focus:ring-offset-[#141414] disabled:opacity-50 transition-colors">
                 {loading ? 'Checking...' : 'Save New Password'}
               </button>
             </form>
@@ -334,14 +334,14 @@ const AdminResetPassword = () => {
                   onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
                   placeholder="000000"
                   autoComplete="one-time-code"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 tracking-widest text-center text-lg"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md shadow-sm focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb] text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 tracking-widest text-center text-lg"
                 />
                 <p className="mt-1 text-xs text-center text-gray-400 dark:text-gray-500">
                   Wait for a fresh code before submitting
                 </p>
               </div>
               <button type="submit" disabled={mfaLoading || mfaCode.length !== 6}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#DB1A1A] hover:bg-[#b81515] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DB1A1A] dark:focus:ring-offset-[#141414] disabled:opacity-50 transition-colors">
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#2563eb] hover:bg-[#b81515] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2563eb] dark:focus:ring-offset-[#141414] disabled:opacity-50 transition-colors">
                 {mfaLoading ? 'Verifying...' : 'Verify & Save Password'}
               </button>
               <button type="button" onClick={() => { setNeedsMfa(false); setMfaCode(''); setError(''); }}

@@ -47,9 +47,9 @@ const createLeadIcon = (lead, isSelected, partnerData) => {
   const isMid = lead.potentialScore >= 70 && lead.potentialScore < 85;
   const partnered = !!partnerData;
 
-  let color = isHigh ? "#f43f5e" : isMid ? "#f59e0b" : "#64748b";
+  let color = isHigh ? "#3b82f6" : isMid ? "#f59e0b" : "#64748b";
   if (partnered) {
-    if (partnerData.status === "Partner") color = "#3b82f6";
+    if (partnerData.status === "Partner") color = "#2563eb";
     else if (partnerData.status === "Dealing") color = "#8b5cf6";
     else color = "#94a3b8";
   }
@@ -71,7 +71,7 @@ const createLeadIcon = (lead, isSelected, partnerData) => {
         box-sizing:border-box;
       ">
         <div style="width:${innerSize}px;height:${innerSize}px;background-color:${color};border-radius:50%;${isHigh ? `box-shadow:0 0 10px ${color}` : ""}"></div>
-        ${isHigh ? `<div style="position:absolute;top:-7px;right:-7px;background:#f43f5e;color:white;padding:1px 3px;border-radius:3px;font-size:7px;font-weight:900;border:1.5px solid white;line-height:1.4;">HOT</div>` : ""}
+        ${isHigh ? `<div style="position:absolute;top:-7px;right:-7px;background:#3b82f6;color:white;padding:1px 3px;border-radius:3px;font-size:7px;font-weight:900;border:1.5px solid white;line-height:1.4;">HOT</div>` : ""}
         ${partnered ? `<div style="position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;background:${color};border:2px solid white;border-radius:50%;"></div>` : ""}
       </div>
     `,
@@ -97,10 +97,8 @@ function LeadsInner() {
   const [waOpened, setWaOpened] = useState(false);
   const [websiteVisited, setWebsiteVisited] = useState(false);
   const [aiInsights, setAiInsights] = useState({});
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  // Filter state — must be declared BEFORE filteredBrands below
   const [statusFilter, setStatusFilter] = useState("All");
 
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -115,9 +113,7 @@ function LeadsInner() {
   const PLACES_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
   const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
-  // Pagination computed values
   const filteredBrands = statusFilter === "All" ? partneredBrands : partneredBrands.filter((b) => b.status === statusFilter);
-
   const totalPages = Math.max(1, Math.ceil(filteredBrands.length / pageSize));
   const paginatedBrands = filteredBrands.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
@@ -627,7 +623,6 @@ Be direct. No fluff. No percentages.`;
 
   const canMarkSent = emailInput.trim().length > 0 || waOpened;
 
-  // Build page number array with ellipsis for large page counts
   const getPageNumbers = () => {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
     const pages = [];
@@ -643,7 +638,6 @@ Be direct. No fluff. No percentages.`;
 
   return (
     <div id="leads-report-container" className="flex flex-col gap-8 pb-10">
-      {/* Header HUD */}
       <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 primary-gradient rounded-xl flex items-center justify-center text-white shadow-lg relative">
@@ -654,7 +648,7 @@ Be direct. No fluff. No percentages.`;
             <h1 className="text-2xl font-bold tracking-tight">Leads Radar</h1>
             <p className="text-[11px] font-semibold text-muted-foreground tracking-wide mt-0.5">Find your potential partnership</p>
             <div className="flex items-center gap-1.5 mt-1">
-              <span className={`w-2 h-2 rounded-full animate-pulse ${isScanning ? "bg-rose-500 shadow-[0_0_8px_#f43f5e]" : leadsFound.length > 0 ? "bg-emerald-500 shadow-[0_0_8px_#10b981]" : "bg-slate-500"}`} />
+              <span className={`w-2 h-2 rounded-full animate-pulse ${isScanning ? "bg-blue-500 shadow-[0_0_8px_#3b82f6]" : leadsFound.length > 0 ? "bg-emerald-500 shadow-[0_0_8px_#10b981]" : "bg-slate-500"}`} />
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{isScanning ? "SCANNING..." : leadsFound.length > 0 ? `${leadsFound.length} REAL BUSINESSES FOUND` : "SYSTEM READY"}</p>
             </div>
           </div>
@@ -685,7 +679,7 @@ Be direct. No fluff. No percentages.`;
             <span className="text-border">|</span>
             <select value={potentialFilter} onChange={(e) => setPotentialFilter(e.target.value)} className="bg-transparent text-xs font-semibold uppercase outline-none cursor-pointer hover:text-primary transition-colors appearance-none">
               <option value="All">All Potential</option>
-              <option value="High">Elite Tier (Red)</option>
+              <option value="High">Elite Tier (Blue)</option>
               <option value="Mid">Growth Tier (Yellow)</option>
               <option value="Low">Low Potential (Gray)</option>
             </select>
@@ -705,7 +699,6 @@ Be direct. No fluff. No percentages.`;
         </div>
       </div>
 
-      {/* Map */}
       <div ref={mapSectionRef} className="h-[600px] relative dashboard-card overflow-hidden bg-muted/30 border border-border shrink-0">
         <MapContainer key={`${mapCenter[0].toFixed(3)},${mapCenter[1].toFixed(3)}`} center={mapCenter} zoom={15} style={{ height: "100%", width: "100%", zIndex: 0 }} zoomControl={true}>
           <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -716,7 +709,6 @@ Be direct. No fluff. No percentages.`;
           ))}
         </MapContainer>
 
-        {/* Scanning overlay */}
         <AnimatePresence>
           {isScanning && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center bg-background/20 backdrop-blur-[1px]">
@@ -730,7 +722,6 @@ Be direct. No fluff. No percentages.`;
           )}
         </AnimatePresence>
 
-        {/* Detail Panel */}
         <AnimatePresence>
           {selectedLead && (
             <motion.div
@@ -743,7 +734,7 @@ Be direct. No fluff. No percentages.`;
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-10 h-10 rounded-lg flex items-center justify-center
-                    ${selectedLead.potentialScore >= 85 ? "bg-rose-500 text-white" : selectedLead.potentialScore >= 70 ? "bg-amber-500 text-white" : "bg-slate-500 text-white"}`}
+                    ${selectedLead.potentialScore >= 85 ? "bg-blue-500 text-white" : selectedLead.potentialScore >= 70 ? "bg-amber-500 text-white" : "bg-slate-500 text-white"}`}
                   >
                     {isFetchingDetail ? <Loader2 size={20} className="animate-spin" /> : <Shield size={20} />}
                   </div>
@@ -884,7 +875,6 @@ Be direct. No fluff. No percentages.`;
           )}
         </AnimatePresence>
 
-        {/* Coordinates overlay */}
         <div className="absolute bottom-6 left-6 z-30 hidden md:flex">
           <div className="bg-background/80 backdrop-blur-md border border-border p-4 rounded-xl shadow-lg flex items-center gap-6">
             <div className="flex flex-col">
@@ -898,14 +888,13 @@ Be direct. No fluff. No percentages.`;
             </div>
             <div className="w-px h-8 bg-border" />
             <div className="flex items-center gap-3">
-              <div className={`w-2 h-2 rounded-full animate-pulse ${isScanning ? "bg-rose-500 shadow-[0_0_8px_#f43f5e]" : "bg-emerald-500 shadow-[0_0_8px_#10b981]"}`} />
+              <div className={`w-2 h-2 rounded-full animate-pulse ${isScanning ? "bg-blue-500 shadow-[0_0_8px_#3b82f6]" : "bg-emerald-500 shadow-[0_0_8px_#10b981]"}`} />
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{filteredLeads.length} Real Businesses</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Partnership Table */}
       <div className="dashboard-card bg-background border border-border overflow-hidden flex flex-col shadow-sm">
         <div className="p-6 border-b border-border flex flex-col md:flex-row md:items-center justify-between bg-muted/10 gap-4">
           <div className="flex items-center gap-4">
@@ -950,6 +939,24 @@ Be direct. No fluff. No percentages.`;
           ))}
         </div>
 
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-muted/30 border-b border-border">
+                {["No", "Business Name", "Sector", "Location", "Date", "Outreach", "Status", "Actions"].map((h) => (
+                  <th key={h} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
+                    {h}
+                  </th>
+                ))}
+               </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {partneredBrands.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-8 py-32 text-center">
+                    <div className="flex flex-col items-center gap-6 opacity-20">
+                      <div className="w-20 h-20 border-2 border-dashed border-muted-foreground rounded-full flex items-center justify-center">
+                        <Target size={40} />
         {/* Rows */}
         <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "4px 8px" }}>
           {partneredBrands.length === 0 ? (
@@ -1096,6 +1103,148 @@ Be direct. No fluff. No percentages.`;
                       )}
                       <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(brand); }} style={actionBtn("rgba(219,26,26,0.08)", "#DB1A1A")} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(219,26,26,0.18)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(219,26,26,0.08)")} title="Delete"><Trash2 size={14} /></button>
                     </div>
+                  </td>
+                </tr>
+              ) : (
+                paginatedBrands.map((brand, index) => {
+                  const rowNumber = (currentPage - 1) * pageSize + index + 1;
+                  const hasCoords = !!(brand.lat && brand.lng);
+                  const isClickable = hasCoords;
+                  return (
+                    <tr
+                      key={brand.id}
+                      onClick={() => isClickable && handleTableRowClick(brand)}
+                      className={`transition-all border-l-4 border-l-transparent hover:border-l-primary hover:bg-muted/20 ${isClickable ? "cursor-pointer" : "cursor-default"}`}
+                    >
+                      <td className="px-6 py-6">
+                        <span className="text-sm font-bold text-blue-500">{rowNumber}</span>
+                      </td>
+                      <td className="px-6 py-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-foreground text-background flex items-center justify-center font-black text-sm shadow-sm rounded">{brand.name.substring(0, 2).toUpperCase()}</div>
+                          <div>
+                            <span className="font-bold text-sm tracking-tight block">{brand.name}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-6">
+                        <span className="text-[10px] font-black uppercase tracking-widest bg-muted/50 border border-border px-3 py-1 rounded">{brand.industry}</span>
+                      </td>
+                      <td className="px-6 py-6">
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-black uppercase tracking-widest">
+                          <MapPin size={12} className="text-primary" />
+                          {brand.location}
+                        </div>
+                      </td>
+                      <td className="px-6 py-6">
+                        <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">{new Date(brand.datePartnered).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                      </td>
+                      <td className="px-6 py-6">
+                        {brand.outreachMethod ? (
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2 size={14} className="text-emerald-500" />
+                            <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">{brand.outreachMethod === "email" ? "Email" : brand.outreachMethod === "whatsapp" ? "WhatsApp" : "Sent"}</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const lead = leadsFound.find((l) => l.id === brand.id) || brand;
+                              handleContact(lead);
+                            }}
+                            className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-violet-600 hover:text-violet-700 transition-colors"
+                          >
+                            <Mail size={12} /> Send Email
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-6 py-6">
+                        {editingId === brand.id ? (
+                          <select
+                            value={brand.status}
+                            onChange={(e) => updateStatus(brand.id, e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full border outline-none cursor-pointer transition-all
+                              ${
+                                brand.status === "Partner"
+                                  ? "bg-blue-500/10 text-blue-500 border-blue-500/30"
+                                  : brand.status === "Dealing"
+                                    ? "bg-purple-500/10 text-purple-500 border-purple-500/30"
+                                    : "bg-slate-500/10 text-slate-400 border-slate-500/30"
+                              }`}
+                          >
+                            <option value="In Progress">In Progress</option>
+                            <option value="Dealing">Dealing</option>
+                            <option value="Partner">Partner</option>
+                          </select>
+                        ) : (
+                          <span
+                            className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full border inline-flex items-center justify-center min-w-[100px]
+                            ${
+                              brand.status === "Partner"
+                                ? "bg-blue-500/10 text-blue-500 border-blue-500/30"
+                                : brand.status === "Dealing"
+                                  ? "bg-purple-500/10 text-purple-500 border-purple-500/30"
+                                  : "bg-slate-500/10 text-slate-400 border-slate-500/30"
+                            }`}
+                          >
+                            {brand.status}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-6">
+                        <div className="inline-flex gap-2">
+                          {editingId === brand.id ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingId(null);
+                              }}
+                              style={actionBtn("rgba(34,197,94,0.1)", "#22c55e")}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(34,197,94,0.2)")}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(34,197,94,0.1)")}
+                              title="Save"
+                            >
+                              <Check size={14} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingId(brand.id);
+                              }}
+                              style={actionBtn("rgba(99,102,241,0.08)", "#6366f1")}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(99,102,241,0.18)")}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(99,102,241,0.08)")}
+                              title="Edit Status"
+                            >
+                              <Edit3 size={14} />
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (paginatedBrands.length === 1 && currentPage > 1) {
+                                setCurrentPage((p) => p - 1);
+                              }
+                              removePartner(brand.id);
+                              if (editingId === brand.id) setEditingId(null);
+                            }}
+                            style={actionBtn("rgba(239,68,68,0.08)", "#2563eb")}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(239,68,68,0.18)")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(239,68,68,0.08)")}
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
                   </div>
                 </div>
               );
@@ -1104,9 +1253,7 @@ Be direct. No fluff. No percentages.`;
         </div>
       </div>
 
-        {/* Table Footer: Show entries + info + pagination */}
         <div className="p-6 bg-muted/5 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
-          {/* Show entries */}
           <div className="flex items-center gap-3">
             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">Show</span>
             <select
@@ -1126,7 +1273,6 @@ Be direct. No fluff. No percentages.`;
             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">entries</span>
           </div>
 
-          {/* Showing X to Y of Z */}
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">
             {filteredBrands.length === 0
               ? statusFilter === "All"
@@ -1135,7 +1281,6 @@ Be direct. No fluff. No percentages.`;
               : `Showing ${(currentPage - 1) * pageSize + 1} to ${Math.min(currentPage * pageSize, filteredBrands.length)} of ${filteredBrands.length} partners`}
           </p>
 
-          {/* Pagination buttons */}
           {totalPages > 1 && (
             <div className="flex items-center gap-1.5">
               <button

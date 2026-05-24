@@ -44,18 +44,25 @@ const RevenueSessionsTable = ({
 
   const [currentPage, setCurrentPage] = useState(1);
 
+  // FIX: Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [rowLimit, searchTerm, tableFilter, sortCol, sortDir]);
+  }, [rowLimit, searchTerm, tableFilter.brandId, tableFilter.period, sortCol, sortDir]);
 
+  // FIX: Use filtered sessions count from sessionIntelligence (already filtered by brand and period)
   const totalCount = sessionIntelligence.length;
   const showingAll = rowLimit === null;
   const totalPages = showingAll ? 1 : Math.max(1, Math.ceil(totalCount / rowLimit));
   const safePage = Math.min(currentPage, totalPages);
 
+  // FIX: Use sessionIntelligence (already filtered) for pagination
   const paginatedSessions = useMemo(() => {
     if (showingAll) return sessionIntelligence;
     const start = (safePage - 1) * rowLimit;
+    // Ensure we don't go out of bounds
+    if (start >= sessionIntelligence.length) {
+      return [];
+    }
     return sessionIntelligence.slice(start, start + rowLimit);
   }, [sessionIntelligence, showingAll, safePage, rowLimit]);
 
@@ -68,6 +75,23 @@ const RevenueSessionsTable = ({
   const rowEnd = showingAll
     ? totalCount
     : Math.min(rowStart + rowLimit - 1, totalCount);
+
+  // FIX: Show clear filter badge when brand is filtered
+  const hasActiveFilters = tableFilter.brandId !== 'All' || tableFilter.period !== 'All';
+
+  // FIX: Get current filter display text
+  const getFilterDisplay = () => {
+    if (tableFilter.brandId !== 'All' && tableFilter.period !== 'All') {
+      return `${tableFilter.brandName || 'Brand'} · ${tableFilter.period}`;
+    }
+    if (tableFilter.brandId !== 'All') {
+      return tableFilter.brandName || 'Selected Brand';
+    }
+    if (tableFilter.period !== 'All') {
+      return tableFilter.period;
+    }
+    return '';
+  };
 
   return (
     <div className="lg:col-span-2 flex flex-col min-h-[500px] lg:h-[700px]">
@@ -108,16 +132,21 @@ const RevenueSessionsTable = ({
               />
             </div>
 
-            {(tableFilter.brandId !== 'All' || tableFilter.period !== 'All') && (
+            {/* FIX: Show clear filters button more prominently */}
+            {hasActiveFilters && (
               <button
                 onClick={() => setTableFilter({ brandId: 'All', period: 'All' })}
                 className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-[10px] border border-primary/20 whitespace-nowrap"
               >
-                Clear <X size={10} />
+                Clear: {getFilterDisplay()} <X size={10} />
               </button>
             )}
 
+            {/* FIX: Show result count badge */}
             <div className="ml-auto flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-[10px] text-muted-foreground">
+                <span className="font-bold">{totalCount}</span> results
+              </div>
               <button
                 onClick={() => { resetForm(); setShowSessionModal(true); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg text-[11px] font-medium whitespace-nowrap min-h-[32px]"
@@ -128,6 +157,13 @@ const RevenueSessionsTable = ({
               </button>
             </div>
           </div>
+          
+          {/* FIX: Show active filter info on mobile */}
+          {hasActiveFilters && (
+            <div className="mt-2 text-[9px] text-muted-foreground md:hidden">
+              Filtered by: {getFilterDisplay()}
+            </div>
+          )}
         </div>
 
         {/* Table */}
@@ -150,7 +186,12 @@ const RevenueSessionsTable = ({
               {paginatedSessions.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-xs text-muted-foreground">
-                    {loading ? 'Loading sessions…' : 'No sessions found.'}
+                    {loading 
+                      ? 'Loading sessions…' 
+                      : hasActiveFilters 
+                        ? `No sessions found for the selected ${tableFilter.brandId !== 'All' ? 'brand' : 'period'}. Try clearing filters.`
+                        : 'No sessions found. Click "Add Session" to create one.'
+                    }
                   </td>
                 </tr>
               )}
@@ -228,12 +269,13 @@ const RevenueSessionsTable = ({
             {totalCount === 0
               ? 'No sessions'
               : showingAll
-                ? `All ${totalCount.toLocaleString()} sessions`
-                : `Showing ${rowStart.toLocaleString()}–${rowEnd.toLocaleString()} of ${totalCount.toLocaleString()} sessions`
+                ? `All ${totalCount.toLocaleString()} session${totalCount !== 1 ? 's' : ''}`
+                : `Showing ${rowStart.toLocaleString()}–${rowEnd.toLocaleString()} of ${totalCount.toLocaleString()} session${totalCount !== 1 ? 's' : ''}`
             }
           </p>
 
-          {!showingAll && totalPages > 1 && (
+          {/* FIX: Only show pagination when needed and not showing all */}
+          {!showingAll && totalPages > 1 && totalCount > 0 && (
             <div className="flex items-center gap-1 flex-wrap justify-end">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -273,12 +315,23 @@ const RevenueSessionsTable = ({
             </div>
           )}
 
-          {showingAll && totalCount > 0 && (
+          {/* FIX: Show "Show All" button when paginated */}
+          {!showingAll && totalCount > rowLimit && (
+            <button
+              onClick={() => setRowLimit(null)}
+              className="text-[10px] font-medium text-primary hover:underline transition-colors whitespace-nowrap"
+            >
+              Show All ({totalCount})
+            </button>
+          )}
+
+          {/* FIX: Show "Show less" button when showing all and there are many items */}
+          {showingAll && totalCount > 25 && (
             <button
               onClick={() => setRowLimit(25)}
               className="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
             >
-              ← Show 25
+              Show less (25 per page) ←
             </button>
           )}
         </div>

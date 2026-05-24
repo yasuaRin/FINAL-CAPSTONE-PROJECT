@@ -4,19 +4,16 @@
 @plugin "tailwindcss-animate";
 
 @theme {
-  /* Font Families */
   --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-serif: "Merriweather", Georgia, "Times New Roman", serif;
   --font-mono: "JetBrains Mono", "SF Mono", Monaco, "Cascadia Code", monospace;
 
-  /* Border Radius */
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
 
-  /* Colors - Light Mode (Default) */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -37,14 +34,12 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* Chart Colors */
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  /* Sidebar Colors */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -54,7 +49,6 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Brand Specific */
   --color-brand-primary: var(--brand-primary);
   --color-brand-bg: var(--brand-bg);
   --color-brand-dark: var(--brand-dark);
@@ -62,56 +56,41 @@
 
 @layer base {
   :root {
-    /* Core Colors */
     --background: #ffffff;
     --foreground: #111111;
-    
     --card: #ffffff;
     --card-foreground: #111111;
-    
     --popover: #ffffff;
     --popover-foreground: #111111;
-    
-    /* Primary - Crimson Red */
-    --primary: #DB1A1A;
+    --primary: #2563eb;
     --primary-foreground: #ffffff;
-    
-    /* Secondary - Cyan/Teal accent */
     --secondary: #00f5ff;
     --secondary-foreground: #111111;
-    
     --muted: #f5f5f5;
     --muted-foreground: #7B809A;
-    
     --accent: #f5f5f5;
     --accent-foreground: #111111;
-    
-    --destructive: #DB1A1A;
+    --destructive: #ef4444;
     --destructive-foreground: #ffffff;
-    
     --border: #e5e5e5;
     --input: #e5e5e5;
-    --ring: #DB1A1A;
-    
+    --ring: #2563eb;
     --radius: 0.75rem;
 
-    /* Sidebar - Light Mode */
     --sidebar: #ffffff;
     --sidebar-foreground: #111111;
-    --sidebar-primary: #DB1A1A;
+    --sidebar-primary: #2563eb;
     --sidebar-primary-foreground: #ffffff;
     --sidebar-accent: #f5f5f5;
     --sidebar-accent-foreground: #111111;
     --sidebar-border: #e5e5e5;
-    --sidebar-ring: #DB1A1A;
+    --sidebar-ring: #2563eb;
 
-    /* Brand Colors */
-    --brand-primary: #DB1A1A;
+    --brand-primary: #2563eb;
     --brand-bg: #ffffff;
     --brand-dark: #111111;
 
-    /* Chart Colors */
-    --chart-1: #DB1A1A;
+    --chart-1: #2563eb;
     --chart-2: #2E8B57;
     --chart-3: #1E90FF;
     --chart-4: #FF8C00;
@@ -119,47 +98,36 @@
   }
 
   .dark {
-    /* Core Colors - Dark Mode */
     --background: #0A0A0A;
     --foreground: #ffffff;
-    
     --card: #141414;
     --card-foreground: #ffffff;
-    
     --popover: #141414;
     --popover-foreground: #ffffff;
-    
-    --primary: #DB1A1A;
+    --primary: #3b82f6;
     --primary-foreground: #ffffff;
-    
     --secondary: #00f5ff;
     --secondary-foreground: #ffffff;
-    
     --muted: #1f1f1f;
     --muted-foreground: #a0a0a0;
-    
     --accent: #1f1f1f;
     --accent-foreground: #ffffff;
-    
-    --destructive: #DB1A1A;
+    --destructive: #ef4444;
     --destructive-foreground: #ffffff;
-    
     --border: #262626;
     --input: #262626;
-    --ring: #DB1A1A;
+    --ring: #3b82f6;
 
-    /* Sidebar - Dark Mode */
     --sidebar: #000000;
     --sidebar-foreground: #ffffff;
-    --sidebar-primary: #DB1A1A;
+    --sidebar-primary: #3b82f6;
     --sidebar-primary-foreground: #ffffff;
     --sidebar-accent: rgba(255, 255, 255, 0.05);
     --sidebar-accent-foreground: #ffffff;
     --sidebar-border: rgba(255, 255, 255, 0.1);
-    --sidebar-ring: #DB1A1A;
+    --sidebar-ring: #3b82f6;
 
-    /* Brand Colors - Dark Mode */
-    --brand-primary: #DB1A1A;
+    --brand-primary: #3b82f6;
     --brand-bg: #0A0A0A;
     --brand-dark: #ffffff;
   }
@@ -217,7 +185,6 @@
 }
 
 @layer components {
-  /* Card Styles */
   .dashboard-card {
     background-color: var(--card);
     border-radius: var(--radius);
@@ -231,7 +198,6 @@
     box-shadow: 0 20px 25px -12px rgba(0, 0, 0, 0.1);
   }
   
-  /* Gradient Card Header */
   .card-header-gradient {
     position: absolute;
     top: -1rem;
@@ -247,9 +213,8 @@
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
   
-  /* Gradient Backgrounds */
   .primary-gradient {
-    background: linear-gradient(195deg, #DB1A1A 0%, #9A1212 100%);
+    background: linear-gradient(195deg, #2563eb 0%, #1d4ed8 100%);
   }
   
   .secondary-gradient {
@@ -269,14 +234,13 @@
   }
   
   .error-gradient {
-    background: linear-gradient(195deg, #DB1A1A 0%, #9A1212 100%);
+    background: linear-gradient(195deg, #ef4444 0%, #dc2626 100%);
   }
   
   .dark-gradient {
     background: linear-gradient(195deg, #42424A 0%, #191919 100%);
   }
   
-  /* Table Styles */
   .dashboard-table {
     width: 100%;
     border-collapse: collapse;
@@ -308,9 +272,8 @@
     border-bottom: none;
   }
   
-  /* Button Styles */
   .btn-primary {
-    background: linear-gradient(195deg, #DB1A1A 0%, #9A1212 100%);
+    background: linear-gradient(195deg, #2563eb 0%, #1d4ed8 100%);
     color: white;
     padding: 0.5rem 1.5rem;
     border-radius: var(--radius);
@@ -321,7 +284,7 @@
   
   .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(219, 26, 26, 0.3);
+    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
   }
   
   .btn-secondary {
@@ -339,8 +302,7 @@
     border-color: var(--primary);
   }
   
-  /* Input Styles */
-  .input-crimson {
+  .input-primary {
     background-color: var(--background);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -348,13 +310,12 @@
     transition: all 0.2s ease;
   }
   
-  .input-crimson:focus {
+  .input-primary:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(219, 26, 26, 0.1);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
   
-  /* Badge Styles */
   .badge {
     display: inline-flex;
     align-items: center;
@@ -383,11 +344,9 @@
     background-color: #1A73E8;
     color: white;
   }
-
 }
 
 @layer utilities {
-  /* Custom Scrollbar */
   .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: var(--muted) transparent;
@@ -412,24 +371,21 @@
     background-color: var(--muted-foreground);
   }
   
-  /* Crimson Glow Effect */
-  .crimson-glow {
-    box-shadow: 0 0 20px rgba(219, 26, 26, 0.15);
+  .primary-glow {
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.15);
   }
   
-  .crimson-glow:hover {
-    box-shadow: 0 0 30px rgba(219, 26, 26, 0.25);
+  .primary-glow:hover {
+    box-shadow: 0 0 30px rgba(37, 99, 235, 0.25);
   }
   
-  /* Text Gradients */
   .text-gradient-primary {
-    background: linear-gradient(135deg, #DB1A1A 0%, #FF4444 100%);
+    background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
   
-  /* Animations */
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -447,10 +403,10 @@
   
   @keyframes pulse-glow {
     0%, 100% {
-      box-shadow: 0 0 0 0 rgba(219, 26, 26, 0.4);
+      box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
     }
     50% {
-      box-shadow: 0 0 0 8px rgba(219, 26, 26, 0);
+      box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
     }
   }
   
@@ -458,7 +414,6 @@
     animation: pulse-glow 2s infinite;
   }
   
-  /* Glass Effect */
   .glass-effect {
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
@@ -471,13 +426,11 @@
     border: 1px solid rgba(255, 255, 255, 0.05);
   }
   
-  /* Additional CSS Properties for animations */
   .transition-smooth {
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
-/* Responsive Utilities */
 @media (max-width: 768px) {
   .dashboard-card {
     margin-bottom: 1rem;
@@ -488,9 +441,10 @@
     padding: 0.75rem;
   }
 }
-/* Bar Chart Hover Effects - No White */
+
+/* Bar Chart Hover Effects */
 .bar-actual:hover rect {
-  fill: #9A1212 !important;
+  fill: #1d4ed8 !important;
   transition: fill 0.2s ease;
   cursor: pointer;
 }
@@ -501,7 +455,6 @@
   cursor: pointer;
 }
 
-/* Remove default Recharts hover white overlay */
 .recharts-bar-rectangle:hover {
   filter: none !important;
 }
