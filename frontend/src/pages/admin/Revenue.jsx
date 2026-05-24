@@ -1085,28 +1085,22 @@ const Revenue = () => {
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="p-3 bg-muted/20 border-t border-border">
-                  <button
-                    onClick={() => setShowStaffDetailModal(false)}
-                    className="w-full py-2 rounded-xl text-[9px] font-bold uppercase bg-primary text-white hover:bg-primary/90 transition-all"
-                  >
-                    Close
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        <div className="pt-8 border-t border-border">
-          <p className="text-[9px] text-center text-muted-foreground uppercase tracking-[0.3em] font-bold">
-            VidHelp Intelligence Hub • {revenueData?.length?.toLocaleString() || '0'} Total Sessions
-          </p>
-        </div>
-
-      </div>
-    </div>
+              {/* Footer - Smaller */}
+              <div className="p-3 bg-muted/20 border-t border-border">
+                <button 
+                  onClick={() => setShowStaffDetailModal(false)}
+                  className="w-full py-2 rounded-xl text-[9px] font-bold uppercase bg-primary text-white hover:bg-primary/90 transition-all"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 

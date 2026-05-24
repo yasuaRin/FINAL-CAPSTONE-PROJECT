@@ -349,11 +349,6 @@ export default function ProfileSettings() {
       <div style={{ padding: '32px 24px' }}>
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
 
-          <div style={{ marginBottom: 24 }}>
-            <p style={{ fontSize: 11, color: 'var(--muted)', margin: '0 0 4px' }}>Pages / profile</p>
-            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--fg)' }}>Profile</h1>
-          </div>
-
           <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 1px 8px rgba(0,0,0,0.06)' }}>
             <div style={{
               padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
