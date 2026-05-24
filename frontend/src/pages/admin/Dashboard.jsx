@@ -19,9 +19,6 @@ import { supabase } from '../../services/supabase';
 import { RevenueBarChart } from '../../components/dashboard/RevenueBarChart';
 import { exportCompleteReport } from '../../utils/exportPDF';
 
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
 const sumRevenue = (item) => (item?.revenue_shopee ?? 0) + (item?.revenue_tiktok ?? 0);
 
 const formatCurrency = (value) => {
@@ -41,9 +38,6 @@ const formatCompactCurrency = (value) => {
   return formatCurrency(value);
 };
 
-// ============================================================================
-// KPI CARD
-// ============================================================================
 const KpiCard = ({ title, value, icon: Icon, badge, badgeStyle, action, onAction, children }) => (
   <motion.div
     whileHover={{ y: -3, scale: 1.015 }}
@@ -78,9 +72,6 @@ const KpiCard = ({ title, value, icon: Icon, badge, badgeStyle, action, onAction
   </motion.div>
 );
 
-// ============================================================================
-// CRITICAL RISK MONITOR
-// ============================================================================
 const CriticalRiskMonitor = ({ onBrandClick }) => {
   const [riskData, setRiskData] = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -170,9 +161,6 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
   );
 };
 
-// ============================================================================
-// MAIN DASHBOARD
-// ============================================================================
 export const Dashboard = () => {
   const navigate = useNavigate();
   const [notification, setNotification]     = useState(null);
@@ -181,11 +169,36 @@ export const Dashboard = () => {
   const [timedOut, setTimedOut]             = useState(false);
   const [forceShow, setForceShow]           = useState(false);
   const [dateRange, setDateRange]           = useState({ start: null, end: null, preset: 'allData' });
+  const [isDarkMode, setIsDarkMode]         = useState(false);
 
   const { data: revenue, loading: revenueLoading, totalRevenue: aggregatedTotal, brandTotals, yearlyData } = useRevenue();
   const { brands, loading: brandsLoading } = useBrands(brandTotals);
   const { team }                           = useTeam();
   const { futurePredictions, retrainModels, isRetraining } = usePredictions();
+
+  // Detect dark mode
+  useEffect(() => {
+    const checkDarkMode = () => {
+      const isDark = document.documentElement.classList.contains('dark') ||
+                     (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      setIsDarkMode(isDark);
+    };
+
+    checkDarkMode();
+
+    // Watch for class changes on html element
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+    // Watch for system preference changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener('change', checkDarkMode);
+
+    return () => {
+      observer.disconnect();
+      mediaQuery.removeEventListener('change', checkDarkMode);
+    };
+  }, []);
 
   const [partneredBrands, setPartneredBrands] = useState([]);
   useEffect(() => {
@@ -276,20 +289,9 @@ export const Dashboard = () => {
       ? (futurePredictions.reduce((s, p) => s + (p.model_r2 || 0), 0) / futurePredictions.length) * 100
       : 0;
 
-  // ── PLATFORM CONTRIBUTION ─────────────────────────────────────────────────
-  // Three fixed segments — always shown if they have any revenue at all:
-  //   • TikTok  = sum of all revenue_tiktok values across every session
-  //   • Shopee  = sum of all revenue_shopee values across every session
-  //   • Multi   = sum of (shopee + tiktok) for sessions where BOTH columns > 0
-  //               (these sessions are counted once in Multi, not split)
-  //
-  // Why this approach:
-  //   Classifying each session as Shopee OR TikTok OR Multi was causing TikTok
-  //   to show 0 whenever most sessions had both columns populated (all went to
-  //   Multi). Instead we track each platform's raw column total independently,
-  //   then subtract Multi from the individual totals to avoid double-counting.
-    // ── PLATFORM CONTRIBUTION ─────────────────────────────────────────────────
-  // Fixed: Shopee, TikTok, and Multi all show correctly
+  // Platform Contribution - Multi color based on theme (white in dark mode, black in light mode)
+  const multiColor = isDarkMode ? '#ffffff' : '#000000';
+  
   const platformData = useMemo(() => {
     if (!filteredRevenue || filteredRevenue.length === 0) return [];
 
@@ -301,17 +303,14 @@ export const Dashboard = () => {
       const s = item.revenue_shopee ?? 0;
       const t = item.revenue_tiktok ?? 0;
       
-      // Add to individual platform totals
       totalShopee += s;
       totalTikTok += t;
       
-      // For Multi: count sessions where BOTH platforms were used
       if (s > 0 && t > 0) {
         totalMulti += (s + t);
       }
     });
 
-    // Calculate net values (excluding Multi)
     const shopeeNet = totalShopee;
     const tiktokNet = totalTikTok;
 
@@ -320,23 +319,21 @@ export const Dashboard = () => {
     if (total === 0) return [];
 
     const segments = [
-      { name: 'TikTok', value: tiktokNet, color: '#DB1A1A' },
-      { name: 'Shopee', value: shopeeNet, color: '#ee4d2d' },
+      { name: 'TikTok', value: tiktokNet, color: '#2563eb' },  // Blue
+      { name: 'Shopee', value: shopeeNet, color: '#ee4d2d' },   // Orange/Red (Shopee brand color)
     ];
 
-    // Only add Multi if there are sessions with both platforms
     if (totalMulti > 0) {
-      segments.push({ name: 'Multi', value: totalMulti, color: '#3b82f6' });
+      segments.push({ name: 'Multi', value: totalMulti, color: multiColor });
     }
 
-    // Calculate percentages based on total including Multi if present
     const grandTotal = total + totalMulti;
     
     return segments.map(s => ({ 
       ...s, 
       value: Math.round((s.value / grandTotal) * 100) 
     }));
-  }, [filteredRevenue]);
+  }, [filteredRevenue, multiColor]);
 
   const notify = useCallback((msg) => {
     setNotification(msg);
@@ -394,7 +391,6 @@ export const Dashboard = () => {
         )}
       </AnimatePresence>
 
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
@@ -438,7 +434,6 @@ export const Dashboard = () => {
         </div>
       )}
 
-      {/* KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KpiCard
           title="Total Revenue" value={formatCurrency(totalRevenue)} icon={ArrowUpRight}
@@ -477,7 +472,6 @@ export const Dashboard = () => {
         </KpiCard>
       </div>
 
-      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <RevenueBarChart
           chartData={chartData} hasForecast={hasForecast} isRetraining={isRetraining} isLoading={false}
@@ -486,8 +480,6 @@ export const Dashboard = () => {
         />
 
         <div className="space-y-8">
-
-          {/* Platform Contribution */}
           <div className="dashboard-card p-0 overflow-hidden">
             <div className="p-4 border-b border-border bg-muted/20">
               <div className="flex items-center gap-2">
@@ -511,7 +503,10 @@ export const Dashboard = () => {
                           dataKey="value"
                         >
                           {platformData.map((entry, i) => (
-                            <Cell key={i} fill={entry.color} />
+                            <Cell 
+                              key={i} 
+                              fill={entry.name === 'Multi' ? multiColor : entry.color} 
+                            />
                           ))}
                         </Pie>
                         <RechartsTooltip
@@ -520,7 +515,10 @@ export const Dashboard = () => {
                             const d = payload[0];
                             return (
                               <div className="bg-card/95 backdrop-blur-md border border-border p-2 rounded-lg shadow-lg flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.payload.color }} />
+                                <div 
+                                  className="w-2 h-2 rounded-full" 
+                                  style={{ backgroundColor: d.payload.name === 'Multi' ? multiColor : d.payload.color }} 
+                                />
                                 <span className="text-[10px] font-bold">{d.name}</span>
                                 <span className="text-[10px] font-bold text-primary">{d.value}%</span>
                               </div>
@@ -530,10 +528,18 @@ export const Dashboard = () => {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
+                  {/* Legend for Platform Contribution */}
                   <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
                     {platformData.map((p) => (
                       <div key={p.name} className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                        <div 
+                          className="w-2.5 h-2.5 rounded-full shrink-0" 
+                          style={{ 
+                            backgroundColor: p.name === 'Multi' 
+                              ? multiColor
+                              : p.color 
+                          }} 
+                        />
                         <span className="text-[11px] font-semibold text-muted-foreground">{p.name}</span>
                         <span className="text-[11px] font-bold text-foreground">{p.value}%</span>
                       </div>

@@ -1,8 +1,7 @@
 // frontend/src/hooks/useRevenue.js
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../services/supabase';
-import { time } from 'framer-motion';
 
 const PAGE_SIZE = 500;
 
@@ -13,8 +12,6 @@ const fetchAllRows = async () => {
 
   if (countError) throw countError;
   if (!totalCount) return [];
-
-  // console.log(`📊 useRevenue: expecting ${totalCount} total sessions`);
 
   const allRows = [];
   let from = 0;
@@ -44,15 +41,12 @@ const fetchAllRows = async () => {
     const page = data || [];
 
     if (page.length === 0) {
-      // console.warn(`⚠️ useRevenue: pagination ended early at ${allRows.length}/${totalCount}`);
       break;
     }
 
     allRows.push(...page);
     from += page.length;
   }
-
-   //console.log(`📦 useRevenue: fetched ${allRows.length}/${totalCount} sessions`);
 
   const seen = new Set();
   const unique = allRows.filter((row) => {
@@ -61,11 +55,6 @@ const fetchAllRows = async () => {
     return true;
   });
   
-  if (unique.length !== allRows.length) {
-   //  console.warn(`⚠️ removed ${allRows.length - unique.length} duplicate rows`);
-  }
-
-  //console.log(`✅ useRevenue: ${unique.length} unique rows`);
   return unique;
 };
 
@@ -76,6 +65,9 @@ export const useRevenue = () => {
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [brandTotals, setBrandTotals] = useState(new Map());
   const [yearlyData, setYearlyData] = useState([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const channelName = useRef(`live_sessions_${Date.now()}_${Math.random()}`).current;
 
   const fetchRevenue = useCallback(async () => {
     try {
@@ -100,15 +92,11 @@ export const useRevenue = () => {
         }
 
         if (item.brand_id) {
-          const brandId = String(item.brand_id); // Convert UUID to string for Map
+          const brandId = String(item.brand_id);
           const currentRevenue = brandMap.get(brandId) || 0;
           brandMap.set(brandId, currentRevenue + rev);
         }
       });
-
-      // console.log('💰 Total revenue:', runningTotal.toLocaleString('id-ID'));
-      // console.log('📊 Brand revenue map size:', brandMap.size);
-      // console.log('📊 Brand revenue details:', Array.from(brandMap.entries()).map(([id, rev]) => ({ id, rev })));
 
       setTotalRevenue(runningTotal);
       setBrandTotals(brandMap);
@@ -126,7 +114,7 @@ export const useRevenue = () => {
           time: item.time ?? null,
           period_id: item.period_id,
           host_team_member_id: item.host_team_member_id ?? null,
-          brand_id: String(item.brand_id), // Convert UUID to string
+          brand_id: String(item.brand_id),
           revenue_shopee: item.revenue_shopee ?? 0,
           revenue_tiktok: item.revenue_tiktok ?? 0,
           viewers_shopee: item.viewers_shopee ?? 0,
@@ -136,16 +124,40 @@ export const useRevenue = () => {
         }))
       );
     } catch (err) {
-      // console.error('useRevenue fetch error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // This refetch function forces a refresh by incrementing the trigger
+  const refetch = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  // Fetch when component mounts OR when refreshTrigger changes
   useEffect(() => {
     fetchRevenue();
-  }, [fetchRevenue]);
+  }, [fetchRevenue, refreshTrigger]);
+
+  // Real-time subscription - automatically refreshes when data changes in Supabase
+  useEffect(() => {
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'live_sessions' },
+        () => {
+          // Automatically refresh when any change happens in live_sessions
+          setRefreshTrigger(prev => prev + 1);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [channelName]);
 
   return {
     data,
@@ -154,6 +166,6 @@ export const useRevenue = () => {
     totalRevenue,
     brandTotals,
     yearlyData,
-    refetch: fetchRevenue,
+    refetch,
   };
 };
