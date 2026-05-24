@@ -257,7 +257,7 @@ export const RevenueBarChart = ({
                 />
               )}
 
-              {/* ACTUAL REVENUE BAR - Primary Blue */}
+              {/* ACTUAL REVENUE BAR - Primary Blue with hover effect */}
               <Bar
                 dataKey="actual"
                 name="Actual Revenue"
@@ -265,9 +265,25 @@ export const RevenueBarChart = ({
                 radius={[4, 4, 0, 0]}
                 maxBarSize={80}
                 className="bar-actual"
+                onMouseEnter={(data, index) => {
+                  // Hover effect for actual bars
+                  const bars = document.querySelectorAll('.recharts-bar-rectangle');
+                  if (bars[index]) {
+                    bars[index].style.filter = 'brightness(0.85)';
+                    bars[index].style.transform = 'translateY(-2px)';
+                    bars[index].style.transition = 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                  }
+                }}
+                onMouseLeave={(data, index) => {
+                  const bars = document.querySelectorAll('.recharts-bar-rectangle');
+                  if (bars[index]) {
+                    bars[index].style.filter = 'brightness(1)';
+                    bars[index].style.transform = 'translateY(0)';
+                  }
+                }}
               />
 
-              {/* FORECAST REVENUE BAR - Red with slight transparency */}
+              {/* FORECAST REVENUE BAR - Red with slight transparency and hover effect */}
               <Bar
                 dataKey="forecast"
                 name="Forecast Revenue"
@@ -276,6 +292,26 @@ export const RevenueBarChart = ({
                 maxBarSize={80}
                 opacity={0.85}
                 className="bar-forecast"
+                onMouseEnter={(data, index) => {
+                  // Hover effect for forecast bars (offset index for actual+forecast)
+                  const bars = document.querySelectorAll('.recharts-bar-rectangle');
+                  const actualCount = chartData.filter(d => d.actual > 0).length;
+                  const forecastIndex = actualCount + index;
+                  if (bars[forecastIndex]) {
+                    bars[forecastIndex].style.filter = 'brightness(0.75)';
+                    bars[forecastIndex].style.transform = 'translateY(-2px)';
+                    bars[forecastIndex].style.transition = 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                  }
+                }}
+                onMouseLeave={(data, index) => {
+                  const bars = document.querySelectorAll('.recharts-bar-rectangle');
+                  const actualCount = chartData.filter(d => d.actual > 0).length;
+                  const forecastIndex = actualCount + index;
+                  if (bars[forecastIndex]) {
+                    bars[forecastIndex].style.filter = 'brightness(1)';
+                    bars[forecastIndex].style.transform = 'translateY(0)';
+                  }
+                }}
               />
             </BarChart>
           </ResponsiveContainer>

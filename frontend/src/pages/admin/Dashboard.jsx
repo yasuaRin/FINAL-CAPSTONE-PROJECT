@@ -38,43 +38,79 @@ const formatCompactCurrency = (value) => {
   return formatCurrency(value);
 };
 
-const KpiCard = ({ title, value, icon: Icon, badge, badgeStyle, action, onAction, children }) => (
-  <motion.div
-    whileHover={{ y: -3, scale: 1.015 }}
-    whileTap={{ scale: 0.98 }}
-    onClick={onAction}
-    className="dashboard-card p-4 cursor-pointer rounded-2xl border-l-4 border-l-primary group transition-all"
-  >
-    <div className="flex justify-between items-start gap-2">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground group-hover:text-primary transition-colors leading-tight">
-        {title}
-      </p>
-      {Icon && (
-        <div className="p-1.5 bg-primary/10 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
-          <Icon size={14} />
-        </div>
-      )}
-    </div>
-    <h3 className="text-base font-mono font-bold mt-2 truncate">{value}</h3>
-    <div className="mt-2.5 flex items-center justify-between">
-      {badge && (
-        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badgeStyle}`}>
-          {badge}
-        </span>
-      )}
-      {action && (
-        <span className="text-[10px] font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
-          {action}
-        </span>
-      )}
-    </div>
-    {children}
-  </motion.div>
-);
+const KpiCard = ({ title, value, icon: Icon, badge, badgeStyle, action, onAction, children }) => {
+  // All cards now use RED for hover
+  const hoverColorValue = '#ef4444';
+  
+  return (
+    <motion.div
+      whileHover={{ y: -3, scale: 1.015 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={onAction}
+      className="dashboard-card p-4 cursor-pointer rounded-2xl border-l-4 border-l-primary group transition-all"
+      style={{
+        transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-4px)";
+        e.currentTarget.style.boxShadow = `0 12px 32px ${hoverColorValue}20, 0 4px 12px rgba(0,0,0,0.08)`;
+        e.currentTarget.style.borderLeftColor = hoverColorValue;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "none";
+        e.currentTarget.style.borderLeftColor = "var(--primary)";
+      }}
+    >
+      <div className="flex justify-between items-start gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors leading-tight"
+          style={{ color: 'var(--muted-foreground)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = hoverColorValue; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted-foreground)'; }}
+        >
+          {title}
+        </p>
+        {Icon && (
+          <div 
+            className="p-1.5 rounded-lg transition-all shrink-0"
+            style={{ backgroundColor: `${hoverColorValue}15`, color: hoverColorValue }}
+            onMouseEnter={(e) => { 
+              e.currentTarget.style.backgroundColor = hoverColorValue;
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseLeave={(e) => { 
+              e.currentTarget.style.backgroundColor = `${hoverColorValue}15`;
+              e.currentTarget.style.color = hoverColorValue;
+            }}
+          >
+            <Icon size={14} />
+          </div>
+        )}
+      </div>
+      <h3 className="text-base font-mono font-bold mt-2 truncate">{value}</h3>
+      <div className="mt-2.5 flex items-center justify-between">
+        {badge && (
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badgeStyle}`}>
+            {badge}
+          </span>
+        )}
+        {action && (
+          <span className="text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
+            style={{ color: hoverColorValue }}
+          >
+            {action}
+          </span>
+        )}
+      </div>
+      {children}
+    </motion.div>
+  );
+};
 
 const CriticalRiskMonitor = ({ onBrandClick }) => {
   const [riskData, setRiskData] = useState([]);
   const [loading, setLoading]   = useState(true);
+  const [hoveredItem, setHoveredItem] = useState(null);
 
   useEffect(() => {
     const fetchRiskData = async () => {
@@ -122,6 +158,14 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
     );
   }
 
+  const getRiskColor = (risk) => {
+    switch(risk) {
+      case 'High': return '#ef4444';
+      case 'Medium': return '#f59e0b';
+      default: return '#10b981';
+    }
+  };
+
   return (
     <div className="dashboard-card p-0 overflow-hidden">
       <div className="p-4 border-b">
@@ -134,28 +178,46 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
         <p className="text-[9px] text-muted-foreground mt-2">Click on any brand to filter the chart</p>
       </div>
       <div className="p-4 space-y-3 max-h-[400px] overflow-y-auto">
-        {riskData.map((brand) => (
-          <motion.div
-            key={brand.id}
-            whileHover={{ x: 4 }}
-            whileTap={{ scale: 0.99 }}
-            onClick={() => onBrandClick?.(brand.id)}
-            className="p-3 rounded-lg border hover:border-destructive/30 hover:bg-destructive/5 cursor-pointer transition-all"
-          >
-            <div className="flex justify-between items-start">
-              <h4 className="text-sm font-bold">{brand.name}</h4>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                brand.risk === 'High'   ? 'bg-destructive text-white' :
-                brand.risk === 'Medium' ? 'bg-amber-500 text-white'   : 'bg-emerald-500 text-white'
-              }`}>{brand.risk}</span>
-            </div>
-            <div className="flex flex-wrap gap-1 mt-2">
-              {brand.reasons?.slice(0, 2).map((r, i) => (
-                <span key={i} className="text-[9px] bg-muted/80 px-2 py-0.5 rounded">{r}</span>
-              ))}
-            </div>
-          </motion.div>
-        ))}
+        {riskData.map((brand) => {
+          const riskColor = getRiskColor(brand.risk);
+          const isHovered = hoveredItem === brand.id;
+          
+          return (
+            <motion.div
+              key={brand.id}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={() => onBrandClick?.(brand.id)}
+              className="p-3 rounded-lg border cursor-pointer transition-all"
+              style={{
+                borderColor: isHovered ? `${riskColor}40` : 'var(--border)',
+                backgroundColor: isHovered ? `${riskColor}08` : 'transparent',
+                transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+                boxShadow: isHovered ? `0 8px 24px ${riskColor}20` : 'none',
+                transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.2s ease, background 0.2s ease",
+              }}
+              onMouseEnter={() => setHoveredItem(brand.id)}
+              onMouseLeave={() => setHoveredItem(null)}
+            >
+              <div className="flex justify-between items-start">
+                <h4 className="text-sm font-bold"
+                  style={{ color: isHovered ? riskColor : 'var(--foreground)' }}
+                >
+                  {brand.name}
+                </h4>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                  brand.risk === 'High'   ? 'bg-destructive text-white' :
+                  brand.risk === 'Medium' ? 'bg-amber-500 text-white'   : 'bg-emerald-500 text-white'
+                }`}>{brand.risk}</span>
+              </div>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {brand.reasons?.slice(0, 2).map((r, i) => (
+                  <span key={i} className="text-[9px] bg-muted/80 px-2 py-0.5 rounded">{r}</span>
+                ))}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
@@ -170,6 +232,8 @@ export const Dashboard = () => {
   const [forceShow, setForceShow]           = useState(false);
   const [dateRange, setDateRange]           = useState({ start: null, end: null, preset: 'allData' });
   const [isDarkMode, setIsDarkMode]         = useState(false);
+  const [hoveredPlatform, setHoveredPlatform] = useState(null);
+  const [hoveredButton, setHoveredButton] = useState(null);
 
   const { data: revenue, loading: revenueLoading, totalRevenue: aggregatedTotal, brandTotals, yearlyData } = useRevenue();
   const { brands, loading: brandsLoading } = useBrands(brandTotals);
@@ -186,11 +250,9 @@ export const Dashboard = () => {
 
     checkDarkMode();
 
-    // Watch for class changes on html element
     const observer = new MutationObserver(checkDarkMode);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
-    // Watch for system preference changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     mediaQuery.addEventListener('change', checkDarkMode);
 
@@ -289,7 +351,7 @@ export const Dashboard = () => {
       ? (futurePredictions.reduce((s, p) => s + (p.model_r2 || 0), 0) / futurePredictions.length) * 100
       : 0;
 
-  // Platform Contribution - Multi color based on theme (white in dark mode, black in light mode)
+  // Platform Contribution - Multi color based on theme
   const multiColor = isDarkMode ? '#ffffff' : '#000000';
   
   const platformData = useMemo(() => {
@@ -319,8 +381,8 @@ export const Dashboard = () => {
     if (total === 0) return [];
 
     const segments = [
-      { name: 'TikTok', value: tiktokNet, color: '#2563eb' },  // Blue
-      { name: 'Shopee', value: shopeeNet, color: '#ee4d2d' },   // Orange/Red (Shopee brand color)
+      { name: 'TikTok', value: tiktokNet, color: '#2563eb' },
+      { name: 'Shopee', value: shopeeNet, color: '#ee4d2d' },
     ];
 
     if (totalMulti > 0) {
@@ -397,23 +459,46 @@ export const Dashboard = () => {
           <p className="text-muted-foreground mt-1">Welcome back, here is what is happening today.</p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Export Report Button with hover */}
           <button
             onClick={handleExportReport}
             disabled={isExporting}
-            className="inline-flex items-center justify-center rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-primary text-primary-foreground shadow-lg hover:shadow-primary/20 h-10 px-6 py-2 gap-2"
+            className="inline-flex items-center justify-center rounded-xl text-xs font-bold uppercase tracking-wider transition-all h-10 px-6 py-2 gap-2"
+            style={{
+              background: hoveredButton === 'export' ? '#ef4444' : 'var(--primary)',
+              color: 'white',
+              transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease",
+              transform: hoveredButton === 'export' ? "translateY(-2px)" : "translateY(0)",
+              boxShadow: hoveredButton === 'export' ? "0 8px 20px rgba(239,68,68,0.3)" : "0 4px 6px rgba(0,0,0,0.1)",
+            }}
+            onMouseEnter={() => setHoveredButton('export')}
+            onMouseLeave={() => setHoveredButton(null)}
           >
             {isExporting ? <Activity className="animate-spin" size={16} /> : <Download size={14} />}
             Export Report
           </button>
+
+          {/* Rerun ML Model Button with hover */}
           <button
             onClick={handleRerunModel}
             disabled={isRetraining}
-            className="inline-flex items-center justify-center gap-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all bg-muted/20 border border-border text-foreground hover:border-primary/40 hover:text-primary h-10 px-4 py-2"
+            className="inline-flex items-center justify-center gap-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border h-10 px-4 py-2"
+            style={{
+              background: hoveredButton === 'rerun' ? '#ef4444' : 'rgba(0,0,0,0.05)',
+              borderColor: hoveredButton === 'rerun' ? '#ef4444' : 'var(--border)',
+              color: hoveredButton === 'rerun' ? 'white' : 'var(--foreground)',
+              transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease, color 0.2s ease",
+              transform: hoveredButton === 'rerun' ? "translateY(-2px)" : "translateY(0)",
+              boxShadow: hoveredButton === 'rerun' ? "0 8px 20px rgba(239,68,68,0.25)" : "none",
+            }}
+            onMouseEnter={() => setHoveredButton('rerun')}
+            onMouseLeave={() => setHoveredButton(null)}
           >
             {isRetraining
               ? <><Activity size={14} className="animate-spin" /> Training...</>
               : <><RefreshCw size={14} /> Rerun ML Model</>}
           </button>
+
           <SortByButton
             brands={brands}
             onBrandChange={setSelectedBrand}
@@ -456,15 +541,51 @@ export const Dashboard = () => {
           action="View Partnerships →" onAction={() => navigate('/admin/leads')}
         >
           <div className="mt-4 grid grid-cols-3 gap-2">
-            <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-3 text-center">
+            <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-3 text-center"
+              style={{
+                transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 8px 20px rgba(245,158,11,0.2)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
               <p className="text-xs text-gray-400">In Progress</p>
               <p className="text-lg font-bold text-yellow-400">{partnershipStats.inProgress}</p>
             </div>
-            <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3 text-center">
+            <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3 text-center"
+              style={{
+                transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 8px 20px rgba(59,130,246,0.2)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
               <p className="text-xs text-gray-400">Dealing</p>
               <p className="text-lg font-bold text-blue-400">{partnershipStats.dealing}</p>
             </div>
-            <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3 text-center">
+            <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3 text-center"
+              style={{
+                transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 8px 20px rgba(16,185,129,0.2)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
               <p className="text-xs text-gray-400">Partner</p>
               <p className="text-lg font-bold text-green-400">{partnershipStats.partner}</p>
             </div>
@@ -505,7 +626,22 @@ export const Dashboard = () => {
                           {platformData.map((entry, i) => (
                             <Cell 
                               key={i} 
-                              fill={entry.name === 'Multi' ? multiColor : entry.color} 
+                              fill={entry.name === 'Multi' ? multiColor : entry.color}
+                              style={{
+                                transition: "filter 0.3s ease, transform 0.3s ease",
+                              }}
+                              onMouseEnter={(e) => {
+                                if (e.currentTarget) {
+                                  e.currentTarget.style.filter = "brightness(0.85)";
+                                  e.currentTarget.style.transform = "scale(1.02)";
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (e.currentTarget) {
+                                  e.currentTarget.style.filter = "brightness(1)";
+                                  e.currentTarget.style.transform = "scale(1)";
+                                }
+                              }}
                             />
                           ))}
                         </Pie>
@@ -530,20 +666,39 @@ export const Dashboard = () => {
                   </div>
                   {/* Legend for Platform Contribution */}
                   <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-                    {platformData.map((p) => (
-                      <div key={p.name} className="flex items-center gap-1.5">
+                    {platformData.map((p) => {
+                      const legendColor = p.name === 'Multi' ? multiColor : p.color;
+                      const isHovered = hoveredPlatform === p.name;
+                      
+                      return (
                         <div 
-                          className="w-2.5 h-2.5 rounded-full shrink-0" 
-                          style={{ 
-                            backgroundColor: p.name === 'Multi' 
-                              ? multiColor
-                              : p.color 
-                          }} 
-                        />
-                        <span className="text-[11px] font-semibold text-muted-foreground">{p.name}</span>
-                        <span className="text-[11px] font-bold text-foreground">{p.value}%</span>
-                      </div>
-                    ))}
+                          key={p.name} 
+                          className="flex items-center gap-1.5 cursor-pointer"
+                          style={{
+                            transition: "transform 0.2s ease",
+                            transform: isHovered ? "translateY(-2px)" : "translateY(0)",
+                          }}
+                          onMouseEnter={() => setHoveredPlatform(p.name)}
+                          onMouseLeave={() => setHoveredPlatform(null)}
+                        >
+                          <div 
+                            className="w-2.5 h-2.5 rounded-full shrink-0" 
+                            style={{ 
+                              backgroundColor: legendColor,
+                              transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                              transform: isHovered ? "scale(1.3)" : "scale(1)",
+                              boxShadow: isHovered ? `0 0 8px ${legendColor}` : 'none',
+                            }}
+                          />
+                          <span className="text-[11px] font-semibold text-muted-foreground"
+                            style={{ color: isHovered ? legendColor : 'var(--muted-foreground)' }}
+                          >
+                            {p.name}
+                          </span>
+                          <span className="text-[11px] font-bold text-foreground">{p.value}%</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ) : (

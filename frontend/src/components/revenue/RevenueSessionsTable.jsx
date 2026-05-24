@@ -41,25 +41,21 @@ const RevenueSessionsTable = ({
   uniquePeriods = [],
   loading = false,
 }) => {
-
   const [currentPage, setCurrentPage] = useState(1);
+  const [hoveredRow, setHoveredRow] = useState(null);
 
-  // FIX: Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [rowLimit, searchTerm, tableFilter.brandId, tableFilter.period, sortCol, sortDir]);
 
-  // FIX: Use filtered sessions count from sessionIntelligence (already filtered by brand and period)
   const totalCount = sessionIntelligence.length;
   const showingAll = rowLimit === null;
   const totalPages = showingAll ? 1 : Math.max(1, Math.ceil(totalCount / rowLimit));
   const safePage = Math.min(currentPage, totalPages);
 
-  // FIX: Use sessionIntelligence (already filtered) for pagination
   const paginatedSessions = useMemo(() => {
     if (showingAll) return sessionIntelligence;
     const start = (safePage - 1) * rowLimit;
-    // Ensure we don't go out of bounds
     if (start >= sessionIntelligence.length) {
       return [];
     }
@@ -76,10 +72,8 @@ const RevenueSessionsTable = ({
     ? totalCount
     : Math.min(rowStart + rowLimit - 1, totalCount);
 
-  // FIX: Show clear filter badge when brand is filtered
   const hasActiveFilters = tableFilter.brandId !== 'All' || tableFilter.period !== 'All';
 
-  // FIX: Get current filter display text
   const getFilterDisplay = () => {
     if (tableFilter.brandId !== 'All' && tableFilter.period !== 'All') {
       return `${tableFilter.brandName || 'Brand'} · ${tableFilter.period}`;
@@ -132,7 +126,6 @@ const RevenueSessionsTable = ({
               />
             </div>
 
-            {/* FIX: Show clear filters button more prominently */}
             {hasActiveFilters && (
               <button
                 onClick={() => setTableFilter({ brandId: 'All', period: 'All' })}
@@ -142,7 +135,6 @@ const RevenueSessionsTable = ({
               </button>
             )}
 
-            {/* FIX: Show result count badge */}
             <div className="ml-auto flex items-center gap-2">
               <div className="hidden md:flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-[10px] text-muted-foreground">
                 <span className="font-bold">{totalCount}</span> results
@@ -158,7 +150,6 @@ const RevenueSessionsTable = ({
             </div>
           </div>
           
-          {/* FIX: Show active filter info on mobile */}
           {hasActiveFilters && (
             <div className="mt-2 text-[9px] text-muted-foreground md:hidden">
               Filtered by: {getFilterDisplay()}
@@ -192,73 +183,94 @@ const RevenueSessionsTable = ({
                         ? `No sessions found for the selected ${tableFilter.brandId !== 'All' ? 'brand' : 'period'}. Try clearing filters.`
                         : 'No sessions found. Click "Add Session" to create one.'
                     }
-                  </td>
-                </tr>
+                   </td>
+                 </tr>
               )}
 
-              {paginatedSessions.map((log) => (
-                <tr key={log.id} className="hover:bg-muted/20 transition-colors group">
-                  <td className="px-3 sm:px-6 py-3 text-[11px] text-muted-foreground whitespace-nowrap">
-                    {format(parseISO(log.date), 'MMM dd, yyyy')}
-                  </td>
+              {paginatedSessions.map((log) => {
+                const isHovered = hoveredRow === log.id;
+                
+                return (
+                  <tr 
+                    key={log.id} 
+                    className="transition-all group"
+                    style={{
+                      transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
+                      transform: isHovered ? "translateY(-2px)" : "translateY(0)",
+                      boxShadow: isHovered ? "0 8px 20px rgba(239,68,68,0.12)" : "none",
+                      backgroundColor: isHovered ? "rgba(239,68,68,0.02)" : "transparent",
+                    }}
+                    onMouseEnter={() => setHoveredRow(log.id)}
+                    onMouseLeave={() => setHoveredRow(null)}
+                  >
+                    <td className="px-3 sm:px-6 py-3 text-[11px] text-muted-foreground whitespace-nowrap">
+                      {format(parseISO(log.date), 'MMM dd, yyyy')}
+                    </td>
 
-                  <td className="px-3 sm:px-6 py-3 text-[11px] text-muted-foreground whitespace-nowrap">
-                    {log.time || '00:00'}
-                  </td>
+                    <td className="px-3 sm:px-6 py-3 text-[11px] text-muted-foreground whitespace-nowrap">
+                      {log.time || '00:00'}
+                    </td>
 
-                  <td className="px-3 sm:px-6 py-3">
-                    <span className="text-[11px] font-medium text-foreground group-hover:text-primary">
-                      {log.brandName}
-                    </span>
-                  </td>
-
-                  <td className="px-3 sm:px-6 py-3 hidden sm:table-cell">
-                    <span className="text-[10px] text-muted-foreground">
-                      {log.period}
-                    </span>
-                  </td>
-
-                  <td className="px-3 sm:px-6 py-3">
-                    <span className={`text-[9px] font-medium uppercase px-2 py-0.5 rounded text-white ${
-                      log.platform === 'TikTok'
-                        ? 'bg-black'
-                        : log.platform === 'Shopee'
-                        ? 'bg-orange-500'
-                        : 'bg-blue-500'
-                    }`}>
-                      {log.platform}
-                    </span>
-                  </td>
-
-                  <td className="px-3 sm:px-6 py-3 text-right text-[11px] hidden md:table-cell">
-                    {log.viewers?.toLocaleString()}
-                  </td>
-
-                  <td className="px-3 sm:px-6 py-3 text-right text-[11px] font-medium whitespace-nowrap">
-                    {formatCurrency(log.revenue)}
-                  </td>
-
-                  <td className="px-3 sm:px-6 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => openEditModal(log)}
-                        className="p-1.5 rounded bg-muted/50 hover:bg-blue-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
-                        title="Edit"
+                    <td className="px-3 sm:px-6 py-3">
+                      <span 
+                        className="text-[11px] font-medium transition-colors"
+                        style={{ 
+                          color: isHovered ? "#ef4444" : "var(--foreground)",
+                          transition: "color 0.15s ease"
+                        }}
                       >
-                        <Edit2 size={11} />
-                      </button>
+                        {log.brandName}
+                      </span>
+                    </td>
 
-                      <button
-                        onClick={() => handleDeleteSession(log)}
-                        className="p-1.5 rounded bg-muted/50 hover:bg-red-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
-                        title="Delete"
-                      >
-                        <Trash2 size={11} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    <td className="px-3 sm:px-6 py-3 hidden sm:table-cell">
+                      <span className="text-[10px] text-muted-foreground">
+                        {log.period}
+                      </span>
+                    </td>
+
+                    <td className="px-3 sm:px-6 py-3">
+                      <span className={`text-[9px] font-medium uppercase px-2 py-0.5 rounded text-white ${
+                        log.platform === 'TikTok'
+                          ? 'bg-black'
+                          : log.platform === 'Shopee'
+                          ? 'bg-orange-500'
+                          : 'bg-blue-500'
+                      }`}>
+                        {log.platform}
+                      </span>
+                    </td>
+
+                    <td className="px-3 sm:px-6 py-3 text-right text-[11px] hidden md:table-cell">
+                      {log.viewers?.toLocaleString()}
+                    </td>
+
+                    <td className="px-3 sm:px-6 py-3 text-right text-[11px] font-medium whitespace-nowrap">
+                      {formatCurrency(log.revenue)}
+                    </td>
+
+                    <td className="px-3 sm:px-6 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => openEditModal(log)}
+                          className="p-1.5 rounded bg-muted/50 hover:bg-blue-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
+                          title="Edit"
+                        >
+                          <Edit2 size={11} />
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteSession(log)}
+                          className="p-1.5 rounded bg-muted/50 hover:bg-red-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
+                          title="Delete"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -274,7 +286,6 @@ const RevenueSessionsTable = ({
             }
           </p>
 
-          {/* FIX: Only show pagination when needed and not showing all */}
           {!showingAll && totalPages > 1 && totalCount > 0 && (
             <div className="flex items-center gap-1 flex-wrap justify-end">
               <button
@@ -315,7 +326,6 @@ const RevenueSessionsTable = ({
             </div>
           )}
 
-          {/* FIX: Show "Show All" button when paginated */}
           {!showingAll && totalCount > rowLimit && (
             <button
               onClick={() => setRowLimit(null)}
@@ -325,7 +335,6 @@ const RevenueSessionsTable = ({
             </button>
           )}
 
-          {/* FIX: Show "Show less" button when showing all and there are many items */}
           {showingAll && totalCount > 25 && (
             <button
               onClick={() => setRowLimit(25)}
