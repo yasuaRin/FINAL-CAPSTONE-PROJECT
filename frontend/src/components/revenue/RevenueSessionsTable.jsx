@@ -208,7 +208,7 @@ const RevenueSessionsTable = ({
                       </button>
 
                       <button
-                        onClick={() => handleDeleteSession(log.id)}
+                        onClick={() => handleDeleteSession(log)}
                         className="p-1.5 rounded bg-muted/50 hover:bg-red-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
                         title="Delete"
                       >
