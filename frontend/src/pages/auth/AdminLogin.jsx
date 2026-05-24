@@ -72,7 +72,7 @@ export const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState('admin');
+  const [role, setRole] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -317,7 +317,7 @@ export const AdminLogin = () => {
               <button
                 type="submit"
                 disabled={loading || !!success}
-                className="w-full py-2 px-4 rounded-md text-sm font-medium text-white bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-50 transition-colors"
+                className="w-full py-2 px-4 rounded-md text-sm font-medium text-white bg-[#2563eb] hover:bg-[#b81515] disabled:opacity-50 transition-colors"
               >
                 {loading ? 'Sending...' : 'Send Reset Link'}
               </button>
@@ -370,14 +370,21 @@ export const AdminLogin = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Access Level</label>
               <div className="relative">
                 <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm appearance-none bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb]"
-                >
-                  {ROLES.map((r) => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
-                  ))}
-                </select>
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    required
+                    className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm appearance-none bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb]"
+                  >
+                    <option value="" disabled>
+                      
+                    </option>
+
+                    {ROLES.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -395,7 +402,7 @@ export const AdminLogin = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@gmail.com"
-                className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb]"
+                className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none bg-[#2563eb] hover:bg-[#1d4ed8]"
               />
             </div>
 
@@ -418,7 +425,7 @@ export const AdminLogin = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb]"
+                  className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none bg-[#2563eb] hover:bg-[#1d4ed8]"
                 />
                 <button
                   type="button"
