@@ -507,12 +507,6 @@ return (
         </div>
       </div>
 
-      <div className="pt-6 border-t border-border">
-        <p className="text-[9px] text-center text-muted-foreground uppercase tracking-[0.3em] font-bold">
-          VidHelp Brand Management • Real-time Analytics • {brandMatrix.length} Active Brands
-        </p>
-      </div>
-
       {isSuperAdmin && (
         <AnimatePresence>
           {deleteId && (
