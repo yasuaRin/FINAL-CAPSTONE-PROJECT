@@ -26,6 +26,43 @@ const EyeOffIcon = () => (
   </svg>
 );
 
+const ToastNotification = ({ toast, hideToast }) => {
+  if (!toast) return null;
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 24,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      zIndex: 99999,
+      background: '#1c1c1c',
+      color: '#f5f5f5',
+      padding: '12px 20px',
+      borderRadius: 16,
+      boxShadow: '0 8px 40px rgba(0,0,0,0.35)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      border: '1px solid #2e2e2e',
+      minWidth: 280,
+      maxWidth: 480,
+    }}>
+      <div style={{
+        borderRadius: '50%', width: 22, height: 22, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: toast.type === 'error' ? '#ef4444' : '#22c55e',
+      }}>
+        {toast.type === 'error'
+          ? <svg width="12" height="12" fill="none" stroke="white" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+          : <svg width="12" height="12" fill="none" stroke="white" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+        }
+      </div>
+      <span style={{ fontSize: 13, flex: 1, lineHeight: 1.5 }}>{toast.message}</span>
+      <button onClick={hideToast} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>✕</button>
+    </div>
+  );
+};
+
 const LeftPanel = () => (
   <div className="hidden lg:flex flex-col items-center justify-center w-1/2 min-h-screen bg-white dark:bg-[#0A0A0A] relative overflow-hidden px-12">
     <div className="absolute top-[-100px] left-[-100px] w-96 h-96 rounded-full"
@@ -45,10 +82,8 @@ const LeftPanel = () => (
     <div className="relative z-10 text-center">
       <div className="mb-8 flex items-center justify-center">
         <div className="relative">
-          <span
-            className="text-[120px] font-black leading-none tracking-tighter select-none"
-            style={{ color: '#2563eb', textShadow: '0 8px 32px rgba(37,99,235,0.2), 0 2px 4px rgba(37,99,235,0.3)' }}
-          >
+          <span className="text-[120px] font-black leading-none tracking-tighter select-none"
+            style={{ color: '#2563eb', textShadow: '0 8px 32px rgba(37,99,235,0.2), 0 2px 4px rgba(37,99,235,0.3)' }}>
             VH
           </span>
           <div className="absolute -bottom-2 left-0 right-0 h-1 bg-[#2563eb] opacity-30 rounded-full" />
@@ -73,21 +108,31 @@ export const AdminLogin = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
 
   const oauthValidatingRef = useRef(false);
-  const initialCheckDoneRef = useRef(false);
+  const isManualLoginRef = useRef(false); // ✅ NEW: prevents useEffect redirect during manual login
+  const toastTimerRef = useRef(null);
 
   const successMessage = location.state?.message;
 
-  // Helper to get the current origin (works for both localhost and network IP)
-  const getRedirectUrl = () => {
-    // Use the current origin (includes protocol, hostname, and port)
-    // This will work for localhost, 127.0.0.1, network IPs, and production domains
-    return `${window.location.origin}/#/admin/auth/callback`;
+  const showToast = (message, type = 'success') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ message, type });
+    toastTimerRef.current = setTimeout(() => setToast(null), 5000);
   };
+
+  const hideToast = () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(null);
+  };
+
+  useEffect(() => {
+    return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); };
+  }, []);
+
+  const getRedirectUrl = () => `${window.location.origin}/#/admin/auth/callback`;
 
   const validateAdminAccess = async (authUser, selectedRole) => {
     const allowedDomains = ['gmail.com', 'vidhelp.com'];
@@ -96,156 +141,125 @@ export const AdminLogin = () => {
       await supabase.auth.signOut();
       throw new Error('Only @gmail.com or @vidhelp.com email addresses are allowed.');
     }
-
     const { data: memberData, error: dbError } = await supabase
       .from('team_members')
       .select('role, status, auth_user_id')
       .eq('auth_user_id', authUser.id)
       .single();
-
     if (dbError || !memberData) {
       await supabase.auth.signOut();
       throw new Error('Account not found in the system. Please contact Super Admin.');
     }
-
     if (memberData.status !== 'active') {
       await supabase.auth.signOut();
       throw new Error('Your account has been deactivated. Please contact Super Admin.');
     }
-
     if (memberData.role === 'staff') {
       await supabase.auth.signOut();
       throw new Error('Staff accounts do not have access to the Admin Portal.');
     }
-
     if (memberData.role !== selectedRole) {
       await supabase.auth.signOut();
       const actualLabel   = memberData.role === 'super_admin' ? 'Super Admin' : 'Admin';
       const selectedLabel = selectedRole   === 'super_admin' ? 'Super Admin' : 'Admin';
-      throw new Error(
-        `Wrong access level selected. You selected "${selectedLabel}" but your account is registered as "${actualLabel}". Please select the correct access level and try again.`
-      );
+      throw new Error(`Wrong access level selected. You selected "${selectedLabel}" but your account is registered as "${actualLabel}". Please select the correct access level and try again.`);
     }
-
     return memberData;
   };
 
-  // Handle OAuth callback - runs when component mounts OR when user changes
+  // OAuth callback validation
   useEffect(() => {
     const storedRole = sessionStorage.getItem('oauth_selected_role');
-    
-    // If no stored role or no user, don't validate
     if (!storedRole || !user) return;
-    
-    // Prevent duplicate validation
     if (oauthValidatingRef.current) return;
-
     oauthValidatingRef.current = true;
     setLoading(true);
-    setError('');
-
-    // Clear the stored role immediately to prevent re-validation
     sessionStorage.removeItem('oauth_selected_role');
-
     validateAdminAccess(user, storedRole)
       .then(() => {
-        // Clear any leftover state
         oauthValidatingRef.current = false;
         setLoading(false);
         navigate('/admin', { replace: true });
       })
       .catch((err) => {
-        setError(err.message || 'Validation failed. Please try again.');
         setLoading(false);
         oauthValidatingRef.current = false;
-        // Sign out on validation failure
         supabase.auth.signOut();
+        showToast(err.message || 'Validation failed. Please try again.', 'error');
       });
   }, [user, navigate]);
 
-  // Redirect already-authenticated users (email/password login)
-  // Only runs after initial auth check is complete and no OAuth validation is in progress
+  // Auto-redirect if already logged in
+  // ✅ FIX: skip redirect if manual login is in progress
   useEffect(() => {
     if (authLoading) return;
     if (oauthValidatingRef.current) return;
+    if (isManualLoginRef.current) return; // ✅ don't redirect during manual login
     if (sessionStorage.getItem('oauth_selected_role')) return;
-    
-    // Only redirect once after initial check
-    if (!initialCheckDoneRef.current && user) {
-      initialCheckDoneRef.current = true;
+    if (user) {
       navigate('/admin', { replace: true });
     }
   }, [user, authLoading, navigate]);
 
+  useEffect(() => {
+    if (successMessage) showToast(successMessage, 'success');
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
+    isManualLoginRef.current = true; // ✅ block auto-redirect useEffect
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) throw new Error(signInError.message);
       if (!data.user) throw new Error('Login failed. Please try again.');
       await validateAdminAccess(data.user, role);
+      isManualLoginRef.current = false;
       navigate('/admin', { replace: true });
     } catch (err) {
-      setError(err.message || 'Login failed.');
+      isManualLoginRef.current = false; // ✅ release block on error
       setLoading(false);
+      showToast(err.message || 'Login failed.', 'error');
     }
   };
 
   const handleGoogleLogin = async () => {
-    setError('');
-    
-    // Clear any existing session storage items
+    if (!role) {
+      showToast('Please select an access level first.', 'error');
+      return;
+    }
     sessionStorage.removeItem('oauth_selected_role');
-    
     oauthValidatingRef.current = true;
     setLoading(true);
-    
     try {
-      // Store the selected role for after OAuth callback
       sessionStorage.setItem('oauth_selected_role', role);
-      
-      const redirectUrl = getRedirectUrl();
-      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectUrl,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
+          redirectTo: getRedirectUrl(),
+          queryParams: { access_type: 'offline', prompt: 'consent' },
         },
       });
-      
       if (error) throw new Error(error.message);
-      
-      // The page will redirect to Google - no need to set loading false here
-      // The OAuth callback will handle the rest
     } catch (err) {
-      console.error('Google login error:', err);
       sessionStorage.removeItem('oauth_selected_role');
       oauthValidatingRef.current = false;
-      setError(err.message || 'Google login failed. Please try again.');
       setLoading(false);
+      showToast(err.message || 'Google login failed. Please try again.', 'error');
     }
   };
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
     setLoading(true);
     try {
-      const redirectUrl = `${window.location.origin}/#/admin/auth/reset-password`;
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectUrl,
+        redirectTo: `${window.location.origin}/#/admin/auth/reset-password`,
       });
       if (resetError) throw new Error(resetError.message);
-      setSuccess('If this email is registered, a password reset link has been sent. Please check your inbox.');
+      showToast('If this email is registered, a password reset link has been sent. Please check your inbox.', 'success');
     } catch (err) {
-      setError(err.message || 'Failed to send reset email.');
+      showToast(err.message || 'Failed to send reset email.', 'error');
     } finally {
       setLoading(false);
     }
@@ -253,15 +267,13 @@ export const AdminLogin = () => {
 
   const switchView = (newView) => {
     setView(newView);
-    setError('');
-    setSuccess('');
     setEmail('');
   };
 
-  // Show loading state
-  if (authLoading || loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0A0A0A]">
+        <ToastNotification toast={toast} hideToast={hideToast} />
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
@@ -272,10 +284,10 @@ export const AdminLogin = () => {
     );
   }
 
-  // Forgot Password View
   if (view === VIEW.FORGOT) {
     return (
       <div className="min-h-screen flex">
+        <ToastNotification toast={toast} hideToast={hideToast} />
         <LeftPanel />
         <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0A] px-6 py-12">
           <div className="w-full max-w-md space-y-6">
@@ -294,14 +306,6 @@ export const AdminLogin = () => {
                 Enter your email and we'll send you a reset link
               </p>
             </div>
-
-            {error && (
-              <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">{error}</div>
-            )}
-            {success && (
-              <div className="bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 p-3 rounded-lg text-sm border border-green-100 dark:border-green-900/50">{success}</div>
-            )}
-
             <form className="space-y-4" onSubmit={handleForgotPassword}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email address</label>
@@ -316,13 +320,12 @@ export const AdminLogin = () => {
               </div>
               <button
                 type="submit"
-                disabled={loading || !!success}
+                disabled={loading}
                 className="w-full py-2 px-4 rounded-md text-sm font-medium text-white bg-[#2563eb] hover:bg-[#b81515] disabled:opacity-50 transition-colors"
               >
                 {loading ? 'Sending...' : 'Send Reset Link'}
               </button>
             </form>
-
             <button
               onClick={() => switchView(VIEW.LOGIN)}
               className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors"
@@ -335,14 +338,12 @@ export const AdminLogin = () => {
     );
   }
 
-  // Login View
   return (
     <div className="min-h-screen flex">
+      <ToastNotification toast={toast} hideToast={hideToast} />
       <LeftPanel />
-
       <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0A] px-6 py-12">
         <div className="w-full max-w-md space-y-6">
-
           <div>
             <button
               onClick={() => navigate('/')}
@@ -357,34 +358,21 @@ export const AdminLogin = () => {
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Sign in to your VIDHELP Admin account</p>
           </div>
 
-          {error && (
-            <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">{error}</div>
-          )}
-          {successMessage && !error && (
-            <div className="bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 p-3 rounded-lg text-sm border border-green-100 dark:border-green-900/50">{successMessage}</div>
-          )}
-
           <form className="space-y-4" onSubmit={handleSubmit}>
-            {/* Access Level */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Access Level</label>
               <div className="relative">
                 <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    required
-                    className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm appearance-none bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb]"
-                  >
-                    <option value="" disabled>
-                      
-                    </option>
-
-                    {ROLES.map((r) => (
-                      <option key={r.value} value={r.value}>
-                        {r.label}
-                      </option>
-                    ))}
-                  </select>
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  required
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm appearance-none bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb]"
+                >
+                  <option value="" disabled hidden></option>
+                  {ROLES.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -393,7 +381,6 @@ export const AdminLogin = () => {
               </div>
             </div>
 
-            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email address</label>
               <input
@@ -402,11 +389,10 @@ export const AdminLogin = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@gmail.com"
-                className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none bg-[#2563eb] hover:bg-[#1d4ed8]"
+                className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb]"
               />
             </div>
 
-            {/* Password */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
@@ -425,7 +411,7 @@ export const AdminLogin = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none bg-[#2563eb] hover:bg-[#1d4ed8]"
+                  className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb]"
                 />
                 <button
                   type="button"
@@ -437,7 +423,6 @@ export const AdminLogin = () => {
               </div>
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -446,7 +431,6 @@ export const AdminLogin = () => {
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
 
-            {/* Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300 dark:border-[#262626]" />
@@ -456,7 +440,6 @@ export const AdminLogin = () => {
               </div>
             </div>
 
-            {/* Google Login */}
             <button
               type="button"
               onClick={handleGoogleLogin}
@@ -471,13 +454,11 @@ export const AdminLogin = () => {
               </svg>
               Sign in with Google
             </button>
-
           </form>
 
           <p className="text-center text-xs text-gray-400 dark:text-gray-600">
             Contact your Super Admin if you need access credentials.
           </p>
-
         </div>
       </div>
     </div>
