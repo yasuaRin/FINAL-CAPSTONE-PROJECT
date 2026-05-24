@@ -255,8 +255,8 @@ export const AdminLogin = () => {
               </div>
               <button
                 type="submit"
-                disabled={loading || !!success}
-                className="w-full py-2 px-4 rounded-md text-sm font-medium text-white bg-[#2563eb] hover:bg-[#b81515] disabled:opacity-50 transition-colors"
+                disabled={loading}
+                className="w-full py-2 px-4 rounded-md text-sm font-medium text-white bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-50 transition-colors"
               >
                 {loading ? 'Sending...' : 'Send Reset Link'}
               </button>
@@ -312,7 +312,7 @@ export const AdminLogin = () => {
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm appearance-none bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb]"
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm appearance-none bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white focus:outline-none bg-[#2563eb] hover:bg-[#1d4ed8]"
                 >
                   {ROLES.map((r) => (
                     <option key={r.value} value={r.value}>{r.label}</option>
@@ -335,7 +335,7 @@ export const AdminLogin = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@gmail.com"
-                className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb]"
+                className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none bg-[#2563eb] hover:bg-[#1d4ed8]"
               />
             </div>
 
@@ -346,7 +346,7 @@ export const AdminLogin = () => {
                 <button
                   type="button"
                   onClick={() => switchView(VIEW.FORGOT)}
-                  className="text-xs text-[#2563eb] hover:text-[#b81515] transition-colors"
+                  className="text-xs text-[#2563eb] hover:text-[#1d4ed8] transition-colors"
                 >
                   Forgot password?
                 </button>
@@ -358,7 +358,7 @@ export const AdminLogin = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb]"
+                  className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none bg-[#2563eb] hover:bg-[#1d4ed8]"
                 />
                 <button
                   type="button"

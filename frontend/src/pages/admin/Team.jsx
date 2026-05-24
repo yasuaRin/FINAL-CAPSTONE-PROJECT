@@ -2,7 +2,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../../services/supabase";
 import { useAuth } from "../../hooks/useAuth";
-import { UserPlus, Search, Mail, Phone, Edit3, Trash2, AlertTriangle, X, Upload, MoreVertical, Activity, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { UserPlus, Search, Mail, Phone, Edit3, Trash2, AlertTriangle, X, Upload, Activity, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Eye, EyeOff } from "lucide-react";
 
 const BASE_STYLE = `
   @keyframes spin  { to { transform: rotate(360deg); } }
@@ -114,16 +114,16 @@ const HeaderFilter = ({ label, value, options, onChange }) => {
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
-        display: "inline-flex", alignItems: "center", gap: 5,
-        background: "none",
-        border: "1px solid transparent",
-        borderRadius: 6,
-        cursor: "pointer",
-        padding: "4px 8px",
-        color: isFiltered ? "#fff" : hovered ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.8)", 
-        fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em",
-        transition: "color 0.15s ease",
-      }}
+          display: "inline-flex", alignItems: "center", gap: 5,
+          background: "none",
+          border: "1px solid transparent",
+          borderRadius: 6,
+          cursor: "pointer",
+          padding: "4px 8px",
+          color: isFiltered ? "#fff" : hovered ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.8)",
+          fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em",
+          transition: "color 0.15s ease",
+        }}
       >
         {label}
         <ChevronDown
@@ -135,7 +135,7 @@ const HeaderFilter = ({ label, value, options, onChange }) => {
           }}
         />
         {isFiltered && (
-        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff", marginLeft: 1, flexShrink: 0 }} />
+          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff", marginLeft: 1, flexShrink: 0 }} />
         )}
       </button>
 
@@ -194,6 +194,7 @@ export default function Team() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedRole, setSelectedRole] = useState("staff");
+  const [showPassword, setShowPassword] = useState(false); // ← TAMBAHAN
 
   const [roleFilter, setRoleFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -304,6 +305,7 @@ export default function Team() {
     formAvatarRef.current = avatar;
     setFormError("");
     setSelectedRole(member?.role || "staff");
+    setShowPassword(false); // ← reset saat buka form
     setIsFormOpen(true);
   };
 
@@ -314,6 +316,7 @@ export default function Team() {
     formAvatarRef.current = null;
     setFormError("");
     setSelectedRole("staff");
+    setShowPassword(false); // ← reset saat tutup form
     setAvatarUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -432,7 +435,7 @@ export default function Team() {
           )}
         </div>
 
-        {/* Search + Count — di luar card, di bawah page header */}
+        {/* Search + Count */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
           <div style={{ position: "relative", width: "100%", maxWidth: 340 }}>
             <Search size={15} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted-foreground)" }} />
@@ -445,144 +448,125 @@ export default function Team() {
             />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: "var(--foreground)" }}>
-            <Activity size={13} style={{ color: "var(--primary)" }} />
+            <Activity size={13} style={{ color: "#2563eb" }} />
             {filtered.length} members found
           </div>
         </div>
 
         {/* Main Card */}
         <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, overflow: "hidden", boxShadow: "0 1px 8px rgba(0,0,0,0.06)" }}>
-
-          {/* Table */}
-        <div style={{ overflowX: "auto" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "60px 2fr 1.4fr 1.2fr 1fr 100px", background: "var(--primary)", padding: "0 8px" }}>
-            {["No", "Profile", "Role", "Employee Status", "Level", "Actions"].map((h) => (
+          <div style={{ overflowX: "auto" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "60px 2fr 1.4fr 1.2fr 1fr 100px", background: "#2563eb", padding: "0 8px" }}>
+              {["No", "Profile", "Role", "Employee Status", "Level", "Actions"].map((h) => (
                 <div key={h} style={{ padding: "14px 16px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#fff", textAlign: h === "Actions" ? "right" : "left" }}>
-                {h === "Role" ? <HeaderFilter label="Role" value={roleFilter} options={roleOptions} onChange={(v) => { setRoleFilter(v); setCurrentPage(1); }} />
-                : h === "Employee Status" ? <HeaderFilter label="Employee Status" value={statusFilter} options={statusOptions} onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }} />
-                : h === "Level" ? <HeaderFilter label="Level" value={levelFilter} options={levelOptions} onChange={(v) => { setLevelFilter(v); setCurrentPage(1); }} />
-                : h}
-              </div>
-            ))}
-          </div>
+                  {h === "Role" ? <HeaderFilter label="Role" value={roleFilter} options={roleOptions} onChange={(v) => { setRoleFilter(v); setCurrentPage(1); }} />
+                    : h === "Employee Status" ? <HeaderFilter label="Employee Status" value={statusFilter} options={statusOptions} onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }} />
+                      : h === "Level" ? <HeaderFilter label="Level" value={levelFilter} options={levelOptions} onChange={(v) => { setLevelFilter(v); setCurrentPage(1); }} />
+                        : h}
+                </div>
+              ))}
+            </div>
 
-          {/* Rows */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "4px 8px" }}>
-            {paginatedMembers.length === 0 ? (
-              <div style={{ padding: 48, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>No members found.</div>
-            ) : (
-              paginatedMembers.map((member, idx) => (
-                <div
-                  key={`${member._table}-${member._id}`}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "60px 2fr 1.4fr 1.2fr 1fr 100px",
-                    alignItems: "center",
-                    borderRadius: 12,
-                    border: "1px solid var(--border)",
-                    background: "var(--card)",
-                    transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-4px)";
-                    e.currentTarget.style.boxShadow = "0 12px 32px rgba(219,26,26,0.13), 0 4px 12px rgba(0,0,0,0.07)";
-                    e.currentTarget.style.borderColor = "rgba(219,26,26,0.25)";
-                    e.currentTarget.style.background = "rgba(219,26,26,0.02)";
-                    const name = e.currentTarget.querySelector(".member-name");
-                    if (name) name.style.color = "var(--primary)";
-                    const num = e.currentTarget.querySelector(".row-number");
-                    if (num) { num.style.background = "var(--primary)"; num.style.color = "#fff"; }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "none";
-                    e.currentTarget.style.borderColor = "var(--border)";
-                    e.currentTarget.style.background = "var(--card)";
-                    const name = e.currentTarget.querySelector(".member-name");
-                    if (name) name.style.color = "var(--foreground)";
-                    const num = e.currentTarget.querySelector(".row-number");
-                    if (num) { num.style.background = "var(--muted)"; num.style.color = "var(--primary)"; }
-                  }}
-                >
-                  {/* No */}
-                  <div style={{ padding: "16px 12px", textAlign: "center" }}>
-                    <span
-                      className="row-number"
-                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 8, background: "var(--muted)", fontSize: 11, fontWeight: 700, color: "var(--primary)", transition: "background 0.18s ease, color 0.18s ease" }}
-                    >
-                      {(currentPage - 1) * rowsPerPage + idx + 1}
-                    </span>
-                  </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "4px 8px" }}>
+              {paginatedMembers.length === 0 ? (
+                <div style={{ padding: 48, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>No members found.</div>
+              ) : (
+                paginatedMembers.map((member, idx) => (
+                  <div
+                    key={`${member._table}-${member._id}`}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "60px 2fr 1.4fr 1.2fr 1fr 100px",
+                      alignItems: "center",
+                      borderRadius: 12,
+                      border: "1px solid var(--border)",
+                      background: "var(--card)",
+                      transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-4px)";
+                      e.currentTarget.style.boxShadow = "0 12px 32px rgba(219,26,26,0.15), 0 4px 12px rgba(0,0,0,0.08)";
+                      e.currentTarget.style.borderColor = "rgba(219,26,26,0.3)";
+                      e.currentTarget.style.background = "rgba(219,26,26,0.02)";
+                      const name = e.currentTarget.querySelector(".member-name");
+                      const num = e.currentTarget.querySelector(".row-number");
+                      if (name) name.style.color = "#DB1A1A";
+                      if (num) { num.style.background = "#DB1A1A"; num.style.color = "#fff"; }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "none";
+                      e.currentTarget.style.borderColor = "var(--border)";
+                      e.currentTarget.style.background = "var(--card)";
+                      const name = e.currentTarget.querySelector(".member-name");
+                      if (name) name.style.color = "var(--foreground)";
+                      const num = e.currentTarget.querySelector(".row-number");
+                      if (num) { num.style.background = "var(--muted)"; num.style.color = "#2563eb"; }
+                    }}
+                  >
+                    <div style={{ padding: "16px 12px", textAlign: "center" }}>
+                      <span className="row-number" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 8, background: "var(--muted)", fontSize: 11, fontWeight: 700, color: "#2563eb", transition: "background 0.18s ease, color 0.18s ease" }}>
+                        {(currentPage - 1) * rowsPerPage + idx + 1}
+                      </span>
+                    </div>
 
-                  {/* Profile */}
-                  <div style={{ padding: "16px 20px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={{ position: "relative" }}>
-                        <Avatar src={member.avatar} name={member.name} />
-                        <div style={{ position: "absolute", bottom: 2, right: 2, width: 10, height: 10, borderRadius: "50%", background: member.status === "active" ? "#22c55e" : "#ef4444", border: "2px solid var(--card)" }} />
-                      </div>
-                      <div>
-                        <p className="member-name" style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)", margin: 0, transition: "color 0.15s ease" }}>
-                          {member.name}
-                        </p>
-                        <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "3px 0 0", display: "flex", alignItems: "center", gap: 4 }}>
-                          <Mail size={11} /> {member.email || "—"}
-                        </p>
-                        {member.phone && (
-                          <p style={{ fontSize: 10, color: "var(--muted-foreground)", margin: "2px 0 0", display: "flex", alignItems: "center", gap: 4 }}>
-                            <Phone size={10} /> {member.phone}
+                    <div style={{ padding: "16px 20px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ position: "relative" }}>
+                          <Avatar src={member.avatar} name={member.name} />
+                          <div style={{ position: "absolute", bottom: 2, right: 2, width: 10, height: 10, borderRadius: "50%", background: member.status === "active" ? "#22c55e" : "#ef4444", border: "2px solid var(--card)" }} />
+                        </div>
+                        <div>
+                          <p className="member-name" style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)", margin: 0, transition: "color 0.15s ease" }}>{member.name}</p>
+                          <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "3px 0 0", display: "flex", alignItems: "center", gap: 4 }}>
+                            <Mail size={11} /> {member.email || "—"}
                           </p>
-                        )}
+                          {member.phone && (
+                            <p style={{ fontSize: 10, color: "var(--muted-foreground)", margin: "2px 0 0", display: "flex", alignItems: "center", gap: 4 }}>
+                              <Phone size={10} /> {member.phone}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Role */}
-                  <div style={{ padding: "16px 20px" }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>{member.roleDescription}</p>
-                    <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "3px 0 0" }}>Intelligence Division</p>
-                  </div>
+                    <div style={{ padding: "16px 20px" }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>
+                        {member.roleDescription
+                          ? member.roleDescription
+                              .split("_")
+                              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                              .join(" ")
+                          : "—"}
+                      </p>
+                      <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "3px 0 0" }}>Intelligence Division</p>
+                    </div>
 
-                  {/* Status */}
-                  <div style={{ padding: "16px 20px" }}>
-                    <StatusBadge status={member.status} />
-                  </div>
+                    <div style={{ padding: "16px 20px" }}><StatusBadge status={member.status} /></div>
+                    <div style={{ padding: "16px 20px" }}><RoleBadge role={member.role} /></div>
 
-                  {/* Level */}
-                  <div style={{ padding: "16px 20px" }}>
-                    <RoleBadge role={member.role} />
+                    <div style={{ padding: "16px 20px", textAlign: "right" }}>
+                      {canEdit(member) && (
+                        <div style={{ display: "inline-flex", gap: 6 }}>
+                          <button onClick={() => openForm(member)} style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(219,26,26,0.08)", cursor: "pointer", color: "#DB1A1A", transition: "all 0.15s", display: "flex", alignItems: "center", justifyContent: "center" }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.2)"; e.currentTarget.style.transform = "scale(1.12)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.08)"; e.currentTarget.style.transform = "scale(1)"; }}>
+                            <Edit3 size={13} />
+                          </button>
+                          <button onClick={() => setDeleteTarget(member)} style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(219,26,26,0.08)", cursor: "pointer", color: "#DB1A1A", transition: "all 0.15s", display: "flex", alignItems: "center", justifyContent: "center" }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.2)"; e.currentTarget.style.transform = "scale(1.12)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.08)"; e.currentTarget.style.transform = "scale(1)"; }}>
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-
-                  {/* Actions */}
-                  <div style={{ padding: "16px 20px", textAlign: "right" }}>
-                    {canEdit(member) && (
-                      <div style={{ display: "inline-flex", gap: 6 }}>
-                        <button
-                          onClick={() => openForm(member)}
-                          style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(219,26,26,0.08)", cursor: "pointer", color: "var(--primary)", transition: "background 0.15s ease, transform 0.15s ease", display: "flex", alignItems: "center", justifyContent: "center" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.2)"; e.currentTarget.style.transform = "scale(1.12)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.08)"; e.currentTarget.style.transform = "scale(1)"; }}
-                        >
-                          <Edit3 size={14} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget(member)}
-                          style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(219,26,26,0.08)", cursor: "pointer", color: "var(--primary)", transition: "background 0.15s ease, transform 0.15s ease", display: "flex", alignItems: "center", justifyContent: "center" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.2)"; e.currentTarget.style.transform = "scale(1.12)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.08)"; e.currentTarget.style.transform = "scale(1)"; }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
-        </div>
 
-          {/* Pagination */}
           {filtered.length > 0 && (
             <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -663,7 +647,7 @@ export default function Team() {
               </div>
               <div style={{ padding: 28, overflowY: "auto", maxHeight: "calc(90vh - 60px)" }}>
                 {formError && (
-                  <div style={{ marginBottom: 20, padding: "10px 14px", background: "rgba(219,26,26,0.08)", border: "1px solid rgba(219,26,26,0.2)", borderRadius: 10, color: "var(--primary)", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ marginBottom: 20, padding: "10px 14px", background: "rgba(219,26,26,0.08)", border: "1px solid rgba(219,26,26,0.2)", borderRadius: 10, color: "#2563eb", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
                     <AlertTriangle size={14} /> {formError}
                   </div>
                 )}
@@ -687,7 +671,7 @@ export default function Team() {
                   <p style={{ fontSize: 10, color: "var(--muted-foreground)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>{avatarUploading ? "Uploading..." : "Click photo to update"}</p>
                   {formAvatar && !avatarUploading && (
                     <button type="button" onClick={async () => { try { await deleteFromStorage(formAvatar); } catch (_) {} setFormAvatar(null); formAvatarRef.current = null; if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                      style={{ fontSize: 11, color: "var(--primary)", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>
+                      style={{ fontSize: 11, color: "#2563eb", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>
                       Remove photo
                     </button>
                   )}
@@ -716,12 +700,35 @@ export default function Team() {
                       </select>
                     </div>
                   </div>
+
+                  {/* Password field dengan show/hide toggle */}
                   {!editingMember && selectedRole !== "staff" && (
                     <div style={{ marginBottom: 16 }}>
-                      <label style={labelStyle}>Password <span style={{ color: "var(--primary)" }}>*</span></label>
-                      <input name="password" type="password" placeholder="Create password" style={inputStyle} />
+                      <label style={labelStyle}>Password <span style={{ color: "#2563eb" }}>*</span></label>
+                      <div style={{ position: "relative" }}>
+                        <input
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Create password"
+                          style={{ ...inputStyle, paddingRight: 40 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(p => !p)}
+                          style={{
+                            position: "absolute", right: 10, top: "50%",
+                            transform: "translateY(-50%)", background: "none",
+                            border: "none", cursor: "pointer", padding: 4,
+                            color: "var(--muted-foreground)", display: "flex",
+                            alignItems: "center", justifyContent: "center"
+                          }}
+                        >
+                          {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
                     </div>
                   )}
+
                   <div style={{ marginBottom: 16 }}>
                     <label style={labelStyle}>Role Description</label>
                     <input name="roleDescription" required defaultValue={editingMember?.roleDescription} placeholder="e.g. Lead Talent Coordinator" style={inputStyle} />
@@ -748,4 +755,4 @@ export default function Team() {
       </div>
     </div>
   );
-} 
+}
