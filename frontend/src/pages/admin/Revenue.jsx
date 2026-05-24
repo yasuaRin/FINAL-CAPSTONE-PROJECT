@@ -41,8 +41,13 @@ const normalizePeriodId = (raw) => {
 
 const LIMIT_OPTIONS = [10, 20, 30, 40, 50, 100, 200, 500, 1000, null];
 
+const PLATFORM_OPTIONS = [
+  { value: 'TikTok',  label: 'TikTok' },
+  { value: 'Shopee',  label: 'Shopee' },
+  { value: 'Multi',   label: 'Multi-Platform' },
+];
+
 const Revenue = () => {
-  // ========== ALL useState HOOKS ==========
   const [dateRange, setDateRange] = useState({
     start: subDays(new Date(), 365 * 10),
     end: new Date(),
@@ -56,6 +61,7 @@ const Revenue = () => {
   const [sessionToDelete, setSessionToDelete] = useState(null);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [sessionFormData, setSessionFormData] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
@@ -80,15 +86,30 @@ const Revenue = () => {
   const [topPerformersFromView, setTopPerformersFromView] = useState([]);
   const [loadingPerformers, setLoadingPerformers] = useState(false);
 
-  // ========== ALL useRef HOOKS ==========
+  const [openDropdown, setOpenDropdown] = useState(null);
+
   const globalFilterRef = useRef(null);
   const fileInputRef = useRef(null);
   const notificationTimeoutRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const modalRef = useRef(null);
 
   // ========== CUSTOM HOOKS ==========
   const { data: revenueData, loading, refetch: refetchRevenue, brandTotals } = useRevenue();
   const { brands } = useBrands(brandTotals);
   const { team } = useTeam();
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (showSessionModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showSessionModal]);
 
   // ========== ALL useEffect HOOKS ==========
   useEffect(() => {
@@ -100,6 +121,27 @@ const Revenue = () => {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Close modal on escape key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && showSessionModal) {
+        closeSessionModal();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showSessionModal]);
 
   useEffect(() => {
     const fetchPeriods = async () => {
@@ -164,7 +206,6 @@ const Revenue = () => {
     fetchTopPerformers();
   }, []);
 
-  // ========== ALL useMemo HOOKS ==========
   const periodMap = useMemo(() => {
     const map = {};
     periodsData.forEach(p => {
@@ -293,15 +334,11 @@ const Revenue = () => {
     return results.sort((a, b) => b.totalRevenue - a.totalRevenue);
   }, [dateFilteredLogs, brandsList, insightBrandId, periodMap]);
 
+  // FIXED: sessionIntelligence with proper filtering
   const sessionIntelligence = useMemo(() => {
     let rows = dateFilteredLogs.map(log => {
-      let periodDisplay = '';
       const periodId = log.period_id;
-      if (periodId !== null && periodId !== undefined) {
-        periodDisplay = `Period ${periodId}`;
-      } else {
-        periodDisplay = 'No Period';
-      }
+      const periodDisplay = (periodId !== null && periodId !== undefined) ? `Period ${periodId}` : 'No Period';
       return {
         ...log,
         brandName: brandMap[log.brandId] || 'Unknown Brand',
@@ -310,6 +347,7 @@ const Revenue = () => {
         time: log.time || '',
       };
     });
+    
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
       rows = rows.filter(r =>
@@ -318,15 +356,25 @@ const Revenue = () => {
         r.platform.toLowerCase().includes(q)
       );
     }
-    if (tableFilter.brandId !== 'All') rows = rows.filter(r => r.brandId === tableFilter.brandId);
-    if (tableFilter.period !== 'All') rows = rows.filter(r => r.period === tableFilter.period);
+    
+    // Apply brand filter
+    if (tableFilter.brandId && tableFilter.brandId !== 'All') {
+      rows = rows.filter(r => r.brandId === tableFilter.brandId);
+    }
+    
+    // Apply period filter
+    if (tableFilter.period && tableFilter.period !== 'All') {
+      rows = rows.filter(r => r.period === tableFilter.period);
+    }
+    
     rows.sort((a, b) => {
       const av = sortCol === 'date' ? new Date(a.date).getTime() : a[sortCol];
       const bv = sortCol === 'date' ? new Date(b.date).getTime() : b[sortCol];
       return sortDir === 'asc' ? av - bv : bv - av;
     });
+    
     return rows;
-  }, [dateFilteredLogs, brandMap, teamMap, searchTerm, tableFilter, sortCol, sortDir]);
+  }, [dateFilteredLogs, brandMap, teamMap, searchTerm, tableFilter.brandId, tableFilter.period, sortCol, sortDir]);
 
   const visibleSessions = useMemo(
     () => rowLimit === null ? sessionIntelligence : sessionIntelligence.slice(0, rowLimit),
@@ -356,27 +404,40 @@ const Revenue = () => {
         uniqueMap.set(normalizedId, p);
       }
     });
-    return Array.from(uniqueMap.values()).sort((a, b) => {
-      const idA = normalizePeriodId(a.period_id);
-      const idB = normalizePeriodId(b.period_id);
-      return idA - idB;
-    });
+    return Array.from(uniqueMap.values())
+      .sort((a, b) => normalizePeriodId(a.period_id) - normalizePeriodId(b.period_id))
+      .map(p => ({
+        id: normalizePeriodId(p.period_id),
+        name: p.period_name || `Period ${normalizePeriodId(p.period_id)}`
+      }));
   }, [periodsData]);
 
-  // ========== HANDLER FUNCTIONS ==========
   const handleSortByBrandChange = (brandId) => {
     handleGlobalBrand(brandId || 'All');
   };
 
   const handleGlobalBrand = (brandId) => {
     setInsightBrandId(brandId);
-    setTableFilter(prev => ({ ...prev, brandId }));
+    setTableFilter(prev => ({ ...prev, brandId: brandId || 'All' }));
     setGlobalFilterOpen(false);
+    
+    if (brandId && brandId !== 'All') {
+      const brand = brandsList.find(b => b.id === brandId);
+      notify(`Filtering by brand: ${brand?.name || 'Brand'}`);
+    } else {
+      notify('Showing all brands');
+    }
   };
 
   const handleGlobalPeriod = (period) => {
-    setTableFilter(prev => ({ ...prev, period }));
+    setTableFilter(prev => ({ ...prev, period: period || 'All' }));
     setGlobalFilterOpen(false);
+    
+    if (period && period !== 'All') {
+      notify(`Filtering by period: ${period}`);
+    } else {
+      notify('Showing all periods');
+    }
   };
 
   const resetGlobalFilters = () => {
@@ -384,6 +445,7 @@ const Revenue = () => {
     setTableFilter({ brandId: 'All', period: 'All' });
     setRowLimit(25);
     setGlobalFilterOpen(false);
+    notify('All filters cleared - showing all sessions');
   };
 
   const globalActiveCount = [
@@ -391,7 +453,7 @@ const Revenue = () => {
     rowLimit !== 25,
   ].filter(Boolean).length;
 
-  const notify = (msg) => {
+  const notify = (msg, isError = false) => {
     if (notificationTimeoutRef.current) {
       clearTimeout(notificationTimeoutRef.current);
     }
@@ -399,11 +461,10 @@ const Revenue = () => {
     notificationTimeoutRef.current = setTimeout(() => {
       setNotification(null);
       notificationTimeoutRef.current = null;
-    }, 3000);
+    }, 5000);
   };
 
   const resetForm = () => {
-    const uniquePeriodsList = [...new Map(periodsData.map(p => [normalizePeriodId(p.period_id), p])).values()];
     setSessionFormData({
       date: format(new Date(), 'yyyy-MM-dd'),
       time: format(new Date(), 'HH:mm'),
@@ -411,20 +472,32 @@ const Revenue = () => {
       platform: 'TikTok',
       viewers: 0,
       revenue: 0,
-      period_id: uniquePeriodsList[0]?.period_id ? String(normalizePeriodId(uniquePeriodsList[0].period_id)) : '',
+      period_id: uniquePeriodsForDropdown[0]?.id ? String(uniquePeriodsForDropdown[0].id) : '',
       host_team_member_id: team?.[0] ? sid(team[0].id) : '',
     });
   };
 
+  const refreshDataWithRetry = async (retries = 3, delay = 1000) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        await refetchRevenue();
+        return true;
+      } catch (err) {
+        console.warn(`Refresh attempt ${i + 1} failed:`, err);
+        if (i < retries - 1) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    return false;
+  };
+
   const handleCreateSession = async () => {
-    if (!sessionFormData.brandId) {
-      notify('❌ Please select a brand');
-      return;
-    }
-    if (!sessionFormData.period_id) {
-      notify('❌ Please select a period');
-      return;
-    }
+    if (isSubmitting) return;
+    if (!sessionFormData.brandId) { notify('Please select a brand'); return; }
+    if (!sessionFormData.period_id) { notify('Please select a period'); return; }
+    
+    setIsSubmitting(true);
     try {
       let platformId = null;
       try {
@@ -442,10 +515,7 @@ const Revenue = () => {
       const isTikTok = ['TikTok', 'Multi'].includes(sessionFormData.platform);
       const normalizedPeriodId = normalizePeriodId(sessionFormData.period_id);
 
-      if (!normalizedPeriodId) {
-        notify('❌ Invalid period selected');
-        return;
-      }
+      if (!normalizedPeriodId) { notify('Invalid period selected'); return; }
 
       const { error } = await supabase.from('live_sessions').insert([{
         date: sessionFormData.date,
@@ -466,23 +536,36 @@ const Revenue = () => {
 
       setShowSessionModal(false);
       resetForm();
-      await refetchRevenue();
-      notify('✅ Session created successfully');
+      
+      const refreshed = await refreshDataWithRetry();
+      if (refreshed) {
+        notify('Session created successfully');
+      } else {
+        notify('Session created but data refresh may be delayed. Please refresh the page manually.', true);
+      }
     } catch (err) {
       console.error('Create error:', err);
-      notify(`❌ Failed: ${err.message || 'Unknown error'}`);
+      notify(`Failed: ${err.message || 'Unknown error'}`, true);
+    } finally {
+      setIsSubmitting(false);
+      setEditingSession(null);
+      setOpenDropdown(null);
     }
   };
 
   const handleUpdateSession = async () => {
-    if (!sessionFormData.brandId) {
-      notify('❌ Please select a brand');
+    if (isSubmitting) return;
+    
+    if (!editingSession) {
+      console.error('No editing session data');
+      notify('Error: No session selected for editing', true);
       return;
     }
-    if (!sessionFormData.period_id) {
-      notify('❌ Please select a period');
-      return;
-    }
+    
+    if (!sessionFormData.brandId) { notify('Please select a brand'); return; }
+    if (!sessionFormData.period_id) { notify('Please select a period'); return; }
+    
+    setIsSubmitting(true);
     try {
       const isShopee = ['Shopee', 'Multi'].includes(sessionFormData.platform);
       const isTikTok = ['TikTok', 'Multi'].includes(sessionFormData.platform);
@@ -493,14 +576,15 @@ const Revenue = () => {
         .select('platform_id')
         .ilike('platform_name', sessionFormData.platform)
         .maybeSingle();
-
       if (platformError) throw platformError;
-
       platformId = platRow?.platform_id;
       if (!platformId) throw new Error('Platform ID not found');
 
-      const matchId = editingSession?._rawId ?? editingSession?.id;
-      if (!matchId) throw new Error('Session ID not found');
+      const sessionId = editingSession.id || editingSession._rawId;
+      if (!sessionId) {
+        console.error('No session ID found in editingSession:', editingSession);
+        throw new Error('Session ID not found');
+      }
 
       const { data, error } = await supabase
         .from('live_sessions')
@@ -518,29 +602,38 @@ const Revenue = () => {
           host_team_member_id: sessionFormData.host_team_member_id || null,
           platform_id: platformId,
         })
-        .eq('id', matchId)
+        .eq('id', sessionId)
         .select();
 
-      console.log('UPDATE RESULT:', data);
-
-      if (error) {
-        console.error('SUPABASE UPDATE ERROR:', error);
-        throw error;
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        throw new Error('No rows updated. The session may have been deleted or you lack permission.');
       }
-      if (!data || data.length === 0) throw new Error('No rows updated. Check RLS policy.');
 
-      await refetchRevenue();
-      notify('✅ Session updated');
+      const refreshed = await refreshDataWithRetry();
+      if (refreshed) {
+        notify('Session updated successfully');
+      } else {
+        notify('Session updated but data refresh may be delayed. Please refresh the page manually.', true);
+      }
+      
       setShowSessionModal(false);
       setEditingSession(null);
       resetForm();
     } catch (err) {
       console.error('UPDATE ERROR:', err);
-      notify(`❌ ${err.message}`);
+      notify(`Update failed: ${err.message || 'Unknown error'}`, true);
+    } finally {
+      setIsSubmitting(false);
+      setOpenDropdown(null);
     }
   };
 
   const confirmDelete = async () => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     try {
       const matchId = sessionToDelete?._rawId ?? sessionToDelete?.id;
       if (!matchId) throw new Error('Session ID not found');
@@ -550,42 +643,42 @@ const Revenue = () => {
         .delete()
         .eq('id', matchId);
 
-      if (error) {
-        console.error(error);
-        throw error;
-      }
+      if (error) throw error;
 
-      await refetchRevenue();
-      notify('✅ Session deleted');
+      const refreshed = await refreshDataWithRetry();
+      if (refreshed) {
+        notify('Session deleted successfully');
+      } else {
+        notify('Session deleted but data refresh may be delayed. Please refresh the page manually.', true);
+      }
+      
       setSessionToDelete(null);
     } catch (err) {
       console.error('DELETE ERROR:', err);
-      notify(`❌ ${err.message}`);
+      notify(err.message, true);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDeleteSession = (session) => {
-    const originalSession = revenueData?.find(
-      item => String(item.id) === String(session.id)
-    );
-    setSessionToDelete({
-      ...session,
-      _rawId: originalSession?.id ?? session.id,
-    });
+    const originalSession = revenueData?.find(item => String(item.id) === String(session.id));
+    setSessionToDelete({ ...session, _rawId: originalSession?.id ?? session.id });
   };
 
   const openEditModal = (session) => {
-    const originalSession = revenueData?.find(
-      (item) => String(item.id) === String(session.id)
-    );
-    if (!originalSession) {
-      notify('Error: Could not find original session data');
-      return;
+    const originalSession = revenueData?.find((item) => String(item.id) === String(session.id));
+    if (!originalSession) { 
+      notify('Error: Could not find original session data', true); 
+      return; 
     }
-    setEditingSession({
-      ...session,
+    
+    setEditingSession({ 
+      ...session, 
       _rawId: originalSession.id,
+      id: originalSession.id
     });
+    
     setSessionFormData({
       date: session.date,
       time: session.time || format(new Date(), 'HH:mm'),
@@ -596,17 +689,44 @@ const Revenue = () => {
       period_id: session.period_id != null ? String(session.period_id) : '',
       host_team_member_id: session.hostId || '',
     });
+    
     setShowSessionModal(true);
   };
 
   const handleHallOfFameClick = (brandId, period) => {
-    document.getElementById('session-intelligence')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const sessionsElement = document.getElementById('session-intelligence');
+    if (sessionsElement) {
+      sessionsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
     setInsightBrandId(brandId);
-    setTableFilter({ brandId, period });
-    notify(`Showing sessions for ${period}`);
+    setTableFilter({ brandId: brandId, period: period || 'All' });
+    setGlobalFilterOpen(false);
+    
+    const brand = brandsList.find(b => b.id === brandId);
+    const brandName = brand?.name || 'Brand';
+    notify(`Showing ${brandName} sessions${period && period !== 'All' ? ` for ${period}` : ''}`);
   };
 
-  // ========== CONDITIONAL RETURN - AFTER ALL HOOKS ==========
+  const closeSessionModal = () => {
+    setShowSessionModal(false);
+    setEditingSession(null);
+    setOpenDropdown(null);
+    setIsSubmitting(false);
+  };
+
+  const dropdownTriggerCls = (isOpen) =>
+    `w-full bg-muted/40 border rounded-xl px-3 py-2.5 text-xs text-left flex items-center justify-between transition-all ${
+      isOpen ? 'border-primary ring-1 ring-primary/20' : 'border-border'
+    }`;
+
+  const dropdownOptionCls = (isSelected) =>
+    `w-full text-left px-3 py-2 text-xs transition-colors ${
+      isSelected
+        ? 'bg-primary/10 text-primary font-semibold'
+        : 'hover:bg-muted/50 text-foreground'
+    }`;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -624,8 +744,6 @@ const Revenue = () => {
   // on the notification toast. Plain div has no transform context so fixed works correctly.
   return (
     <div id="revenue-report-container">
-
-      {/* Notification — identical structure to Brands.jsx */}
       <AnimatePresence>
         {notification && (
           <motion.div
@@ -634,7 +752,7 @@ const Revenue = () => {
             exit={{ opacity: 0, y: -20, x: '-50%' }}
             className="fixed top-4 left-1/2 z-[100] bg-card text-foreground px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-border"
           >
-            <div className={`rounded-full p-1 ${notification.includes('✅') ? 'bg-emerald-500' : notification.includes('❌') ? 'bg-red-500' : 'bg-emerald-500'}`}>
+            <div className={`rounded-full p-1 ${notification.includes('Failed') || notification.includes('error') ? 'bg-red-500' : 'bg-emerald-500'}`}>
               <CheckCircle2 size={16} className="text-white" />
             </div>
             <span className="text-sm font-bold tracking-tight">{notification}</span>
@@ -643,8 +761,6 @@ const Revenue = () => {
       </AnimatePresence>
 
       <div className="space-y-6 pb-16 relative min-w-0 overflow-x-hidden">
-
-        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Revenue</h1>
@@ -736,7 +852,6 @@ const Revenue = () => {
           </div>
         </div>
 
-        {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 min-w-0">
           <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
@@ -762,10 +877,7 @@ const Revenue = () => {
                   <div
                     key={staff.staffId}
                     className="flex items-center justify-between gap-2 min-w-0 cursor-pointer hover:bg-muted/50 p-1 rounded-lg transition-colors"
-                    onClick={() => {
-                      setSelectedStaffForDetail(staff);
-                      setShowStaffDetailModal(true);
-                    }}
+                    onClick={() => { setSelectedStaffForDetail(staff); setShowStaffDetailModal(true); }}
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <span className="text-[8px] font-black text-muted-foreground/50 w-3 shrink-0">{i + 1}</span>
@@ -801,7 +913,6 @@ const Revenue = () => {
           </div>
         </div>
 
-        {/* Main grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12 min-w-0">
           <RevenueBrandsPanel
             brandsList={brandsList}
@@ -833,144 +944,269 @@ const Revenue = () => {
           />
         </div>
 
-        {/* Add/Edit Session Modal */}
+        {/* RESPONSIVE ADD/EDIT SESSION MODAL */}
         <AnimatePresence>
           {showSessionModal && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-card w-full max-w-md rounded-3xl border border-border shadow-2xl max-h-[90vh] overflow-y-auto"
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="relative bg-card w-full max-w-lg rounded-2xl border border-border shadow-2xl my-8 mx-auto overflow-hidden"
+                ref={modalRef}
               >
-                <div className="px-6 py-4 border-b border-border bg-muted/20 flex items-center justify-between sticky top-0">
-                  <h3 className="text-xs font-bold uppercase tracking-[0.2em]">
-                    {editingSession ? 'Edit Record' : 'Record New Session'}
-                  </h3>
-                  <button onClick={() => { setShowSessionModal(false); setEditingSession(null); }} className="p-2 hover:bg-muted rounded-full">
-                    <X size={16} />
-                  </button>
+                {/* Header */}
+                <div className="sticky top-0 z-10 px-5 py-4 border-b border-border bg-card">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-foreground">
+                      {editingSession ? 'Edit Session Record' : 'Record New Session'}
+                    </h3>
+                    <button
+                      onClick={closeSessionModal}
+                      disabled={isSubmitting}
+                      className="p-1.5 hover:bg-muted rounded-full transition-colors disabled:opacity-50"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {editingSession ? 'Update existing session data' : 'Add a new live session record'}
+                  </p>
                 </div>
 
-                <div className="p-6 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                {/* Scrollable Form Content */}
+                <div className="overflow-y-auto max-h-[calc(90vh-140px)] px-5 py-5 space-y-4">
+                  {/* Date & Time Row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Date</label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
+                        Date
+                      </label>
                       <input
                         type="date"
                         value={sessionFormData.date}
                         onChange={e => setSessionFormData(p => ({ ...p, date: e.target.value }))}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
+                        disabled={isSubmitting}
+                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Time</label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
+                        Time
+                      </label>
                       <input
                         type="time"
                         value={sessionFormData.time}
                         onChange={e => setSessionFormData(p => ({ ...p, time: e.target.value }))}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
+                        disabled={isSubmitting}
+                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Brand & Channel Row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Brand *</label>
-                      <select
-                        value={sessionFormData.brandId}
-                        onChange={e => setSessionFormData(p => ({ ...p, brandId: e.target.value }))}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
-                      >
-                        <option value="" disabled>Select Brand</option>
-                        {brandsList.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                      </select>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
+                        Brand <span className="text-primary">*</span>
+                      </label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => !isSubmitting && setOpenDropdown(prev => prev === 'brand' ? null : 'brand')}
+                          disabled={isSubmitting}
+                          className={dropdownTriggerCls(openDropdown === 'brand')}
+                        >
+                          <span className={sessionFormData.brandId ? 'text-foreground' : 'text-muted-foreground truncate'}>
+                            {sessionFormData.brandId
+                              ? (brandsList.find(b => b.id === sessionFormData.brandId)?.name || 'Unknown')
+                              : 'Select Brand'}
+                          </span>
+                          <ChevronDown size={14} className={`text-muted-foreground transition-transform flex-shrink-0 ml-2 ${openDropdown === 'brand' ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openDropdown === 'brand' && !isSubmitting && (
+                          <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[200px]">
+                            {brandsList.map(b => (
+                              <button
+                                key={b.id}
+                                type="button"
+                                onClick={() => { setSessionFormData(p => ({ ...p, brandId: b.id })); setOpenDropdown(null); }}
+                                className={dropdownOptionCls(sessionFormData.brandId === b.id)}
+                              >
+                                <span className="truncate">{b.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
+
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Channel</label>
-                      <select
-                        value={sessionFormData.platform}
-                        onChange={e => setSessionFormData(p => ({ ...p, platform: e.target.value }))}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
-                      >
-                        <option value="TikTok">TikTok</option>
-                        <option value="Shopee">Shopee</option>
-                        <option value="Multi">Multi-Platform</option>
-                      </select>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
+                        Channel
+                      </label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => !isSubmitting && setOpenDropdown(prev => prev === 'platform' ? null : 'platform')}
+                          disabled={isSubmitting}
+                          className={dropdownTriggerCls(openDropdown === 'platform')}
+                        >
+                          <span className="text-foreground truncate">
+                            {PLATFORM_OPTIONS.find(p => p.value === sessionFormData.platform)?.label || 'Select Channel'}
+                          </span>
+                          <ChevronDown size={14} className={`text-muted-foreground transition-transform flex-shrink-0 ml-2 ${openDropdown === 'platform' ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openDropdown === 'platform' && !isSubmitting && (
+                          <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[180px]">
+                            {PLATFORM_OPTIONS.map(p => (
+                              <button
+                                key={p.value}
+                                type="button"
+                                onClick={() => { setSessionFormData(prev => ({ ...prev, platform: p.value })); setOpenDropdown(null); }}
+                                className={dropdownOptionCls(sessionFormData.platform === p.value)}
+                              >
+                                {p.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Period & Host Row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Period *</label>
-                      <select
-                        value={sessionFormData.period_id}
-                        onChange={e => {
-                          const rawValue = e.target.value;
-                          setSessionFormData(p => ({ ...p, period_id: rawValue }));
-                        }}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
-                      >
-                        <option value="" disabled>Select Period</option>
-                        {uniquePeriodsForDropdown.map((p) => {
-                          const normalizedId = normalizePeriodId(p.period_id);
-                          return (
-                            <option key={`modal-period-${normalizedId}`} value={normalizedId}>
-                              {p.period_name || `Period ${normalizedId}`}
-                            </option>
-                          );
-                        })}
-                      </select>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
+                        Period <span className="text-primary">*</span>
+                      </label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => !isSubmitting && setOpenDropdown(prev => prev === 'period' ? null : 'period')}
+                          disabled={isSubmitting}
+                          className={dropdownTriggerCls(openDropdown === 'period')}
+                        >
+                          <span className={sessionFormData.period_id ? 'text-foreground' : 'text-muted-foreground truncate'}>
+                            {sessionFormData.period_id
+                              ? (uniquePeriodsForDropdown.find(p => String(p.id) === String(sessionFormData.period_id))?.name || `Period ${sessionFormData.period_id}`)
+                              : 'Select Period'}
+                          </span>
+                          <ChevronDown size={14} className={`text-muted-foreground transition-transform flex-shrink-0 ml-2 ${openDropdown === 'period' ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openDropdown === 'period' && !isSubmitting && (
+                          <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[200px]">
+                            {uniquePeriodsForDropdown.map(period => (
+                              <button
+                                key={`modal-period-${period.id}`}
+                                type="button"
+                                onClick={() => { setSessionFormData(p => ({ ...p, period_id: String(period.id) })); setOpenDropdown(null); }}
+                                className={dropdownOptionCls(String(sessionFormData.period_id) === String(period.id))}
+                              >
+                                <span className="truncate">{period.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
+
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Host</label>
-                      <select
-                        value={sessionFormData.host_team_member_id}
-                        onChange={e => setSessionFormData(p => ({ ...p, host_team_member_id: e.target.value }))}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
-                      >
-                        <option value="">No host</option>
-                        {(team || []).map(t => (
-                          <option key={sid(t.id)} value={sid(t.id)}>{t.name}</option>
-                        ))}
-                      </select>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
+                        Host
+                      </label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => !isSubmitting && setOpenDropdown(prev => prev === 'host' ? null : 'host')}
+                          disabled={isSubmitting}
+                          className={dropdownTriggerCls(openDropdown === 'host')}
+                        >
+                          <span className={sessionFormData.host_team_member_id ? 'text-foreground' : 'text-muted-foreground truncate'}>
+                            {sessionFormData.host_team_member_id
+                              ? ((team || []).find(t => sid(t.id) === sessionFormData.host_team_member_id)?.name || 'Unknown')
+                              : 'No host'}
+                          </span>
+                          <ChevronDown size={14} className={`text-muted-foreground transition-transform flex-shrink-0 ml-2 ${openDropdown === 'host' ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openDropdown === 'host' && !isSubmitting && (
+                          <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[200px]">
+                            <button
+                              type="button"
+                              onClick={() => { setSessionFormData(p => ({ ...p, host_team_member_id: '' })); setOpenDropdown(null); }}
+                              className={dropdownOptionCls(sessionFormData.host_team_member_id === '')}
+                            >
+                              No host
+                            </button>
+                            {(team || []).map(t => (
+                              <button
+                                key={sid(t.id)}
+                                type="button"
+                                onClick={() => { setSessionFormData(p => ({ ...p, host_team_member_id: sid(t.id) })); setOpenDropdown(null); }}
+                                className={dropdownOptionCls(sessionFormData.host_team_member_id === sid(t.id))}
+                              >
+                                <span className="truncate">{t.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Viewers & Revenue Row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Viewers</label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
+                        Viewers
+                      </label>
                       <input
                         type="number" min="0"
                         value={sessionFormData.viewers}
                         onChange={e => setSessionFormData(p => ({ ...p, viewers: parseInt(e.target.value) || 0 }))}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs"
+                        disabled={isSubmitting}
+                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Revenue (Rp)</label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
+                        Revenue (Rp)
+                      </label>
                       <input
                         type="number" min="0"
                         value={sessionFormData.revenue}
                         onChange={e => setSessionFormData(p => ({ ...p, revenue: parseInt(e.target.value) || 0 }))}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-3 text-xs font-bold"
+                        disabled={isSubmitting}
+                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6 bg-muted/20 border-t border-border flex items-center justify-end gap-3 sticky bottom-0">
+                {/* Footer - Sticky Buttons */}
+                <div className="sticky bottom-0 z-10 px-5 py-4 border-t border-border bg-card flex flex-col sm:flex-row items-center justify-end gap-3">
                   <button
-                    onClick={() => { setShowSessionModal(false); setEditingSession(null); }}
-                    className="px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase text-muted-foreground hover:bg-muted transition-all"
+                    onClick={closeSessionModal}
+                    disabled={isSubmitting}
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase text-muted-foreground hover:bg-muted transition-all disabled:opacity-50 order-2 sm:order-1"
                   >
-                    Discard
+                    Cancel
                   </button>
                   <button
                     onClick={editingSession ? handleUpdateSession : handleCreateSession}
-                    className="px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase bg-primary text-white hover:bg-primary/90 transition-all"
+                    disabled={isSubmitting}
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase bg-primary text-white hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 order-1 sm:order-2"
                   >
-                    {editingSession ? 'Update' : 'Commit'}
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      editingSession ? 'Update Session' : 'Create Session'
+                    )}
                   </button>
                 </div>
               </motion.div>
@@ -978,7 +1214,6 @@ const Revenue = () => {
           )}
         </AnimatePresence>
 
-        {/* Delete Confirmation Modal */}
         <AnimatePresence>
           {sessionToDelete && (
             <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -996,15 +1231,23 @@ const Revenue = () => {
                   This will permanently remove the record for <span className="text-foreground font-bold">{sessionToDelete.brandName}</span>.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => setSessionToDelete(null)} className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase text-muted-foreground hover:bg-muted transition-all">Cancel</button>
-                  <button onClick={confirmDelete} className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase bg-red-500 text-white hover:bg-red-600 transition-all">Delete</button>
+                  <button onClick={() => setSessionToDelete(null)} disabled={isSubmitting} className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase text-muted-foreground hover:bg-muted transition-all disabled:opacity-50">Cancel</button>
+                  <button onClick={confirmDelete} disabled={isSubmitting} className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase bg-red-500 text-white hover:bg-red-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete'
+                    )}
+                  </button>
                 </div>
               </motion.div>
             </div>
           )}
         </AnimatePresence>
 
-        {/* Staff Detail Modal */}
         <AnimatePresence>
           {showStaffDetailModal && selectedStaffForDetail && (
             <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -1015,12 +1258,8 @@ const Revenue = () => {
                 className="bg-card w-full max-w-sm rounded-2xl border border-border shadow-2xl overflow-hidden"
               >
                 <div className="px-4 py-3 border-b border-border bg-primary/10">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-base font-bold text-foreground">{selectedStaffForDetail.staffName}</h3>
-                      <p className="text-[9px] text-muted-foreground mt-0.5">Performance Details</p>
-                    </div>
-                  </div>
+                  <h3 className="text-base font-bold text-foreground">{selectedStaffForDetail.staffName}</h3>
+                  <p className="text-[9px] text-muted-foreground mt-0.5">Performance Details</p>
                 </div>
 
                 <div className="p-4 space-y-3">
@@ -1054,53 +1293,48 @@ const Revenue = () => {
                   </div>
 
                   <div className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
-                    <span className="text-[8px] font-bold text-muted-foreground">💰 Revenue/Viewer</span>
+                    <span className="text-[8px] font-bold text-muted-foreground">Revenue/Viewer</span>
                     <span className="text-[10px] font-bold text-foreground">{formatCurrency(Math.round(selectedStaffForDetail.revenuePerViewer))}</span>
                   </div>
 
                   <div className="space-y-2 pt-1">
-                    <div>
-                      <div className="flex justify-between text-[7px] mb-0.5">
-                        <span>Revenue</span><span>{selectedStaffForDetail.revenueScore}%</span>
+                    {[
+                      { label: 'Revenue', score: selectedStaffForDetail.revenueScore, color: 'bg-emerald-500' },
+                      { label: 'Viewers', score: selectedStaffForDetail.viewerScore, color: 'bg-blue-500' },
+                      { label: 'Likes',   score: selectedStaffForDetail.likesScore,  color: 'bg-red-500' },
+                    ].map(({ label, score, color }) => (
+                      <div key={label}>
+                        <div className="flex justify-between text-[7px] mb-0.5">
+                          <span>{label}</span><span>{score}%</span>
+                        </div>
+                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                          <div className={`h-full ${color} rounded-full`} style={{ width: `${score}%` }} />
+                        </div>
                       </div>
-                      <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${selectedStaffForDetail.revenueScore}%` }} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-[7px] mb-0.5">
-                        <span>Viewers</span><span>{selectedStaffForDetail.viewerScore}%</span>
-                      </div>
-                      <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500 rounded-full" style={{ width: `${selectedStaffForDetail.viewerScore}%` }} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-[7px] mb-0.5">
-                        <span>Likes</span><span>{selectedStaffForDetail.likesScore}%</span>
-                      </div>
-                      <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-purple-500 rounded-full" style={{ width: `${selectedStaffForDetail.likesScore}%` }} />
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
-              </div>
 
-              {/* Footer - Smaller */}
-              <div className="p-3 bg-muted/20 border-t border-border">
-                <button 
-                  onClick={() => setShowStaffDetailModal(false)}
-                  className="w-full py-2 rounded-xl text-[9px] font-bold uppercase bg-primary text-white hover:bg-primary/90 transition-all"
-                >
-                  Close
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+                <div className="p-3 bg-muted/20 border-t border-border">
+                  <button
+                    onClick={() => setShowStaffDetailModal(false)}
+                    className="w-full py-2 rounded-xl text-[9px] font-bold uppercase bg-primary text-white hover:bg-primary/90 transition-all"
+                  >
+                    Close
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        <div className="pt-8 border-t border-border">
+          <p className="text-[9px] text-center text-muted-foreground uppercase tracking-[0.3em] font-bold">
+            VidHelp Intelligence Hub • {revenueData?.length?.toLocaleString() || '0'} Total Sessions
+          </p>
+        </div>
+      </div>
+    </div>
   );
 };
 

@@ -21,7 +21,7 @@ const RevenueTooltip = ({ active, payload, formatCurrency }) => {
         {dp.actual > 0 && (
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-primary" />
+              <div className="w-3 h-3 rounded-sm bg-primary" />
               <span className="text-[10px] font-medium text-muted-foreground">
                 Actual Revenue
               </span>
@@ -36,13 +36,13 @@ const RevenueTooltip = ({ active, payload, formatCurrency }) => {
         {dp.forecast > 0 && (
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-blue-500" />
+              <div className="w-3 h-3 rounded-sm bg-red-500" />
               <span className="text-[10px] font-medium text-muted-foreground">
-                Predicted Revenue
+                Forecast Revenue
               </span>
             </div>
 
-            <span className="text-[10px] font-bold text-blue-500">
+            <span className="text-[10px] font-bold text-red-500">
               {formatCurrency(dp.forecast)}
             </span>
           </div>
@@ -136,6 +136,9 @@ export const RevenueBarChart = ({
     ? chartData.find((d) => d.forecast > 0)?.year
     : null;
 
+  // Calculate dynamic height based on number of data points
+  const chartHeight = hasData ? (chartData.length > 6 ? 380 : 350) : 300;
+
   return (
     <div className="lg:col-span-2 dashboard-card p-0 overflow-hidden h-fit">
 
@@ -161,19 +164,19 @@ export const RevenueBarChart = ({
             )}
           </div>
 
-          {/* Legend */}
+          {/* Legend - Differentiated colors: Actual = Blue, Forecast = Red */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm bg-primary" />
               <span className="text-[10px] font-medium text-muted-foreground">
-                Actual
+                Actual Revenue
               </span>
             </div>
 
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm bg-blue-500" />
+              <div className="w-3 h-3 rounded-sm bg-red-500" />
               <span className="text-[10px] font-medium text-muted-foreground">
-                Forecast
+                Forecast Revenue
               </span>
             </div>
           </div>
@@ -184,20 +187,21 @@ export const RevenueBarChart = ({
         </p>
       </div>
 
-            {/* Chart */}
+      {/* Chart - Increased height and adjusted margins to prevent x-axis cropping */}
       <div
-        className={`w-full px-4 pt-3 ${
-          hasData ? 'h-[300px]' : 'py-10'
+        className={`w-full px-2 pt-3 ${
+          hasData ? `h-[${chartHeight}px]` : 'py-10'
         }`}
+        style={hasData ? { height: `${chartHeight}px` } : {}}
       >
         {isLoading ? (
           <ChartSkeleton />
         ) : hasData ? (
-          <ResponsiveContainer width="100%" height={300} minHeight={0}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={0}>
             <BarChart
               data={chartData}
-              margin={{ top: 8, right: 10, left: 10, bottom: 0 }}
-              barCategoryGap="28%"
+              margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
+              barCategoryGap="20%"
               barGap={4}
             >
               <CartesianGrid
@@ -212,7 +216,10 @@ export const RevenueBarChart = ({
                 axisLine={false}
                 tickLine={{ stroke: 'var(--border)', strokeOpacity: 0.4 }}
                 tick={<YearTick />}
-                padding={{ left: 20, right: 20 }}
+                padding={{ left: 30, right: 30 }}
+                interval={0}
+                angle={0}
+                dy={8}
               />
 
               <YAxis
@@ -224,7 +231,8 @@ export const RevenueBarChart = ({
                   fontWeight: 500,
                 }}
                 tickFormatter={formatCompactCurrency}
-                width={70}
+                width={80}
+                dy={0}
               />
 
               <Tooltip
@@ -235,34 +243,39 @@ export const RevenueBarChart = ({
               {firstForecastYear && (
                 <ReferenceLine
                   x={firstForecastYear}
-                  stroke="var(--border)"
-                  strokeDasharray="4 4"
+                  stroke="#ef4444"
+                  strokeDasharray="6 4"
                   strokeWidth={1.5}
                   label={{
-                    value: 'Forecast',
+                    value: 'FORECAST',
                     position: 'insideTopRight',
-                    fontSize: 9,
-                    fill: 'var(--muted-foreground)',
-                    fontWeight: 600,
+                    fontSize: 8,
+                    fill: '#ef4444',
+                    fontWeight: 700,
+                    angle: 0,
                   }}
                 />
               )}
 
+              {/* ACTUAL REVENUE BAR - Primary Blue */}
               <Bar
                 dataKey="actual"
                 name="Actual Revenue"
                 fill="var(--primary)"
                 radius={[4, 4, 0, 0]}
-                maxBarSize={70}
+                maxBarSize={80}
+                className="bar-actual"
               />
 
+              {/* FORECAST REVENUE BAR - Red with slight transparency */}
               <Bar
                 dataKey="forecast"
                 name="Forecast Revenue"
-                fill="#3b82f6"
+                fill="#ef4444"
                 radius={[4, 4, 0, 0]}
-                maxBarSize={70}
+                maxBarSize={80}
                 opacity={0.85}
+                className="bar-forecast"
               />
             </BarChart>
           </ResponsiveContainer>
@@ -276,34 +289,34 @@ export const RevenueBarChart = ({
       </div>
 
       {/* Footer */}
-{hasForecast && (
-  <div className="border-t border-border/60 bg-gradient-to-r from-muted/20 via-muted/10 to-transparent px-6 py-4">
-    <div className="flex items-start gap-3">
-      
-      <div className="shrink-0">
-        <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center">
-          <Brain size={14} className="text-primary" />
+      {hasForecast && (
+        <div className="border-t border-border/60 bg-gradient-to-r from-muted/20 via-muted/10 to-transparent px-6 py-4">
+          <div className="flex items-start gap-3">
+            
+            <div className="shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/15 flex items-center justify-center">
+                <Brain size={14} className="text-red-500" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold tracking-wide text-foreground">
+                Machine Learning Forecast Analysis
+              </p>
+
+              <p className="text-[10px] leading-relaxed text-muted-foreground">
+                Forecasts are generated using multiple machine learning models including
+                <span className="font-medium text-foreground"> Linear Regression</span>,
+                <span className="font-medium text-foreground"> Ridge Regression</span>,
+                <span className="font-medium text-foreground"> Random Forest</span>, and
+                <span className="font-medium text-foreground"> Gradient Boosting</span>.
+                Results represent predictive estimates and should be interpreted as
+                analytical guidance rather than guaranteed outcomes.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold tracking-wide text-foreground">
-          Machine Learning Forecast Analysis
-        </p>
-
-        <p className="text-[10px] leading-relaxed text-muted-foreground">
-          Forecasts are generated using multiple machine learning models including
-          <span className="font-medium text-foreground"> Linear Regression</span>,
-          <span className="font-medium text-foreground"> Ridge Regression</span>,
-          <span className="font-medium text-foreground"> Random Forest</span>, and
-          <span className="font-medium text-foreground"> Gradient Boosting</span>.
-          Results represent predictive estimates and should be interpreted as
-          analytical guidance rather than guaranteed outcomes.
-        </p>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 };
