@@ -27,6 +27,7 @@ export const SortByButton = ({
   dateRange: externalDateRange
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const dropdownRef = useRef(null);
   const [dateBounds, setDateBounds] = useState({ min: null, max: null });
   const [localDateRange, setLocalDateRange] = useState({
@@ -68,7 +69,7 @@ export const SortByButton = ({
           }
         }
       } catch (err) {
-        // Silent fail
+        console.error('Error fetching date bounds:', err);
       }
     };
     fetchBounds();
@@ -187,11 +188,17 @@ export const SortByButton = ({
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`relative flex items-center gap-2 h-10 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
-          isOpen
-            ? 'border-primary bg-primary/5 text-primary'
-            : 'border-border bg-muted/20 text-foreground hover:border-primary/40'
-        }`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className="relative flex items-center gap-2 h-10 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all"
+        style={{
+          background: isHovered && !isOpen ? '#ef4444' : (isOpen ? 'rgba(59,130,246,0.05)' : 'rgba(0,0,0,0.05)'),
+          borderColor: isHovered && !isOpen ? '#ef4444' : (isOpen ? '#3b82f6' : 'var(--border)'),
+          color: isHovered && !isOpen ? 'white' : (isOpen ? '#3b82f6' : 'var(--foreground)'),
+          transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease, color 0.2s ease",
+          transform: isHovered && !isOpen ? "translateY(-2px)" : "translateY(0)",
+          boxShadow: isHovered && !isOpen ? "0 8px 20px rgba(239,68,68,0.25)" : "none",
+        }}
       >
         <Filter size={14} />
         {getDisplayText()}
@@ -237,7 +244,7 @@ export const SortByButton = ({
                     </button>
                   ))}
                   
-                  {/* Custom Range - FIXED with visible calendars */}
+                  {/* Custom Range */}
                   <div className="pt-2 border-t border-border/60 mt-2">
                     <p className="text-[8px] text-muted-foreground mb-2">Custom Range</p>
                     <div className="flex flex-col gap-2 mb-2">

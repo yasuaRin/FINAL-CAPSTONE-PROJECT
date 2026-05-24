@@ -100,7 +100,6 @@ function LeadsInner() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState("All");
-
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const loadingInsightIds = useRef(new Set());
@@ -928,27 +927,20 @@ Be direct. No fluff. No percentages.`;
             ))}
           </div>
         </div>
-       
-      <div className="overflow-x-auto">
-        {/* Header */}
-        <div style={{ display: "grid", gridTemplateColumns: "60px 2fr 1fr 1.2fr 1fr 1fr 1.2fr 120px", borderBottom: "1px solid var(--border)", background: "var(--muted)", padding: "0 8px" }}>
-          {["No", "Business Name", "Sector", "Location", "Date", "Outreach", "Status", "Actions"].map((h) => (
-            <div key={h} style={{ padding: "14px 16px", fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.3em", color: "var(--muted-foreground)" }}>
-              {h}
-            </div>
-          ))}
-        </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-muted/30 border-b border-border">
-                {["No", "Business Name", "Sector", "Location", "Date", "Outreach", "Status", "Actions"].map((h) => (
-                  <th key={h} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
-                    {h}
-                  </th>
-                ))}
-               </tr>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">No</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Business Name</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Sector</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Location</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Date</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Outreach</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Status</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Actions</th>
+              </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {partneredBrands.length === 0 ? (
@@ -957,151 +949,11 @@ Be direct. No fluff. No percentages.`;
                     <div className="flex flex-col items-center gap-6 opacity-20">
                       <div className="w-20 h-20 border-2 border-dashed border-muted-foreground rounded-full flex items-center justify-center">
                         <Target size={40} />
-        {/* Rows */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "4px 8px" }}>
-          {partneredBrands.length === 0 ? (
-            <div style={{ padding: "80px 32px", textAlign: "center" }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24, opacity: 0.2 }}>
-                <div style={{ width: 80, height: 80, border: "2px dashed var(--muted-foreground)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Target size={40} />
-                </div>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.4em" }}>No Active Partners Yet</p>
-                  <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 8 }}>Scan the area and reach out to get started</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            paginatedBrands.map((brand, index) => {
-              const rowNumber = (currentPage - 1) * pageSize + index + 1;
-              const hasCoords = !!(brand.lat && brand.lng);
-              const isClickable = hasCoords;
-              return (
-                <div
-                  key={brand.id}
-                  onClick={() => isClickable && handleTableRowClick(brand)}
-                  className="leads-table-row"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "60px 2fr 1fr 1.2fr 1fr 1fr 1.2fr 120px",
-                    alignItems: "center",
-                    borderRadius: 12,
-                    border: "1px solid var(--border)",
-                    background: "var(--background)",
-                    cursor: isClickable ? "pointer" : "default",
-                    transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-4px)";
-                    e.currentTarget.style.boxShadow = "0 12px 32px rgba(219,26,26,0.15), 0 4px 12px rgba(0,0,0,0.08)";
-                    e.currentTarget.style.borderColor = "rgba(219,26,26,0.3)";
-                    e.currentTarget.style.background = "rgba(219,26,26,0.02)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "none";
-                    e.currentTarget.style.borderColor = "var(--border)";
-                    e.currentTarget.style.background = "var(--background)";
-                  }}
-                >
-                  {/* No */}
-                  <div style={{ padding: "20px 16px" }}>
-                    <span
-                      className="lead-row-number"
-                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 8, background: "var(--muted)", fontSize: 11, fontWeight: 700, color: "var(--primary)", transition: "background 0.18s ease, color 0.18s ease" }}
-                    >
-                      {rowNumber}
-                    </span>
-                  </div>
-
-                  {/* Business Name */}
-                  <div style={{ padding: "20px 16px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={{ width: 40, height: 40, background: "var(--foreground)", color: "var(--background)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 14, borderRadius: 8, flexShrink: 0 }}>
-                        {brand.name.substring(0, 2).toUpperCase()}
                       </div>
-                      <span className="lead-name" style={{ fontWeight: 700, fontSize: 14, letterSpacing: "-0.01em", transition: "color 0.15s ease" }}>
-                        {brand.name}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Sector */}
-                  <div style={{ padding: "20px 16px" }}>
-                    <span style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", background: "var(--muted)", border: "1px solid var(--border)", padding: "3px 10px", borderRadius: 6 }}>
-                      {brand.industry}
-                    </span>
-                  </div>
-
-                  {/* Location */}
-                  <div style={{ padding: "20px 16px", display: "flex", alignItems: "center", gap: 6 }}>
-                    <MapPin size={12} style={{ color: "var(--primary)", flexShrink: 0 }} />
-                    <span style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted-foreground)" }}>{brand.location}</span>
-                  </div>
-
-                  {/* Date */}
-                  <div style={{ padding: "20px 16px" }}>
-                    <span style={{ fontSize: 10, fontFamily: "monospace", fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase" }}>
-                      {new Date(brand.datePartnered).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                    </span>
-                  </div>
-
-                  {/* Outreach */}
-                  <div style={{ padding: "20px 16px" }}>
-                    {brand.outreachMethod ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
-                        <span style={{ fontSize: 9, fontWeight: 700, color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                          {brand.outreachMethod === "email" ? "Email" : brand.outreachMethod === "whatsapp" ? "WhatsApp" : "Sent"}
-                        </span>
+                      <div className="space-y-2">
+                        <p className="text-sm font-black uppercase tracking-[0.4em]">No Active Partners Yet</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest">Scan the area and send partnership emails to get started</p>
                       </div>
-                    ) : (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); const lead = leadsFound.find((l) => l.id === brand.id) || brand; handleContact(lead); }}
-                        style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#7c3aed", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                      >
-                        <Mail size={12} /> Send Email
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Status */}
-                  <div style={{ padding: "20px 16px" }}>
-                    {editingId === brand.id ? (
-                      <select
-                        value={brand.status}
-                        onChange={(e) => updateStatus(brand.id, e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{ fontSize: 9, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.2em", padding: "6px 12px", borderRadius: 20, border: "1px solid", outline: "none", cursor: "pointer",
-                          background: brand.status === "Partner" ? "rgba(59,130,246,0.1)" : brand.status === "Dealing" ? "rgba(139,92,246,0.1)" : "rgba(100,116,139,0.1)",
-                          color: brand.status === "Partner" ? "#3b82f6" : brand.status === "Dealing" ? "#8b5cf6" : "#94a3b8",
-                          borderColor: brand.status === "Partner" ? "rgba(59,130,246,0.3)" : brand.status === "Dealing" ? "rgba(139,92,246,0.3)" : "rgba(100,116,139,0.3)",
-                        }}
-                      >
-                        <option value="In Progress">In Progress</option>
-                        <option value="Dealing">Dealing</option>
-                        <option value="Partner">Partner</option>
-                      </select>
-                    ) : (
-                      <span style={{ fontSize: 9, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.2em", padding: "6px 16px", borderRadius: 20, border: "1px solid", display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 100,
-                        background: brand.status === "Partner" ? "rgba(59,130,246,0.1)" : brand.status === "Dealing" ? "rgba(139,92,246,0.1)" : "rgba(100,116,139,0.1)",
-                        color: brand.status === "Partner" ? "#3b82f6" : brand.status === "Dealing" ? "#8b5cf6" : "#94a3b8",
-                        borderColor: brand.status === "Partner" ? "rgba(59,130,246,0.3)" : brand.status === "Dealing" ? "rgba(139,92,246,0.3)" : "rgba(100,116,139,0.3)",
-                      }}>
-                        {brand.status}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div style={{ padding: "20px 16px" }}>
-                    <div style={{ display: "inline-flex", gap: 8 }}>
-                      {editingId === brand.id ? (
-                        <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }} style={actionBtn("rgba(34,197,94,0.1)", "#22c55e")} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(34,197,94,0.2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(34,197,94,0.1)")} title="Save"><Check size={14} /></button>
-                      ) : (
-                        <button onClick={(e) => { e.stopPropagation(); setEditingId(brand.id); }} style={actionBtn("rgba(99,102,241,0.08)", "#6366f1")} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(99,102,241,0.18)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(99,102,241,0.08)")} title="Edit Status"><Edit3 size={14} /></button>
-                      )}
-                      <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(brand); }} style={actionBtn("rgba(219,26,26,0.08)", "#DB1A1A")} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(219,26,26,0.18)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(219,26,26,0.08)")} title="Delete"><Trash2 size={14} /></button>
                     </div>
                   </td>
                 </tr>
@@ -1164,14 +1016,13 @@ Be direct. No fluff. No percentages.`;
                             value={brand.status}
                             onChange={(e) => updateStatus(brand.id, e.target.value)}
                             onClick={(e) => e.stopPropagation()}
-                            className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full border outline-none cursor-pointer transition-all
-                              ${
-                                brand.status === "Partner"
-                                  ? "bg-blue-500/10 text-blue-500 border-blue-500/30"
-                                  : brand.status === "Dealing"
-                                    ? "bg-purple-500/10 text-purple-500 border-purple-500/30"
-                                    : "bg-slate-500/10 text-slate-400 border-slate-500/30"
-                              }`}
+                            className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full border outline-none cursor-pointer transition-all ${
+                              brand.status === "Partner"
+                                ? "bg-blue-500/10 text-blue-500 border-blue-500/30"
+                                : brand.status === "Dealing"
+                                ? "bg-purple-500/10 text-purple-500 border-purple-500/30"
+                                : "bg-slate-500/10 text-slate-400 border-slate-500/30"
+                            }`}
                           >
                             <option value="In Progress">In Progress</option>
                             <option value="Dealing">Dealing</option>
@@ -1179,13 +1030,12 @@ Be direct. No fluff. No percentages.`;
                           </select>
                         ) : (
                           <span
-                            className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full border inline-flex items-center justify-center min-w-[100px]
-                            ${
+                            className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full border inline-flex items-center justify-center min-w-[100px] ${
                               brand.status === "Partner"
                                 ? "bg-blue-500/10 text-blue-500 border-blue-500/30"
                                 : brand.status === "Dealing"
-                                  ? "bg-purple-500/10 text-purple-500 border-purple-500/30"
-                                  : "bg-slate-500/10 text-slate-400 border-slate-500/30"
+                                ? "bg-purple-500/10 text-purple-500 border-purple-500/30"
+                                : "bg-slate-500/10 text-slate-400 border-slate-500/30"
                             }`}
                           >
                             {brand.status}
@@ -1224,13 +1074,9 @@ Be direct. No fluff. No percentages.`;
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (paginatedBrands.length === 1 && currentPage > 1) {
-                                setCurrentPage((p) => p - 1);
-                              }
-                              removePartner(brand.id);
-                              if (editingId === brand.id) setEditingId(null);
+                              setDeleteConfirm(brand);
                             }}
-                            style={actionBtn("rgba(239,68,68,0.08)", "#2563eb")}
+                            style={actionBtn("rgba(239,68,68,0.08)", "#ef4444")}
                             onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(239,68,68,0.18)")}
                             onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(239,68,68,0.08)")}
                             title="Delete"
@@ -1245,13 +1091,7 @@ Be direct. No fluff. No percentages.`;
               )}
             </tbody>
           </table>
-                  </div>
-                </div>
-              );
-            })
-          )}
         </div>
-      </div>
 
         <div className="p-6 bg-muted/5 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
@@ -1319,44 +1159,44 @@ Be direct. No fluff. No percentages.`;
       </div>
 
       {/* DELETE CONFIRMATION MODAL */}
-            {deleteConfirm && (
-              <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-                <div onClick={() => setDeleteConfirm(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-                <div style={{ position: "relative", zIndex: 10, background: "var(--background)", border: "1px solid var(--border)", borderRadius: 20, padding: 32, maxWidth: 420, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center" }}>
-                    <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(219,26,26,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <Trash2 size={24} color="#DB1A1A" />
-                    </div>
-                    <div>
-                      <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }} className="text-foreground">Remove Partner?</h3>
-                      <p style={{ fontSize: 13, margin: "8px 0 0" }} className="text-muted-foreground">
-                        This will permanently remove <strong className="text-foreground">{deleteConfirm.name}</strong> from the pipeline.
-                      </p>
-                    </div>
-                    <div style={{ display: "flex", gap: 12, width: "100%" }}>
-                      <button
-                        onClick={() => setDeleteConfirm(null)}
-                        style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid var(--border)", background: "transparent", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
-                        className="text-foreground"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (paginatedBrands.length === 1 && currentPage > 1) setCurrentPage((p) => p - 1);
-                          removePartner(deleteConfirm.id);
-                          if (editingId === deleteConfirm.id) setEditingId(null);
-                          setDeleteConfirm(null);
-                        }}
-                        style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "#DB1A1A", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-                      >
-                        Confirm
-                      </button>
-                    </div>
-                  </div>
-                </div>
+      {deleteConfirm && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={() => setDeleteConfirm(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
+          <div style={{ position: "relative", zIndex: 10, background: "var(--background)", border: "1px solid var(--border)", borderRadius: 20, padding: 32, maxWidth: 420, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center" }}>
+              <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(239,68,68,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Trash2 size={24} color="#ef4444" />
               </div>
-            )}
+              <div>
+                <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }} className="text-foreground">Remove Partner?</h3>
+                <p style={{ fontSize: 13, margin: "8px 0 0" }} className="text-muted-foreground">
+                  This will permanently remove <strong className="text-foreground">{deleteConfirm.name}</strong> from the pipeline.
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 12, width: "100%" }}>
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid var(--border)", background: "transparent", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+                  className="text-foreground"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (paginatedBrands.length === 1 && currentPage > 1) setCurrentPage((p) => p - 1);
+                    removePartner(deleteConfirm.id);
+                    if (editingId === deleteConfirm.id) setEditingId(null);
+                    setDeleteConfirm(null);
+                  }}
+                  style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "#ef4444", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CONTACT MODAL */}
       <AnimatePresence>
@@ -1436,24 +1276,7 @@ Be direct. No fluff. No percentages.`;
                   </div>
                   {emailInput.trim().length > 0 && (
                     <a
-                      href={`mailto:${emailInput}?subject=${encodeURIComponent(`Partnership Opportunity: Live Commerce Collaboration with Vidhelp × ${contactModal.name}`)}&body=${encodeURIComponent(`Dear ${contactModal.name} Team,
-
-We are reaching out from Vidhelp, an Indonesian live commerce platform with a professional studio, experienced hosts, and a live selling platform.
-
-We believe ${contactModal.name}'s products would perform exceptionally well through live streaming, and we'd love to feature them on our platform. Here's what we offer:
-
-• Professional live streaming setup (studio, hosts, equipment — all provided by Vidhelp)
-• Access to our engaged live shopping audience
-• Commission-based model — no upfront cost to you
-• Real-time sales tracking and performance insights
-
-We handle everything on our end. You simply supply the products, and we take care of the rest.
-
-We'd love to explore this partnership. Are you available for a quick call this week?
-
-Best regards,
-Partnership Team — Vidhelp
-vidhelp.com`)}`}
+                      href={`mailto:${emailInput}?subject=${encodeURIComponent(`Partnership Opportunity: Live Commerce Collaboration with Vidhelp × ${contactModal.name}`)}&body=${encodeURIComponent(`Dear ${contactModal.name} Team,\n\nWe are reaching out from Vidhelp, an Indonesian live commerce platform with a professional studio, experienced hosts, and a live selling platform.\n\nWe believe ${contactModal.name}'s products would perform exceptionally well through live streaming, and we'd love to feature them on our platform. Here's what we offer:\n\n• Professional live streaming setup (studio, hosts, equipment — all provided by Vidhelp)\n• Access to our engaged live shopping audience\n• Commission-based model — no upfront cost to you\n• Real-time sales tracking and performance insights\n\nWe handle everything on our end. You simply supply the products, and we take care of the rest.\n\nWe'd love to explore this partnership. Are you available for a quick call this week?\n\nBest regards,\nPartnership Team — Vidhelp\nvidhelp.com`)}`}
                       className="w-full py-2.5 bg-primary text-primary-foreground rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
                     >
                       <Mail size={15} /> OPEN EMAIL DRAFT
@@ -1478,19 +1301,10 @@ vidhelp.com`)}`}
       </AnimatePresence>
 
       <style>{`
-      .leaflet-container { background: #f0f2f5 !important; }
-      .custom-marker { background: transparent !important; border: none !important; }
-      .custom-marker:hover > div { transform: scale(1.15) !important; transition: transform 0.2s ease !important; }
-
-      .leads-table-row:hover .lead-name {
-        color: var(--primary) !important;
-      }
-
-      .leads-table-row:hover .lead-row-number {
-        background: var(--primary) !important;
-        color: #fff !important;
-      }
-    `}</style>
+        .leaflet-container { background: #f0f2f5 !important; }
+        .custom-marker { background: transparent !important; border: none !important; }
+        .custom-marker:hover > div { transform: scale(1.15) !important; transition: transform 0.2s ease !important; }
+      `}</style>
     </div>
   );
 }

@@ -351,7 +351,23 @@ export default function Brands() {
               </thead>
               <tbody>
                 {brandMatrix.map((brand) => (
-                  <tr key={brand.brand_id} className="group transition-all duration-300 border-b border-border/20 last:border-0 hover:bg-primary/5">
+                  <tr 
+                    key={brand.brand_id} 
+                    className="group transition-all duration-300 border-b border-border/20 last:border-0 hover:bg-primary/5"
+                    style={{
+                      transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+  e.currentTarget.style.transform = "translateY(-4px)";
+  e.currentTarget.style.boxShadow = "0 12px 32px rgba(239,68,68,0.15), 0 4px 12px rgba(0,0,0,0.08)";
+  e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)";
+}}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "none";
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  >
                     <td className="p-5">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center font-black text-white text-lg shadow-lg transform transition-transform group-hover:scale-110 duration-500 flex-shrink-0">
