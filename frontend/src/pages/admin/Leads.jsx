@@ -55,9 +55,9 @@ const createLeadIcon = (lead, isSelected, partnerData) => {
   const isMid = lead.potentialScore >= 70 && lead.potentialScore < 85;
   const partnered = !!partnerData;
 
-  let color = isHigh ? "#f43f5e" : isMid ? "#f59e0b" : "#64748b";
+  let color = isHigh ? "#3b82f6" : isMid ? "#f59e0b" : "#64748b";
   if (partnered) {
-    if (partnerData.status === "Partner") color = "#3b82f6";
+    if (partnerData.status === "Partner") color = "#2563eb";
     else if (partnerData.status === "Dealing") color = "#8b5cf6";
     else color = "#94a3b8";
   }
@@ -79,7 +79,7 @@ const createLeadIcon = (lead, isSelected, partnerData) => {
         box-sizing:border-box;
       ">
         <div style="width:${innerSize}px;height:${innerSize}px;background-color:${color};border-radius:50%;${isHigh ? `box-shadow:0 0 10px ${color}` : ""}"></div>
-        ${isHigh ? `<div style="position:absolute;top:-7px;right:-7px;background:#f43f5e;color:white;padding:1px 3px;border-radius:3px;font-size:7px;font-weight:900;border:1.5px solid white;line-height:1.4;">HOT</div>` : ""}
+        ${isHigh ? `<div style="position:absolute;top:-7px;right:-7px;background:#3b82f6;color:white;padding:1px 3px;border-radius:3px;font-size:7px;font-weight:900;border:1.5px solid white;line-height:1.4;">HOT</div>` : ""}
         ${partnered ? `<div style="position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;background:${color};border:2px solid white;border-radius:50%;"></div>` : ""}
       </div>
     `,
@@ -811,7 +811,6 @@ Be direct. No fluff. No percentages.`;
           {allMapLeads.map((lead) => <LeadMarkerComponent key={lead.id} lead={lead} />)}
         </MapContainer>
 
-        {/* Scanning overlay */}
         <AnimatePresence>
           {isScanning && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}

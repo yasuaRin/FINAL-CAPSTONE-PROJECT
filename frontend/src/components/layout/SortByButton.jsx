@@ -27,6 +27,7 @@ export const SortByButton = ({
   dateRange: externalDateRange
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const dropdownRef = useRef(null);
   const [dateBounds, setDateBounds] = useState({ min: null, max: null });
   const [localDateRange, setLocalDateRange] = useState({
@@ -68,7 +69,7 @@ export const SortByButton = ({
           }
         }
       } catch (err) {
-        // Silent fail
+        console.error('Error fetching date bounds:', err);
       }
     };
     fetchBounds();
@@ -187,11 +188,17 @@ export const SortByButton = ({
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`relative flex items-center gap-2 h-10 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
-          isOpen
-            ? 'border-primary bg-primary/5 text-primary'
-            : 'border-border bg-muted/20 text-foreground hover:border-primary/40'
-        }`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className="relative flex items-center gap-2 h-10 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all"
+        style={{
+          background: isHovered && !isOpen ? '#ef4444' : (isOpen ? 'rgba(59,130,246,0.05)' : 'rgba(0,0,0,0.05)'),
+          borderColor: isHovered && !isOpen ? '#ef4444' : (isOpen ? '#3b82f6' : 'var(--border)'),
+          color: isHovered && !isOpen ? 'white' : (isOpen ? '#3b82f6' : 'var(--foreground)'),
+          transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease, color 0.2s ease",
+          transform: isHovered && !isOpen ? "translateY(-2px)" : "translateY(0)",
+          boxShadow: isHovered && !isOpen ? "0 8px 20px rgba(239,68,68,0.25)" : "none",
+        }}
       >
         <Filter size={14} />
         {getDisplayText()}
@@ -210,7 +217,8 @@ export const SortByButton = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.14 }}
-            className="absolute right-0 top-[calc(100%+8px)] z-50 w-[280px] bg-card border border-border rounded-2xl shadow-xl"
+            className="absolute right-0 top-[calc(100%+8px)] z-50 w-[320px] bg-card border border-border rounded-2xl shadow-xl"
+            style={{ position: 'absolute' }}
           >
             <div className="p-4 space-y-4">
               {/* Date Range Section */}
@@ -239,26 +247,35 @@ export const SortByButton = ({
                   {/* Custom Range */}
                   <div className="pt-2 border-t border-border/60 mt-2">
                     <p className="text-[8px] text-muted-foreground mb-2">Custom Range</p>
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      <input
-                        type="date"
-                        value={customStart}
-                        max={customEnd || undefined}
-                        onChange={(e) => setCustomStart(e.target.value)}
-                        className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-[10px]"
-                      />
-                      <input
-                        type="date"
-                        value={customEnd}
-                        min={customStart || undefined}
-                        onChange={(e) => setCustomEnd(e.target.value)}
-                        className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-[10px]"
-                      />
+                    <div className="flex flex-col gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[8px] font-bold text-muted-foreground w-10">From:</span>
+                        <input
+                          type="date"
+                          value={customStart}
+                          max={customEnd || dateBounds.max || undefined}
+                          onChange={(e) => setCustomStart(e.target.value)}
+                          className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                          style={{ colorScheme: 'light dark' }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[8px] font-bold text-muted-foreground w-10">To:</span>
+                        <input
+                          type="date"
+                          value={customEnd}
+                          min={customStart || dateBounds.min || undefined}
+                          max={dateBounds.max || undefined}
+                          onChange={(e) => setCustomEnd(e.target.value)}
+                          className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                          style={{ colorScheme: 'light dark' }}
+                        />
+                      </div>
                     </div>
                     <button
                       onClick={handleCustomApply}
                       disabled={!customStart || !customEnd}
-                      className="w-full py-1.5 rounded-lg bg-primary/10 text-primary text-[9px] font-bold uppercase tracking-wider hover:bg-primary/20 transition-all disabled:opacity-40"
+                      className="w-full py-2 rounded-lg bg-primary/10 text-primary text-[9px] font-bold uppercase tracking-wider hover:bg-primary/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       Apply Custom Range
                     </button>
@@ -276,7 +293,7 @@ export const SortByButton = ({
                 <select
                   value={selectedBrand || ''}
                   onChange={(e) => onBrandChange?.(e.target.value || null)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary/20"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 >
                   <option value="">All Brands</option>
                   {brands?.map((brand) => (

@@ -1,4 +1,5 @@
-﻿import { useState, useEffect, useRef, useMemo } from 'react';
+﻿// frontend/src/components/layout/AdminLayout.jsx
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../services/supabase';
@@ -71,10 +72,11 @@ export const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { user, logout, loading: authLoading, adminProfile } = useAuth();
+  const { user, loading: authLoading, logout, adminProfile } = useAuth();
 
   const displayName =
     adminProfile?.full_name ||
+    adminProfile?.name ||
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
     user?.email?.split('@')[0] ||
@@ -88,6 +90,16 @@ export const AdminLayout = () => {
 
   const initials = displayName.charAt(0).toUpperCase();
 
+  // ── FIXED: Authentication redirect - only run after loading is complete ──
+  useEffect(() => {
+    // Only redirect after auth loading is complete
+    if (!authLoading) {
+      if (!user) {
+        navigate('/admin/login', { replace: true });
+      }
+    }
+  }, [authLoading, user, navigate]);
+
   // ── Supabase search ───────────────────────────────────────────────────────
   useEffect(() => {
     if (searchQuery.trim().length < 2) { setSupabaseItems([]); return; }
@@ -95,7 +107,7 @@ export const AdminLayout = () => {
     const fetchFromSupabase = async () => {
       const q = searchQuery.trim();
       const { data: brands } = await supabase.from('brands').select('brand_id, brand_name').ilike('brand_name', `%${q}%`).limit(3);
-      const { data: staff }  = await supabase.from('staff').select('id, name').ilike('name', `%${q}%`).limit(3);
+      const { data: staff }  = await supabase.from('team_members').select('id, name').ilike('name', `%${q}%`).limit(3);
 
       setSupabaseItems([
         ...(brands ?? []).map(b => ({ id: `brand-${b.brand_id}`, title: b.brand_name, category: 'Brand', path: '/admin/brands', keywords: '' })),
@@ -127,10 +139,6 @@ export const AdminLayout = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  useEffect(() => {
-    if (!authLoading && !user) navigate('/admin/login', { replace: true });
-  }, [authLoading, user, navigate]);
-
   useEffect(() => { setIsSidebarOpen(false); }, [location.pathname]);
 
   const navItems = [
@@ -142,7 +150,10 @@ export const AdminLayout = () => {
     { icon: <User size={20} />,            label: 'My Profile', path: '/admin/profile' },
   ];
 
-  const handleLogout = async () => { await logout(); navigate('/admin/login', { replace: true }); };
+  const handleLogout = async () => { 
+    await logout(); 
+    navigate('/admin/login', { replace: true }); 
+  };
 
   const pageSegment = useMemo(() => {
     const path = location.pathname.split('/').pop();
@@ -191,12 +202,18 @@ export const AdminLayout = () => {
     </>
   );
 
+  // FIXED: Show loading spinner while auth is loading
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-8 h-8 border-4 border-[#2563eb] border-t-transparent rounded-full animate-spin" />
       </div>
     );
+  }
+
+  // FIXED: If no user after loading, don't render anything (redirect will happen)
+  if (!user) {
+    return null;
   }
 
   return (
@@ -290,22 +307,23 @@ export const AdminLayout = () => {
           <Footer />
         </section>
 
+        {/* Search highlight controls - Blue theme */}
         {highlightQuery && (
           <div style={{
             position: 'fixed', top: '88px', right: '24px', zIndex: 200,
             display: 'flex', alignItems: 'center', gap: '4px', background: '#1e293b',
-            borderRadius: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+            borderRadius: '10px', boxShadow: '0 8px 32px rgba(37,99,235,0.2)',
             padding: '8px 12px', color: 'white', fontSize: '13px', userSelect: 'none',
           }}>
             <span style={{ color: '#94a3b8', marginRight: '4px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {highlightQuery}
             </span>
-            <span style={{ color: '#FEF08A', fontWeight: 700, minWidth: '36px', textAlign: 'center' }}>
+            <span style={{ color: '#60a5fa', fontWeight: 700, minWidth: '36px', textAlign: 'center' }}>
               {matchCount === 0 ? '0/0' : `${currentMatch}/${matchCount}`}
             </span>
             <div style={{ width: '1px', height: '16px', background: '#334155', margin: '0 4px' }} />
-            <button onClick={goPrev} disabled={matchCount === 0} style={{ background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed', color: matchCount ? 'white' : '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', lineHeight: 1 }}>&#8743;</button>
-            <button onClick={goNext} disabled={matchCount === 0} style={{ background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed', color: matchCount ? 'white' : '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', lineHeight: 1 }}>&#8744;</button>
+            <button onClick={goPrev} disabled={matchCount === 0} style={{ background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed', color: matchCount ? '#60a5fa' : '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', lineHeight: 1 }}>&#8743;</button>
+            <button onClick={goNext} disabled={matchCount === 0} style={{ background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed', color: matchCount ? '#60a5fa' : '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', lineHeight: 1 }}>&#8744;</button>
             <div style={{ width: '1px', height: '16px', background: '#334155', margin: '0 4px' }} />
             <button onClick={() => { setHighlightQuery(''); clearHighlights(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontSize: '16px', lineHeight: 1 }}>&#x2715;</button>
           </div>
