@@ -108,6 +108,13 @@ const AdminAuthCallback = () => {
     };
 
     handleCallback();
+
+    const callbackKey = 'auth_callback_processing';
+    if (localStorage.getItem(callbackKey)) {
+      localStorage.removeItem(callbackKey);
+      return;
+    }
+    localStorage.setItem(callbackKey, 'true');
   }, [navigate]);
 
   return (
