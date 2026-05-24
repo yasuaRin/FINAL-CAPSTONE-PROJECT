@@ -41,12 +41,12 @@ const RevenueSessionsTable = ({
   uniquePeriods = [],
   loading = false,
 }) => {
-
   const [currentPage, setCurrentPage] = useState(1);
+  const [hoveredRow, setHoveredRow] = useState(null);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [rowLimit, searchTerm, tableFilter, sortCol, sortDir]);
+  }, [rowLimit, searchTerm, tableFilter.brandId, tableFilter.period, sortCol, sortDir]);
 
   const totalCount = sessionIntelligence.length;
   const showingAll = rowLimit === null;
@@ -56,6 +56,9 @@ const RevenueSessionsTable = ({
   const paginatedSessions = useMemo(() => {
     if (showingAll) return sessionIntelligence;
     const start = (safePage - 1) * rowLimit;
+    if (start >= sessionIntelligence.length) {
+      return [];
+    }
     return sessionIntelligence.slice(start, start + rowLimit);
   }, [sessionIntelligence, showingAll, safePage, rowLimit]);
 
@@ -68,6 +71,21 @@ const RevenueSessionsTable = ({
   const rowEnd = showingAll
     ? totalCount
     : Math.min(rowStart + rowLimit - 1, totalCount);
+
+  const hasActiveFilters = tableFilter.brandId !== 'All' || tableFilter.period !== 'All';
+
+  const getFilterDisplay = () => {
+    if (tableFilter.brandId !== 'All' && tableFilter.period !== 'All') {
+      return `${tableFilter.brandName || 'Brand'} · ${tableFilter.period}`;
+    }
+    if (tableFilter.brandId !== 'All') {
+      return tableFilter.brandName || 'Selected Brand';
+    }
+    if (tableFilter.period !== 'All') {
+      return tableFilter.period;
+    }
+    return '';
+  };
 
   return (
     <div className="lg:col-span-2 flex flex-col min-h-[500px] lg:h-[700px]">
@@ -108,16 +126,19 @@ const RevenueSessionsTable = ({
               />
             </div>
 
-            {(tableFilter.brandId !== 'All' || tableFilter.period !== 'All') && (
+            {hasActiveFilters && (
               <button
                 onClick={() => setTableFilter({ brandId: 'All', period: 'All' })}
                 className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-[10px] border border-primary/20 whitespace-nowrap"
               >
-                Clear <X size={10} />
+                Clear: {getFilterDisplay()} <X size={10} />
               </button>
             )}
 
             <div className="ml-auto flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-[10px] text-muted-foreground">
+                <span className="font-bold">{totalCount}</span> results
+              </div>
               <button
                 onClick={() => { resetForm(); setShowSessionModal(true); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg text-[11px] font-medium whitespace-nowrap min-h-[32px]"
@@ -128,6 +149,12 @@ const RevenueSessionsTable = ({
               </button>
             </div>
           </div>
+          
+          {hasActiveFilters && (
+            <div className="mt-2 text-[9px] text-muted-foreground md:hidden">
+              Filtered by: {getFilterDisplay()}
+            </div>
+          )}
         </div>
 
         {/* Table */}
@@ -150,74 +177,100 @@ const RevenueSessionsTable = ({
               {paginatedSessions.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-xs text-muted-foreground">
-                    {loading ? 'Loading sessions…' : 'No sessions found.'}
-                  </td>
-                </tr>
+                    {loading 
+                      ? 'Loading sessions…' 
+                      : hasActiveFilters 
+                        ? `No sessions found for the selected ${tableFilter.brandId !== 'All' ? 'brand' : 'period'}. Try clearing filters.`
+                        : 'No sessions found. Click "Add Session" to create one.'
+                    }
+                   </td>
+                 </tr>
               )}
 
-              {paginatedSessions.map((log) => (
-                <tr key={log.id} className="hover:bg-muted/20 transition-colors group">
-                  <td className="px-3 sm:px-6 py-3 text-[11px] text-muted-foreground whitespace-nowrap">
-                    {format(parseISO(log.date), 'MMM dd, yyyy')}
-                  </td>
+              {paginatedSessions.map((log) => {
+                const isHovered = hoveredRow === log.id;
+                
+                return (
+                  <tr 
+                    key={log.id} 
+                    className="transition-all group"
+                    style={{
+                      transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
+                      transform: isHovered ? "translateY(-2px)" : "translateY(0)",
+                      boxShadow: isHovered ? "0 8px 20px rgba(239,68,68,0.12)" : "none",
+                      backgroundColor: isHovered ? "rgba(239,68,68,0.02)" : "transparent",
+                    }}
+                    onMouseEnter={() => setHoveredRow(log.id)}
+                    onMouseLeave={() => setHoveredRow(null)}
+                  >
+                    <td className="px-3 sm:px-6 py-3 text-[11px] text-muted-foreground whitespace-nowrap">
+                      {format(parseISO(log.date), 'MMM dd, yyyy')}
+                    </td>
 
-                  <td className="px-3 sm:px-6 py-3 text-[11px] text-muted-foreground whitespace-nowrap">
-                    {log.time || '00:00'}
-                  </td>
+                    <td className="px-3 sm:px-6 py-3 text-[11px] text-muted-foreground whitespace-nowrap">
+                      {log.time || '00:00'}
+                    </td>
 
-                  <td className="px-3 sm:px-6 py-3">
-                    <span className="text-[11px] font-medium text-foreground group-hover:text-primary">
-                      {log.brandName}
-                    </span>
-                  </td>
-
-                  <td className="px-3 sm:px-6 py-3 hidden sm:table-cell">
-                    <span className="text-[10px] text-muted-foreground">
-                      {log.period}
-                    </span>
-                  </td>
-
-                  <td className="px-3 sm:px-6 py-3">
-                    <span className={`text-[9px] font-medium uppercase px-2 py-0.5 rounded text-white ${
-                      log.platform === 'TikTok'
-                        ? 'bg-black'
-                        : log.platform === 'Shopee'
-                        ? 'bg-orange-500'
-                        : 'bg-blue-500'
-                    }`}>
-                      {log.platform}
-                    </span>
-                  </td>
-
-                  <td className="px-3 sm:px-6 py-3 text-right text-[11px] hidden md:table-cell">
-                    {log.viewers?.toLocaleString()}
-                  </td>
-
-                  <td className="px-3 sm:px-6 py-3 text-right text-[11px] font-medium whitespace-nowrap">
-                    {formatCurrency(log.revenue)}
-                  </td>
-
-                  <td className="px-3 sm:px-6 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => openEditModal(log)}
-                        className="p-1.5 rounded bg-muted/50 hover:bg-blue-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
-                        title="Edit"
+                    <td className="px-3 sm:px-6 py-3">
+                      <span 
+                        className="text-[11px] font-medium transition-colors"
+                        style={{ 
+                          color: isHovered ? "#ef4444" : "var(--foreground)",
+                          transition: "color 0.15s ease"
+                        }}
                       >
-                        <Edit2 size={11} />
-                      </button>
+                        {log.brandName}
+                      </span>
+                    </td>
 
-                      <button
-                        onClick={() => handleDeleteSession(log.id)}
-                        className="p-1.5 rounded bg-muted/50 hover:bg-red-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
-                        title="Delete"
-                      >
-                        <Trash2 size={11} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    <td className="px-3 sm:px-6 py-3 hidden sm:table-cell">
+                      <span className="text-[10px] text-muted-foreground">
+                        {log.period}
+                      </span>
+                    </td>
+
+                    <td className="px-3 sm:px-6 py-3">
+                      <span className={`text-[9px] font-medium uppercase px-2 py-0.5 rounded text-white ${
+                        log.platform === 'TikTok'
+                          ? 'bg-black'
+                          : log.platform === 'Shopee'
+                          ? 'bg-orange-500'
+                          : 'bg-blue-500'
+                      }`}>
+                        {log.platform}
+                      </span>
+                    </td>
+
+                    <td className="px-3 sm:px-6 py-3 text-right text-[11px] hidden md:table-cell">
+                      {log.viewers?.toLocaleString()}
+                    </td>
+
+                    <td className="px-3 sm:px-6 py-3 text-right text-[11px] font-medium whitespace-nowrap">
+                      {formatCurrency(log.revenue)}
+                    </td>
+
+                    <td className="px-3 sm:px-6 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => openEditModal(log)}
+                          className="p-1.5 rounded bg-muted/50 hover:bg-blue-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
+                          title="Edit"
+                        >
+                          <Edit2 size={11} />
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteSession(log)}
+                          className="p-1.5 rounded bg-muted/50 hover:bg-red-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
+                          title="Delete"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -228,12 +281,12 @@ const RevenueSessionsTable = ({
             {totalCount === 0
               ? 'No sessions'
               : showingAll
-                ? `All ${totalCount.toLocaleString()} sessions`
-                : `Showing ${rowStart.toLocaleString()}–${rowEnd.toLocaleString()} of ${totalCount.toLocaleString()} sessions`
+                ? `All ${totalCount.toLocaleString()} session${totalCount !== 1 ? 's' : ''}`
+                : `Showing ${rowStart.toLocaleString()}–${rowEnd.toLocaleString()} of ${totalCount.toLocaleString()} session${totalCount !== 1 ? 's' : ''}`
             }
           </p>
 
-          {!showingAll && totalPages > 1 && (
+          {!showingAll && totalPages > 1 && totalCount > 0 && (
             <div className="flex items-center gap-1 flex-wrap justify-end">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -273,12 +326,21 @@ const RevenueSessionsTable = ({
             </div>
           )}
 
-          {showingAll && totalCount > 0 && (
+          {!showingAll && totalCount > rowLimit && (
+            <button
+              onClick={() => setRowLimit(null)}
+              className="text-[10px] font-medium text-primary hover:underline transition-colors whitespace-nowrap"
+            >
+              Show All ({totalCount})
+            </button>
+          )}
+
+          {showingAll && totalCount > 25 && (
             <button
               onClick={() => setRowLimit(25)}
               className="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
             >
-              ← Show 25
+              Show less (25 per page) ←
             </button>
           )}
         </div>
