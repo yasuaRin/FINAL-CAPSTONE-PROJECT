@@ -1,7 +1,7 @@
 ﻿// frontend/src/components/layout/AdminLayout.jsx
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../services/supabase';
 import { usePageSearch } from '../../hooks/usePageSearch';
 import {
