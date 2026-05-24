@@ -94,6 +94,7 @@ const Revenue = () => {
   const dropdownRef = useRef(null);
   const modalRef = useRef(null);
 
+  // ========== CUSTOM HOOKS ==========
   const { data: revenueData, loading, refetch: refetchRevenue, brandTotals } = useRevenue();
   const { brands } = useBrands(brandTotals);
   const { team } = useTeam();
@@ -110,6 +111,7 @@ const Revenue = () => {
     };
   }, [showSessionModal]);
 
+  // ========== ALL useEffect HOOKS ==========
   useEffect(() => {
     const handler = (e) => {
       if (globalFilterRef.current && !globalFilterRef.current.contains(e.target)) {
@@ -736,6 +738,10 @@ const Revenue = () => {
     );
   }
 
+  // ========== MAIN RETURN ==========
+  // FIXED: outer wrapper is a plain <div> (not motion.div) — same as Brands.jsx.
+  // motion.div creates a CSS transform context that breaks fixed positioning + x:'-50%'
+  // on the notification toast. Plain div has no transform context so fixed works correctly.
   return (
     <div id="revenue-report-container">
       <AnimatePresence>
