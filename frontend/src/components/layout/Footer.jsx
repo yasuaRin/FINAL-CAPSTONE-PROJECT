@@ -23,7 +23,7 @@ const Footer = () => {
           <div>
             <div className="flex items-center gap-3 mb-6">
               {user ? (
-                <span className="text-2xl font-black tracking-tighter uppercase font-sans text-primary">VH</span>
+                <span className="text-2xl font-black tracking-tighter uppercase font-sans text-[#2563eb]">VH</span>
               ) : (
                 <>
                   <img src="/VH-removebg.png" alt="VidHelp Logo" className="w-8 h-8 object-contain" />
@@ -37,13 +37,13 @@ const Footer = () => {
           </div>
 
           <div>
-            <h4 className="font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-primary font-sans">Services</h4>
+            <h4 className="font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-[#2563eb] font-sans">Services</h4>
             <ul className="space-y-4 text-muted-foreground font-black text-[10px] uppercase tracking-[0.2em] mb-8">
-              <li><a href="/#results" className="hover:text-primary transition-colors">SERVICE</a></li>
+              <li><a href="/#results" className="hover:text-[#2563eb] transition-colors">SERVICE</a></li>
               <li>
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent('open-chatbot'))}
-                  className="hover:text-primary transition-colors uppercase"
+                  className="hover:text-[#2563eb] transition-colors uppercase"
                 >
                   FAQ
                 </button>
@@ -53,14 +53,14 @@ const Footer = () => {
                   href="https://wa.me/6285121057706?text=Hi%20VidHelp%20Team,%20I'm%20interested%20in%20bringing%20my%20creative%20energy%20to%20VH.%20I've%20attached%20my%20profile%20and%20I'd%20love%20to%20discuss%20how%20I%20can%20contribute%20to%20your%20next%20big%20digital%20commerce%20breakthrough.%20Are%20there%20any%20open%20opportunities%20for%20us%20to%20collaborate"
                   target="_blank"
                   rel="noreferrer"
-                  className="hover:text-primary transition-colors uppercase"
+                  className="hover:text-[#2563eb] transition-colors uppercase"
                 >
                   HIRING
                 </a>
               </li>
                {user && (
                 <li>
-                  <Link to="/" className="hover:text-primary transition-colors uppercase">
+                  <Link to="/" className="hover:text-[#2563eb] transition-colors uppercase">
                     LANDING PAGE
                   </Link>
                 </li>
@@ -71,7 +71,7 @@ const Footer = () => {
               <div className="pt-6 border-t border-border">
                 <Link
                   to="/admin"
-                  className="text-primary font-black text-[10px] hover:text-foreground transition-colors uppercase tracking-[0.3em] flex items-center gap-2"
+                  className="text-[#2563eb] font-black text-[10px] hover:text-foreground transition-colors uppercase tracking-[0.3em] flex items-center gap-2"
                 >
                   <Cpu size={14} /> Admin Portal
                 </Link>
@@ -80,11 +80,11 @@ const Footer = () => {
           </div>
 
           <div>
-            <h4 className="font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-primary font-sans">Contact</h4>
+            <h4 className="font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-[#2563eb] font-sans">Contact</h4>
             <ul className="space-y-6">
               <li>
                 <a href="https://wa.me/6285121057706" target="_blank" rel="noreferrer" className="flex items-start gap-6 group">
-                  <div className="w-10 h-10 border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+                  <div className="w-10 h-10 border border-border flex items-center justify-center text-[#2563eb] group-hover:bg-[#2563eb] group-hover:text-white transition-all shrink-0">
                     <Phone size={18} />
                   </div>
                   <div>
@@ -95,7 +95,7 @@ const Footer = () => {
               </li>
               <li>
                 <a href="https://instagram.com/vidhelp.id" target="_blank" rel="noreferrer" className="flex items-start gap-6 group">
-                  <div className="w-10 h-10 border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+                  <div className="w-10 h-10 border border-border flex items-center justify-center text-[#2563eb] group-hover:bg-[#2563eb] group-hover:text-white transition-all shrink-0">
                     <Instagram size={18} />
                   </div>
                   <div>
@@ -106,7 +106,7 @@ const Footer = () => {
               </li>
               <li>
                 <a href="mailto:vidhelp.admin@gmail.com" className="flex items-start gap-6 group">
-                  <div className="w-10 h-10 border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+                  <div className="w-10 h-10 border border-border flex items-center justify-center text-[#2563eb] group-hover:bg-[#2563eb] group-hover:text-white transition-all shrink-0">
                     <Mail size={18} />
                   </div>
                   <div>
@@ -117,7 +117,7 @@ const Footer = () => {
               </li>
             </ul>
             <div className="mt-12 pt-8 border-t border-border">
-              <h4 className="font-black mb-2 uppercase tracking-[0.4em] text-[10px] text-primary font-sans">Office</h4>
+              <h4 className="font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-[#2563eb] font-sans">Office</h4>
               <a
                 href="https://www.google.com/maps/search/?api=1&query=Jl.+Ki+Hajar+Dewantara+No.15,+RT.2%2FRW.4,+Simpangan,+Cikarang+Utara,+Bekasi"
                 target="_blank"

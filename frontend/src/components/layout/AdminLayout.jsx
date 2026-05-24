@@ -153,7 +153,7 @@ export const AdminLayout = () => {
   const SidebarContent = () => (
     <>
       <div className="p-4 sm:p-6 flex items-center justify-between border-b border-sidebar-border">
-        <div className="font-serif font-black text-primary text-xl">VH</div>
+        <div className="font-serif font-black text-[#2563eb] text-xl">VH</div>
         <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-lg transition-colors hover:bg-black/5" style={{ color: '#7b809a' }}>
           <X size={20} />
         </button>
@@ -165,9 +165,9 @@ export const AdminLayout = () => {
             key={item.path}
             to={item.path}
             end={item.path === '/admin'}
-            className={({ isActive }) =>
+           className={({ isActive }) =>
               `flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 ${
-                isActive ? 'primary-gradient text-white shadow-md' : 'hover:bg-black/5'
+                isActive ? 'bg-[#2563eb] text-white shadow-md' : 'hover:bg-black/5'
               }`
             }
             style={({ isActive }) => isActive ? {} : { color: '#7b809a' }}
@@ -182,7 +182,7 @@ export const AdminLayout = () => {
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all text-sm hover:bg-red-50 dark:hover:bg-red-950/30"
-          style={{ color: 'var(--primary)' }}
+          style={{ color: '#DB1A1A' }}
         >
           <LogOut size={18} />
           Sign Out
@@ -194,7 +194,7 @@ export const AdminLayout = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-[#2563eb] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -212,7 +212,7 @@ export const AdminLayout = () => {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="shrink-0 z-30 px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between bg-background/80 backdrop-blur-md border-b border-border sticky top-0">
           <div className="flex items-center gap-3">
-            <button onClick={() => setIsSidebarOpen(true)} className="p-2 rounded-md transition-colors hover:bg-red-50 dark:hover:bg-red-950/30" style={{ color: 'var(--primary)' }} aria-label="Open sidebar">
+            <button onClick={() => setIsSidebarOpen(true)} className="p-2 rounded-md transition-colors hover:bg-red-50 dark:hover:bg-red-950/30" style={{ color: '#DB1A1A' }}>
               <Menu size={22} />
             </button>
             <div className="hidden sm:flex flex-col">
@@ -239,7 +239,7 @@ export const AdminLayout = () => {
                   </button>
                 )}
               </div>
-              <div className={`h-px mt-1 transition-all duration-200 ${searchQuery ? 'bg-primary' : 'bg-border'}`} />
+              <div className={`h-px mt-1 transition-all duration-200 ${searchQuery ? 'bg-[#2563eb]' : 'bg-border'}`} />
 
               {showDropdown && (
                 <div className="absolute top-full left-0 right-0 mt-3 bg-white dark:bg-card border border-border rounded-xl shadow-xl overflow-hidden z-50 py-1">
@@ -267,7 +267,7 @@ export const AdminLayout = () => {
             <div
               onClick={() => navigate('/admin/profile')}
               title={displayName}
-              className="relative w-9 h-9 rounded-full border border-border overflow-hidden cursor-pointer flex-shrink-0 bg-muted hover:border-primary hover:scale-105 transition-all duration-200"
+              className="relative w-9 h-9 rounded-full border border-border overflow-hidden cursor-pointer flex-shrink-0 bg-muted hover:border-[#2563eb] hover:scale-105 transition-all duration-200"
             >
               {avatarUrl ? (
                 <img src={avatarUrl} alt={displayName} referrerPolicy="no-referrer" className="w-full h-full object-cover" />

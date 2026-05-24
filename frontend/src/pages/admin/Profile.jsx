@@ -9,7 +9,7 @@ import { supabase } from '../../services/supabase';
 
 const PALETTE_STYLE = `
   :root {
-    --accent:       #DB1A1A;
+    --accent:       #2563eb;
     --bg:           #ffffff;
     --fg:           #000000;
     --sidebar-bg:   #ffffff;
@@ -21,7 +21,7 @@ const PALETTE_STYLE = `
   }
   html.dark :root,
   html.dark body {
-    --accent:       #DB1A1A;
+    --accent:       #2563eb;
     --bg:           #0A0A0A;
     --fg:           #ffffff;
     --sidebar-bg:   #000000;
@@ -145,7 +145,7 @@ const iconBtnStyle = {
 
 const primaryBtnStyle = {
   flex: 1, padding: '10px 20px', borderRadius: 12,
-  background: 'var(--accent)', color: '#fff', border: 'none',
+  background: '#DB1A1A', color: '#fff', border: 'none',
   fontSize: 12, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em',
   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
   transition: 'opacity 0.15s',
@@ -153,8 +153,8 @@ const primaryBtnStyle = {
 
 const cancelBtnStyle = {
   flex: 1, padding: '10px 20px', borderRadius: 12,
-  background: 'transparent', color: 'var(--fg)',
-  border: '1px solid var(--border)', fontSize: 12, fontWeight: 600,
+  background: 'transparent', color: '#DB1A1A',
+  border: '1px solid #DB1A1A', fontSize: 12, fontWeight: 600,
   cursor: 'pointer', letterSpacing: '0.05em', transition: 'background 0.15s',
 };
 
@@ -393,7 +393,7 @@ export default function ProfileSettings() {
                   </div>
                   <div style={{
                     position: 'absolute', bottom: 0, right: 0, width: 30, height: 30,
-                    background: 'var(--accent)', borderRadius: '50%',
+                    background: '#DB1A1A', borderRadius: '50%',
                     border: '2px solid var(--bg)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
@@ -454,7 +454,7 @@ export default function ProfileSettings() {
                             display: 'inline-flex', alignItems: 'center', gap: 6,
                             padding: '8px 16px', border: '1px solid var(--border)',
                             borderRadius: 12, fontSize: 11, fontWeight: 700,
-                            color: 'var(--fg)', background: 'transparent', cursor: 'pointer',
+                            color: '#fff', background: '#DB1A1A', border: 'none', cursor: 'pointer',
                             letterSpacing: '0.05em', transition: 'all 0.15s',
                           }}
                         >
@@ -542,7 +542,7 @@ export default function ProfileSettings() {
             borderRadius: 20, overflow: 'hidden',
           }}>
             <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Shield size={13} style={{ color: 'var(--muted)' }} />
+              <Shield size={13} style={{ color: '#DB1A1A' }} />
               <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--muted)' }}>Security Settings</span>
             </div>
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -557,7 +557,7 @@ export default function ProfileSettings() {
                     border: '1px solid var(--border)', borderRadius: 12,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <Lock size={14} style={{ color: 'var(--muted)' }} />
+                    <Lock size={14} style={{ color: '#DB1A1A' }} />
                   </div>
                   <div>
                     <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 500, color: 'var(--fg)' }}>Change password</p>
@@ -567,9 +567,9 @@ export default function ProfileSettings() {
                 <button
                   onClick={handlePasswordReset} disabled={passwordLoading}
                   style={{
-                    padding: '6px 16px', border: '1px solid var(--border)',
-                    background: 'var(--bg)', borderRadius: 10,
-                    fontSize: 11, fontWeight: 700, color: 'var(--fg)', cursor: 'pointer',
+                    padding: '6px 16px', border: 'none',
+                    background: '#DB1A1A', borderRadius: 10,
+                    fontSize: 11, fontWeight: 700, color: '#fff',
                     display: 'flex', alignItems: 'center', gap: 6,
                     opacity: passwordLoading ? 0.5 : 1,
                     letterSpacing: '0.04em',
