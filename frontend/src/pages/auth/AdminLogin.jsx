@@ -30,33 +30,41 @@ const EyeOffIcon = () => (
 
 const LeftPanel = () => (
   <div className="hidden lg:flex flex-col items-center justify-center w-1/2 min-h-screen bg-white dark:bg-[#0A0A0A] relative overflow-hidden px-12">
+    {/* Balls */}
     <div className="absolute top-[-100px] left-[-100px] w-96 h-96 rounded-full"
-      style={{ background: 'radial-gradient(circle at 35% 35%, #ff6b6b, #DB1A1A, #8b0000)', opacity: 0.15, filter: 'blur(2px)' }} />
+      style={{ background: 'radial-gradient(circle at 35% 35%, #ff6b6b, #2563eb, #8b0000)', opacity: 0.15, filter: 'blur(2px)' }} />
     <div className="absolute bottom-[-80px] right-[-80px] w-[420px] h-[420px] rounded-full"
-      style={{ background: 'radial-gradient(circle at 35% 35%, #ff6b6b, #DB1A1A, #8b0000)', opacity: 0.12, filter: 'blur(2px)' }} />
+      style={{ background: 'radial-gradient(circle at 35% 35%, #ff6b6b, #2563eb, #8b0000)', opacity: 0.12, filter: 'blur(2px)' }} />
     <div className="absolute top-[15%] right-[-60px] w-64 h-64 rounded-full"
-      style={{ background: 'radial-gradient(circle at 35% 35%, #ff9999, #DB1A1A, #6b0000)', opacity: 0.1, filter: 'blur(1px)' }} />
+      style={{ background: 'radial-gradient(circle at 35% 35%, #ff9999, #2563eb, #6b0000)', opacity: 0.1, filter: 'blur(1px)' }} />
     <div className="absolute bottom-[20%] left-[-40px] w-48 h-48 rounded-full"
       style={{ background: 'radial-gradient(circle at 35% 35%, #ff6b6b, #c41515, #8b0000)', opacity: 0.1, filter: 'blur(1px)' }} />
     <div className="absolute top-[45%] right-[10%] w-24 h-24 rounded-full"
-      style={{ background: 'radial-gradient(circle at 30% 30%, #ff8080, #DB1A1A, #900000)', opacity: 0.15 }} />
+      style={{ background: 'radial-gradient(circle at 30% 30%, #ff8080, #2563eb, #900000)', opacity: 0.15 }} />
     <div className="absolute top-[25%] left-[8%] w-16 h-16 rounded-full"
-      style={{ background: 'radial-gradient(circle at 30% 30%, #ffaaaa, #DB1A1A, #7a0000)', opacity: 0.2 }} />
+      style={{ background: 'radial-gradient(circle at 30% 30%, #ffaaaa, #2563eb, #7a0000)', opacity: 0.2 }} />
     <div className="absolute bottom-[35%] right-[15%] w-10 h-10 rounded-full"
-      style={{ background: 'radial-gradient(circle at 30% 30%, #ff6b6b, #DB1A1A, #8b0000)', opacity: 0.25 }} />
+      style={{ background: 'radial-gradient(circle at 30% 30%, #ff6b6b, #2563eb, #8b0000)', opacity: 0.25 }} />
+
+    {/* Content */}
     <div className="relative z-10 text-center">
       <div className="mb-8 flex items-center justify-center">
         <div className="relative">
-          <span className="text-[120px] font-black leading-none tracking-tighter select-none"
-            style={{ color: '#DB1A1A', textShadow: '0 8px 32px rgba(219,26,26,0.2), 0 2px 4px rgba(219,26,26,0.3)' }}>
+          <span
+            className="text-[120px] font-black leading-none tracking-tighter select-none"
+            style={{
+              color: '#2563eb',
+              textShadow: '0 8px 32px rgba(219,26,26,0.2), 0 2px 4px rgba(219,26,26,0.3)',
+            }}
+          >
             VH
           </span>
-          <div className="absolute -bottom-2 left-0 right-0 h-1 bg-[#DB1A1A] opacity-30 rounded-full" />
+          <div className="absolute -bottom-2 left-0 right-0 h-1 bg-[#2563eb] opacity-30 rounded-full" />
         </div>
       </div>
-      <h1 className="text-3xl font-bold text-[#DB1A1A] mb-3 tracking-tight">VIDHELP</h1>
-      <p className="text-[#DB1A1A] text-base font-medium mb-2 opacity-80">Admin Portal</p>
-      <p className="text-[#DB1A1A] text-sm max-w-xs mx-auto leading-relaxed opacity-60">
+      <h1 className="text-3xl font-bold text-[#2563eb] mb-3 tracking-tight">VIDHELP</h1>
+      <p className="text-[#2563eb] text-base font-medium mb-2 opacity-80">Admin Portal</p>
+      <p className="text-[#2563eb] text-sm max-w-xs mx-auto leading-relaxed opacity-60">
         Manage your team, brands, and operations all in one place.
       </p>
     </div>
@@ -224,7 +232,7 @@ export const AdminLogin = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0A0A0A]">
-        <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-700 border-t-[#DB1A1A] rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-700 border-t-[#2563eb] rounded-full animate-spin" />
       </div>
     );
   }
@@ -310,13 +318,13 @@ export const AdminLogin = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@gmail.com"
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A]"
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb]"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2 px-4 rounded-md text-sm font-medium text-white bg-[#DB1A1A] hover:bg-[#b81515] disabled:opacity-50 transition-colors"
+                className="w-full py-2 px-4 rounded-md text-sm font-medium text-white bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-50 transition-colors"
               >
                 {loading ? 'Sending...' : 'Send Reset Link'}
               </button>
@@ -363,7 +371,7 @@ export const AdminLogin = () => {
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm appearance-none bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A]"
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm appearance-none bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white focus:outline-none bg-[#2563eb] hover:bg-[#1d4ed8]"
                 >
                   {ROLES.map((r) => (
                     <option key={r.value} value={r.value}>{r.label}</option>
@@ -386,7 +394,7 @@ export const AdminLogin = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@gmail.com"
-                className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A]"
+                className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none bg-[#2563eb] hover:bg-[#1d4ed8]"
               />
             </div>
 
@@ -397,7 +405,7 @@ export const AdminLogin = () => {
                 <button
                   type="button"
                   onClick={() => switchView(VIEW.FORGOT)}
-                  className="text-xs text-[#DB1A1A] hover:text-[#b81515] transition-colors"
+                  className="text-xs text-[#2563eb] hover:text-[#1d4ed8] transition-colors"
                 >
                   Forgot password?
                 </button>
@@ -409,7 +417,7 @@ export const AdminLogin = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-[#DB1A1A] focus:border-[#DB1A1A]"
+                  className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-[#262626] rounded-md text-sm bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none bg-[#2563eb] hover:bg-[#1d4ed8]"
                 />
                 <button
                   type="button"

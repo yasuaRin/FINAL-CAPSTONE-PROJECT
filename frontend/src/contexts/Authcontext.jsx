@@ -79,9 +79,13 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     setUser(null);
     setMemberData(null);
+  
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('sb-')) localStorage.removeItem(key);
+    });
     localStorage.removeItem('token');
-    localStorage.removeItem('sb-auth-token');
-    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    
+    await supabase.auth.signOut(); 
   };
 
   return (
