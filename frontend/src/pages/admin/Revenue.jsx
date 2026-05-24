@@ -967,12 +967,6 @@ useEffect(() => {
           </div>
         )}
       </AnimatePresence>
-
-      <div className="pt-8 border-t border-border">
-        <p className="text-[9px] text-center text-muted-foreground uppercase tracking-[0.3em] font-bold">
-          VidHelp Intelligence Hub • {revenueData?.length?.toLocaleString() || '0'} Total Sessions
-        </p>
-      </div>
     </motion.div>
   );
 };
