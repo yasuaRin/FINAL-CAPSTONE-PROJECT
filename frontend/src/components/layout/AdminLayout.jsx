@@ -181,8 +181,8 @@ export const AdminLayout = () => {
       <div className="p-4 border-t border-sidebar-border space-y-2">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all text-sm hover:bg-black/5"
-          style={{ color: '#7b809a' }}
+          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all text-sm hover:bg-red-50 dark:hover:bg-red-950/30"
+          style={{ color: 'var(--primary)' }}
         >
           <LogOut size={18} />
           Sign Out
@@ -212,7 +212,7 @@ export const AdminLayout = () => {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="shrink-0 z-30 px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between bg-background/80 backdrop-blur-md border-b border-border sticky top-0">
           <div className="flex items-center gap-3">
-            <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-foreground hover:bg-muted rounded-md transition-colors" aria-label="Open sidebar">
+            <button onClick={() => setIsSidebarOpen(true)} className="p-2 rounded-md transition-colors hover:bg-red-50 dark:hover:bg-red-950/30" style={{ color: 'var(--primary)' }} aria-label="Open sidebar">
               <Menu size={22} />
             </button>
             <div className="hidden sm:flex flex-col">
