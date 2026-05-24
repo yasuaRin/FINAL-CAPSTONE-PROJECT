@@ -1,7 +1,9 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle2 } from 'lucide-react';
 
 const ROLES = [
   { value: 'admin', label: 'Admin' },
@@ -28,6 +30,7 @@ const EyeOffIcon = () => (
 
 const LeftPanel = () => (
   <div className="hidden lg:flex flex-col items-center justify-center w-1/2 min-h-screen bg-white dark:bg-[#0A0A0A] relative overflow-hidden px-12">
+    {/* Balls */}
     <div className="absolute top-[-100px] left-[-100px] w-96 h-96 rounded-full"
       style={{ background: 'radial-gradient(circle at 35% 35%, #ff6b6b, #2563eb, #8b0000)', opacity: 0.15, filter: 'blur(2px)' }} />
     <div className="absolute bottom-[-80px] right-[-80px] w-[420px] h-[420px] rounded-full"
@@ -42,12 +45,17 @@ const LeftPanel = () => (
       style={{ background: 'radial-gradient(circle at 30% 30%, #ffaaaa, #2563eb, #7a0000)', opacity: 0.2 }} />
     <div className="absolute bottom-[35%] right-[15%] w-10 h-10 rounded-full"
       style={{ background: 'radial-gradient(circle at 30% 30%, #ff6b6b, #2563eb, #8b0000)', opacity: 0.25 }} />
+
+    {/* Content */}
     <div className="relative z-10 text-center">
       <div className="mb-8 flex items-center justify-center">
         <div className="relative">
           <span
             className="text-[120px] font-black leading-none tracking-tighter select-none"
-            style={{ color: '#2563eb', textShadow: '0 8px 32px rgba(37,99,235,0.2), 0 2px 4px rgba(37,99,235,0.3)' }}
+            style={{
+              color: '#2563eb',
+              textShadow: '0 8px 32px rgba(219,26,26,0.2), 0 2px 4px rgba(219,26,26,0.3)',
+            }}
           >
             VH
           </span>
@@ -72,22 +80,58 @@ export const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [role, setRole] = useState('admin');
   const [loading, setLoading] = useState(false);
+  const [validated, setValidated] = useState(false);
 
-  const oauthValidatingRef = useRef(false);
-  const initialCheckDoneRef = useRef(false);
+  // Dark mode detection (reactive)
+  const [isDark, setIsDark] = useState(
+    document.documentElement.classList.contains('dark') ||
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  );
 
-  const successMessage = location.state?.message;
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributeFilter: ['class'] });
 
-  // Helper to get the current origin (works for both localhost and network IP)
-  const getRedirectUrl = () => {
-    // Use the current origin (includes protocol, hostname, and port)
-    // This will work for localhost, 127.0.0.1, network IPs, and production domains
-    return `${window.location.origin}/#/admin/auth/callback`;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const mqHandler = (e) => {
+      if (!document.documentElement.classList.contains('dark')) setIsDark(e.matches);
+    };
+    mq.addEventListener('change', mqHandler);
+
+    return () => {
+      observer.disconnect();
+      mq.removeEventListener('change', mqHandler);
+    };
+  }, []);
+
+  // Toast state
+  const [toast, setToast] = useState(null); // { message, type }
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
   };
+
+  const hideToast = () => setToast(null);
+
+  // Show success message from navigation state (e.g. after reset password)
+  const successMessage = location.state?.message;
+  useEffect(() => {
+    if (successMessage) {
+      showToast(successMessage, 'success');
+      window.history.replaceState({}, document.title);
+    }
+  }, [successMessage]);
+
+  useEffect(() => {
+    if (!authLoading && user && validated) {
+      navigate('/admin', { replace: true });
+    }
+  }, [user, authLoading, validated, navigate]);
 
   const validateAdminAccess = async (authUser, selectedRole) => {
     const allowedDomains = ['gmail.com', 'vidhelp.com'];
@@ -120,8 +164,8 @@ export const AdminLogin = () => {
 
     if (memberData.role !== selectedRole) {
       await supabase.auth.signOut();
-      const actualLabel   = memberData.role === 'super_admin' ? 'Super Admin' : 'Admin';
-      const selectedLabel = selectedRole   === 'super_admin' ? 'Super Admin' : 'Admin';
+      const actualLabel = memberData.role === 'super_admin' ? 'Super Admin' : 'Admin';
+      const selectedLabel = selectedRole === 'super_admin' ? 'Super Admin' : 'Admin';
       throw new Error(
         `Wrong access level selected. You selected "${selectedLabel}" but your account is registered as "${actualLabel}". Please select the correct access level and try again.`
       );
@@ -130,122 +174,50 @@ export const AdminLogin = () => {
     return memberData;
   };
 
-  // Handle OAuth callback - runs when component mounts OR when user changes
-  useEffect(() => {
-    const storedRole = sessionStorage.getItem('oauth_selected_role');
-    
-    // If no stored role or no user, don't validate
-    if (!storedRole || !user) return;
-    
-    // Prevent duplicate validation
-    if (oauthValidatingRef.current) return;
-
-    oauthValidatingRef.current = true;
-    setLoading(true);
-    setError('');
-
-    // Clear the stored role immediately to prevent re-validation
-    sessionStorage.removeItem('oauth_selected_role');
-
-    validateAdminAccess(user, storedRole)
-      .then(() => {
-        // Clear any leftover state
-        oauthValidatingRef.current = false;
-        setLoading(false);
-        navigate('/admin', { replace: true });
-      })
-      .catch((err) => {
-        setError(err.message || 'Validation failed. Please try again.');
-        setLoading(false);
-        oauthValidatingRef.current = false;
-        // Sign out on validation failure
-        supabase.auth.signOut();
-      });
-  }, [user, navigate]);
-
-  // Redirect already-authenticated users (email/password login)
-  // Only runs after initial auth check is complete and no OAuth validation is in progress
-  useEffect(() => {
-    if (authLoading) return;
-    if (oauthValidatingRef.current) return;
-    if (sessionStorage.getItem('oauth_selected_role')) return;
-    
-    // Only redirect once after initial check
-    if (!initialCheckDoneRef.current && user) {
-      initialCheckDoneRef.current = true;
-      navigate('/admin', { replace: true });
-    }
-  }, [user, authLoading, navigate]);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
+    setValidated(false);
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) throw new Error(signInError.message);
       if (!data.user) throw new Error('Login failed. Please try again.');
       await validateAdminAccess(data.user, role);
-      navigate('/admin', { replace: true });
+      setValidated(true);
     } catch (err) {
-      setError(err.message || 'Login failed.');
+      showToast(err.message || 'Login failed.', 'error');
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    setError('');
-    
-    // Clear any existing session storage items
-    sessionStorage.removeItem('oauth_selected_role');
-    
-    oauthValidatingRef.current = true;
     setLoading(true);
-    
     try {
-      // Store the selected role for after OAuth callback
-      sessionStorage.setItem('oauth_selected_role', role);
-      
-      const redirectUrl = getRedirectUrl();
-      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectUrl,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
+          redirectTo: `${window.location.origin}/#/admin/auth/callback`,
+          queryParams: { selected_role: role },
         },
       });
-      
       if (error) throw new Error(error.message);
-      
-      // The page will redirect to Google - no need to set loading false here
-      // The OAuth callback will handle the rest
     } catch (err) {
-      console.error('Google login error:', err);
-      sessionStorage.removeItem('oauth_selected_role');
-      oauthValidatingRef.current = false;
-      setError(err.message || 'Google login failed. Please try again.');
+      showToast(err.message || 'Google login failed.', 'error');
       setLoading(false);
     }
   };
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
     setLoading(true);
     try {
-      const redirectUrl = `${window.location.origin}/#/admin/auth/reset-password`;
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectUrl,
+        redirectTo: `${window.location.origin}/#/admin/auth/reset-password`,
       });
       if (resetError) throw new Error(resetError.message);
-      setSuccess('If this email is registered, a password reset link has been sent. Please check your inbox.');
+      showToast('If this email is registered, a password reset link has been sent. Please check your inbox.', 'success');
     } catch (err) {
-      setError(err.message || 'Failed to send reset email.');
+      showToast(err.message || 'Failed to send reset email.', 'error');
     } finally {
       setLoading(false);
     }
@@ -253,29 +225,71 @@ export const AdminLogin = () => {
 
   const switchView = (newView) => {
     setView(newView);
-    setError('');
-    setSuccess('');
+    hideToast();
     setEmail('');
   };
 
-  // Show loading state
-  if (authLoading || loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0A0A0A]">
-        <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-            Verifying access...
-          </p>
-        </div>
+        <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-700 border-t-[#2563eb] rounded-full animate-spin" />
       </div>
     );
   }
 
-  // Forgot Password View
+  if (user && validated) return null;
+
+  // ─── Shared Toast (AnimatePresence) ───────────────────────────────────────
+  const ToastNotification = (
+    <AnimatePresence>
+      {toast && (
+        <motion.div
+          initial={{ opacity: 0, y: -20, x: '-50%' }}
+          animate={{ opacity: 1, y: 20, x: '-50%' }}
+          exit={{ opacity: 0, y: -20, x: '-50%' }}
+          style={{
+            position: 'fixed',
+            top: 4,
+            left: '50%',
+            zIndex: 100,
+            background: isDark ? '#1c1c1c' : '#ffffff',
+            color: isDark ? '#f5f5f5' : '#111111',
+            padding: '10px 20px',
+            borderRadius: 16,
+            boxShadow: isDark
+              ? '0 8px 40px rgba(0,0,0,0.5)'
+              : '0 8px 40px rgba(0,0,0,0.18)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            border: isDark ? '1px solid #2e2e2e' : '1px solid #e5e7eb',
+            minWidth: 260,
+          }}
+        >
+          <div style={{
+            borderRadius: '50%',
+            padding: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: toast.type === 'error' ? '#ef4444' : '#22c55e',
+            flexShrink: 0,
+          }}>
+            <CheckCircle2 size={16} color="white" />
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em' }}>
+            {toast.message}
+          </span>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  // ─── Forgot Password View ──────────────────────────────────────────────────
   if (view === VIEW.FORGOT) {
     return (
       <div className="min-h-screen flex">
+        {ToastNotification}
         <LeftPanel />
         <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0A] px-6 py-12">
           <div className="w-full max-w-md space-y-6">
@@ -295,13 +309,6 @@ export const AdminLogin = () => {
               </p>
             </div>
 
-            {error && (
-              <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">{error}</div>
-            )}
-            {success && (
-              <div className="bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 p-3 rounded-lg text-sm border border-green-100 dark:border-green-900/50">{success}</div>
-            )}
-
             <form className="space-y-4" onSubmit={handleForgotPassword}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email address</label>
@@ -316,8 +323,8 @@ export const AdminLogin = () => {
               </div>
               <button
                 type="submit"
-                disabled={loading || !!success}
-                className="w-full py-2 px-4 rounded-md text-sm font-medium text-white bg-[#2563eb] hover:bg-[#b81515] disabled:opacity-50 transition-colors"
+                disabled={loading}
+                className="w-full py-2 px-4 rounded-md text-sm font-medium text-white bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-50 transition-colors"
               >
                 {loading ? 'Sending...' : 'Send Reset Link'}
               </button>
@@ -335,14 +342,13 @@ export const AdminLogin = () => {
     );
   }
 
-  // Login View
+  // ─── Login View ────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex">
+      {ToastNotification}
       <LeftPanel />
-
       <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0A] px-6 py-12">
         <div className="w-full max-w-md space-y-6">
-
           <div>
             <button
               onClick={() => navigate('/')}
@@ -357,34 +363,20 @@ export const AdminLogin = () => {
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Sign in to your VIDHELP Admin account</p>
           </div>
 
-          {error && (
-            <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-100 dark:border-red-900/50">{error}</div>
-          )}
-          {successMessage && !error && (
-            <div className="bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 p-3 rounded-lg text-sm border border-green-100 dark:border-green-900/50">{successMessage}</div>
-          )}
-
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* Access Level */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Access Level</label>
               <div className="relative">
                 <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    required
-                    className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm appearance-none bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white focus:outline-none focus:ring-[#2563eb] focus:border-[#2563eb]"
-                  >
-                    <option value="" disabled>
-                      
-                    </option>
-
-                    {ROLES.map((r) => (
-                      <option key={r.value} value={r.value}>
-                        {r.label}
-                      </option>
-                    ))}
-                  </select>
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-[#262626] rounded-md text-sm appearance-none bg-white dark:bg-[#1f1f1f] text-gray-900 dark:text-white focus:outline-none bg-[#2563eb] hover:bg-[#1d4ed8]"
+                >
+                  {ROLES.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -441,7 +433,7 @@ export const AdminLogin = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2 px-4 rounded-md text-sm font-semibold text-white bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-50 transition-colors"
+              className="w-full py-2 px-4 rounded-md text-sm font-semibold text-white bg-[#DB1A1A] hover:bg-[#b81515] disabled:opacity-50 transition-colors"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
@@ -471,13 +463,11 @@ export const AdminLogin = () => {
               </svg>
               Sign in with Google
             </button>
-
           </form>
 
           <p className="text-center text-xs text-gray-400 dark:text-gray-600">
             Contact your Super Admin if you need access credentials.
           </p>
-
         </div>
       </div>
     </div>
