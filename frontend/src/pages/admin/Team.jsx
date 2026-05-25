@@ -49,8 +49,8 @@ const primaryBtn = {
   padding: "10px 20px",
   borderRadius: 10,
   border: "none",
-  background: "var(--primary)",
-  color: "var(--primary-foreground)",
+  background: "#DB1A1A",
+  color: "#ffffff",
   fontWeight: 700,
   fontSize: 13,
   cursor: "pointer",
@@ -194,7 +194,7 @@ export default function Team() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedRole, setSelectedRole] = useState("staff");
-  const [showPassword, setShowPassword] = useState(false); // ← TAMBAHAN
+  const [showPassword, setShowPassword] = useState(false);
 
   const [roleFilter, setRoleFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -305,7 +305,7 @@ export default function Team() {
     formAvatarRef.current = avatar;
     setFormError("");
     setSelectedRole(member?.role || "staff");
-    setShowPassword(false); // ← reset saat buka form
+    setShowPassword(false);
     setIsFormOpen(true);
   };
 
@@ -316,7 +316,7 @@ export default function Team() {
     formAvatarRef.current = null;
     setFormError("");
     setSelectedRole("staff");
-    setShowPassword(false); // ← reset saat tutup form
+    setShowPassword(false);
     setAvatarUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -629,7 +629,7 @@ export default function Team() {
                 </div>
                 <div style={{ display: "flex", gap: 12, width: "100%" }}>
                   <button onClick={() => setDeleteTarget(null)} style={cancelBtn}>Cancel</button>
-                  <button onClick={handleDelete} style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "var(--primary)", color: "var(--primary-foreground)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Confirm</button>
+                  <button onClick={handleDelete} style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "#DB1A1A", color: "#ffffff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Confirm</button>
                 </div>
               </div>
             </div>
@@ -641,13 +641,13 @@ export default function Team() {
           <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
             <div onClick={closeForm} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
             <div style={{ position: "relative", zIndex: 10, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, maxWidth: 600, width: "100%", maxHeight: "90vh", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", overflow: "hidden" }}>
-              <div style={{ padding: "16px 24px", background: "var(--primary)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ padding: "16px 24px", background: "#DB1A1A", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>{editingMember ? "Edit Member" : "Add Member"}</h3>
                 <button onClick={closeForm} style={{ padding: 6, borderRadius: 8, border: "none", background: "rgba(255,255,255,0.15)", cursor: "pointer", color: "#fff", display: "flex" }}><X size={16} /></button>
               </div>
               <div style={{ padding: 28, overflowY: "auto", maxHeight: "calc(90vh - 60px)" }}>
                 {formError && (
-                  <div style={{ marginBottom: 20, padding: "10px 14px", background: "rgba(219,26,26,0.08)", border: "1px solid rgba(219,26,26,0.2)", borderRadius: 10, color: "#2563eb", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ marginBottom: 20, padding: "10px 14px", background: "rgba(219,26,26,0.08)", border: "1px solid rgba(219,26,26,0.2)", borderRadius: 10, color: "#DB1A1A", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
                     <AlertTriangle size={14} /> {formError}
                   </div>
                 )}
@@ -656,14 +656,14 @@ export default function Team() {
                     <div style={{ width: 80, height: 80, borderRadius: "50%", overflow: "hidden", border: "3px solid var(--border)", cursor: "pointer" }} onClick={() => !avatarUploading && fileInputRef.current?.click()}>
                       {avatarUploading ? (
                         <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--muted)" }}>
-                          <div style={{ width: 24, height: 24, border: "3px solid var(--border)", borderTopColor: "var(--primary)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                          <div style={{ width: 24, height: 24, border: "3px solid var(--border)", borderTopColor: "#DB1A1A", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
                         </div>
                       ) : (
                         <img src={formAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${editingMember?.name || "new"}`} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       )}
                     </div>
                     <button type="button" onClick={() => !avatarUploading && fileInputRef.current?.click()} disabled={avatarUploading}
-                      style={{ position: "absolute", bottom: -2, right: -2, width: 26, height: 26, borderRadius: "50%", background: "var(--primary)", border: "none", cursor: avatarUploading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: avatarUploading ? 0.6 : 1 }}>
+                      style={{ position: "absolute", bottom: -2, right: -2, width: 26, height: 26, borderRadius: "50%", background: "#DB1A1A", border: "none", cursor: avatarUploading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: avatarUploading ? 0.6 : 1 }}>
                       <Upload size={12} color="white" />
                     </button>
                   </div>
@@ -671,7 +671,7 @@ export default function Team() {
                   <p style={{ fontSize: 10, color: "var(--muted-foreground)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>{avatarUploading ? "Uploading..." : "Click photo to update"}</p>
                   {formAvatar && !avatarUploading && (
                     <button type="button" onClick={async () => { try { await deleteFromStorage(formAvatar); } catch (_) {} setFormAvatar(null); formAvatarRef.current = null; if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                      style={{ fontSize: 11, color: "#2563eb", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>
+                      style={{ fontSize: 11, color: "#DB1A1A", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>
                       Remove photo
                     </button>
                   )}
@@ -701,10 +701,9 @@ export default function Team() {
                     </div>
                   </div>
 
-                  {/* Password field dengan show/hide toggle */}
                   {!editingMember && selectedRole !== "staff" && (
                     <div style={{ marginBottom: 16 }}>
-                      <label style={labelStyle}>Password <span style={{ color: "#2563eb" }}>*</span></label>
+                      <label style={labelStyle}>Password <span style={{ color: "#DB1A1A" }}>*</span></label>
                       <div style={{ position: "relative" }}>
                         <input
                           name="password"
@@ -743,7 +742,7 @@ export default function Team() {
                   <div style={{ display: "flex", gap: 12 }}>
                     <button type="button" onClick={closeForm} style={cancelBtn}>Cancel</button>
                     <button type="submit" disabled={submitting || avatarUploading}
-                      style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "var(--primary)", color: "var(--primary-foreground)", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: submitting || avatarUploading ? 0.7 : 1 }}>
+                      style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "#DB1A1A", color: "#ffffff", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: submitting || avatarUploading ? 0.7 : 1 }}>
                       {submitting ? "Saving..." : avatarUploading ? "Uploading photo..." : editingMember ? "Save Changes" : "Add Member"}
                     </button>
                   </div>
