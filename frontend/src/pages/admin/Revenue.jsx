@@ -336,7 +336,6 @@ const Revenue = () => {
     return results.sort((a, b) => b.totalRevenue - a.totalRevenue);
   }, [dateFilteredLogs, brandsList, insightBrandId, periodMap]);
 
-  // FIXED: sessionIntelligence with proper filtering
   const sessionIntelligence = useMemo(() => {
     let rows = dateFilteredLogs.map(log => {
       const periodId = log.period_id;
@@ -359,12 +358,10 @@ const Revenue = () => {
       );
     }
     
-    // Apply brand filter
     if (tableFilter.brandId && tableFilter.brandId !== 'All') {
       rows = rows.filter(r => r.brandId === tableFilter.brandId);
     }
     
-    // Apply period filter
     if (tableFilter.period && tableFilter.period !== 'All') {
       rows = rows.filter(r => r.period === tableFilter.period);
     }
@@ -494,6 +491,15 @@ const Revenue = () => {
     return false;
   };
 
+  // ========== FIX: closeSessionModal no longer owns isSubmitting ==========
+  const closeSessionModal = () => {
+    setShowSessionModal(false);
+    setEditingSession(null);
+    setOpenDropdown(null);
+    // NOTE: intentionally NOT calling setIsSubmitting(false) here.
+    // Only the finally blocks in handleCreateSession / handleUpdateSession own it.
+  };
+
   const handleCreateSession = async () => {
     if (isSubmitting) return;
     if (!sessionFormData.brandId) { notify('Please select a brand'); return; }
@@ -549,6 +555,7 @@ const Revenue = () => {
       console.error('Create error:', err);
       notify(`Failed: ${err.message || 'Unknown error'}`, true);
     } finally {
+      // FIX: setIsSubmitting(false) is FIRST and unconditional — sole owner of this state
       setIsSubmitting(false);
       setEditingSession(null);
       setOpenDropdown(null);
@@ -627,6 +634,7 @@ const Revenue = () => {
       console.error('UPDATE ERROR:', err);
       notify(`Update failed: ${err.message || 'Unknown error'}`, true);
     } finally {
+      // FIX: setIsSubmitting(false) is FIRST and unconditional — sole owner of this state
       setIsSubmitting(false);
       setOpenDropdown(null);
     }
@@ -659,6 +667,7 @@ const Revenue = () => {
       console.error('DELETE ERROR:', err);
       notify(err.message, true);
     } finally {
+      // FIX: setIsSubmitting(false) is FIRST and unconditional — sole owner of this state
       setIsSubmitting(false);
     }
   };
@@ -708,13 +717,6 @@ const Revenue = () => {
     const brand = brandsList.find(b => b.id === brandId);
     const brandName = brand?.name || 'Brand';
     notify(`Showing ${brandName} sessions${period && period !== 'All' ? ` for ${period}` : ''}`);
-  };
-
-  const closeSessionModal = () => {
-    setShowSessionModal(false);
-    setEditingSession(null);
-    setOpenDropdown(null);
-    setIsSubmitting(false);
   };
 
   const dropdownTriggerCls = (isOpen) =>
