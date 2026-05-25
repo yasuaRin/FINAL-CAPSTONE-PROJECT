@@ -208,6 +208,7 @@ export default function ProfileSettings() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        // Fetch dari team_members pakai auth_user_id
         const { data: memberData } = await supabase
           .from('team_members')
           .select('name, email, role, avatar_url, phone, role_description')
@@ -255,6 +256,7 @@ export default function ProfileSettings() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Update team_members
       const { error: memberError } = await supabase
         .from('team_members')
         .update({
@@ -266,6 +268,7 @@ export default function ProfileSettings() {
         .eq('auth_user_id', user.id);
       if (memberError) throw memberError;
 
+      // Update profiles (bio)
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -309,12 +312,12 @@ export default function ProfileSettings() {
     }
   };
 
-  const handlePasswordReset = async () => {
-    setPasswordLoading(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
-        redirectTo: `${window.location.origin}/#/admin/auth/reset-password`,
-      });
+ const handlePasswordReset = async () => {
+  setPasswordLoading(true);
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
+      redirectTo: `${window.location.origin}/#/admin/auth/reset-password`, // ← fix ini
+    });
       if (error) throw error;
       showToast(`Password reset email sent to ${profile.email}.`);
     } catch (err) {
@@ -345,10 +348,6 @@ export default function ProfileSettings() {
 
       <div style={{ padding: '32px 24px' }}>
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
-          <div style={{ marginBottom: 24 }}>
-            <p style={{ fontSize: 11, color: 'var(--muted)', margin: '0 0 4px' }}>Pages / profile</p>
-            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--fg)' }}>Profile</h1>
-          </div>
 
           <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 1px 8px rgba(0,0,0,0.06)' }}>
             <div style={{
@@ -384,7 +383,7 @@ export default function ProfileSettings() {
                       : (
                         <div style={{
                           width: '100%', height: '100%', borderRadius: '50%',
-                          background: 'rgba(37,99,235,0.1)',
+                          background: 'rgba(219,26,26,0.1)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                           <span style={{ fontSize: 36, fontWeight: 700, color: 'var(--accent)' }}>{getInitials()}</span>
@@ -582,6 +581,7 @@ export default function ProfileSettings() {
               </div>
             </div>
           </div>
+
         </div>
       </div>
 

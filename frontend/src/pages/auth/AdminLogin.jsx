@@ -112,7 +112,7 @@ export const AdminLogin = () => {
   const [toast, setToast] = useState(null);
 
   const oauthValidatingRef = useRef(false);
-  const isManualLoginRef = useRef(false); // ✅ NEW: prevents useEffect redirect during manual login
+  const isManualLoginRef = useRef(false);
   const toastTimerRef = useRef(null);
 
   const successMessage = location.state?.message;
@@ -134,6 +134,7 @@ export const AdminLogin = () => {
 
   const getRedirectUrl = () => `${window.location.origin}/#/admin/auth/callback`;
 
+  // validateAdminAccess — selectedRole is optional (omit for Google OAuth)
   const validateAdminAccess = async (authUser, selectedRole) => {
     const allowedDomains = ['gmail.com', 'vidhelp.com'];
     const domain = authUser.email.split('@')[1];
@@ -158,7 +159,8 @@ export const AdminLogin = () => {
       await supabase.auth.signOut();
       throw new Error('Staff accounts do not have access to the Admin Portal.');
     }
-    if (memberData.role !== selectedRole) {
+    // Only check role match when signing in with email/password (selectedRole provided)
+    if (selectedRole && memberData.role !== selectedRole) {
       await supabase.auth.signOut();
       const actualLabel   = memberData.role === 'super_admin' ? 'Super Admin' : 'Admin';
       const selectedLabel = selectedRole   === 'super_admin' ? 'Super Admin' : 'Admin';
@@ -169,13 +171,15 @@ export const AdminLogin = () => {
 
   // OAuth callback validation
   useEffect(() => {
-    const storedRole = sessionStorage.getItem('oauth_selected_role');
-    if (!storedRole || !user) return;
+    if (!user) return;
     if (oauthValidatingRef.current) return;
+    // Only run if we came from OAuth (flag in sessionStorage)
+    const isOAuth = sessionStorage.getItem('oauth_login');
+    if (!isOAuth) return;
     oauthValidatingRef.current = true;
     setLoading(true);
-    sessionStorage.removeItem('oauth_selected_role');
-    validateAdminAccess(user, storedRole)
+    sessionStorage.removeItem('oauth_login');
+    validateAdminAccess(user) // no selectedRole → skips role match check
       .then(() => {
         oauthValidatingRef.current = false;
         setLoading(false);
@@ -190,12 +194,11 @@ export const AdminLogin = () => {
   }, [user, navigate]);
 
   // Auto-redirect if already logged in
-  // ✅ FIX: skip redirect if manual login is in progress
   useEffect(() => {
     if (authLoading) return;
     if (oauthValidatingRef.current) return;
-    if (isManualLoginRef.current) return; // ✅ don't redirect during manual login
-    if (sessionStorage.getItem('oauth_selected_role')) return;
+    if (isManualLoginRef.current) return;
+    if (sessionStorage.getItem('oauth_login')) return;
     if (user) {
       navigate('/admin', { replace: true });
     }
@@ -208,31 +211,27 @@ export const AdminLogin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    isManualLoginRef.current = true; // ✅ block auto-redirect useEffect
+    isManualLoginRef.current = true;
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) throw new Error(signInError.message);
       if (!data.user) throw new Error('Login failed. Please try again.');
-      await validateAdminAccess(data.user, role);
+      await validateAdminAccess(data.user, role); // pass role for email/password login
       isManualLoginRef.current = false;
       navigate('/admin', { replace: true });
     } catch (err) {
-      isManualLoginRef.current = false; // ✅ release block on error
+      isManualLoginRef.current = false;
       setLoading(false);
       showToast(err.message || 'Login failed.', 'error');
     }
   };
 
   const handleGoogleLogin = async () => {
-    if (!role) {
-      showToast('Please select an access level first.', 'error');
-      return;
-    }
-    sessionStorage.removeItem('oauth_selected_role');
+    // No role check needed for Google — role is fetched from DB after login
     oauthValidatingRef.current = true;
     setLoading(true);
     try {
-      sessionStorage.setItem('oauth_selected_role', role);
+      sessionStorage.setItem('oauth_login', 'true');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -242,7 +241,7 @@ export const AdminLogin = () => {
       });
       if (error) throw new Error(error.message);
     } catch (err) {
-      sessionStorage.removeItem('oauth_selected_role');
+      sessionStorage.removeItem('oauth_login');
       oauthValidatingRef.current = false;
       setLoading(false);
       showToast(err.message || 'Google login failed. Please try again.', 'error');
