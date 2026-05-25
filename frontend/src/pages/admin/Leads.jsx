@@ -55,9 +55,9 @@ const createLeadIcon = (lead, isSelected, partnerData) => {
   const isMid = lead.potentialScore >= 70 && lead.potentialScore < 85;
   const partnered = !!partnerData;
 
-  let color = isHigh ? "#3b82f6" : isMid ? "#f59e0b" : "#64748b";
+  let color = isHigh ? "#f43f5e" : isMid ? "#f59e0b" : "#64748b";
   if (partnered) {
-    if (partnerData.status === "Partner") color = "#2563eb";
+    if (partnerData.status === "Partner") color = "#3b82f6";
     else if (partnerData.status === "Dealing") color = "#8b5cf6";
     else color = "#94a3b8";
   }
@@ -79,7 +79,7 @@ const createLeadIcon = (lead, isSelected, partnerData) => {
         box-sizing:border-box;
       ">
         <div style="width:${innerSize}px;height:${innerSize}px;background-color:${color};border-radius:50%;${isHigh ? `box-shadow:0 0 10px ${color}` : ""}"></div>
-        ${isHigh ? `<div style="position:absolute;top:-7px;right:-7px;background:#3b82f6;color:white;padding:1px 3px;border-radius:3px;font-size:7px;font-weight:900;border:1.5px solid white;line-height:1.4;">HOT</div>` : ""}
+        ${isHigh ? `<div style="position:absolute;top:-7px;right:-7px;background:#f43f5e;color:white;padding:1px 3px;border-radius:3px;font-size:7px;font-weight:900;border:1.5px solid white;line-height:1.4;">HOT</div>` : ""}
         ${partnered ? `<div style="position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;background:${color};border:2px solid white;border-radius:50%;"></div>` : ""}
       </div>
     `,
@@ -346,9 +346,19 @@ function LeadsInner() {
     const partnerLeads = partneredBrands
       .filter((b) => b.lat && b.lng && !scanIds.has(b.id))
       .map((b) => ({
-        id: b.id, name: b.name, industry: b.industry, location: b.location,
-        lat: b.lat, lng: b.lng, potentialScore: 70, address: b.location,
-        phone: "", website: "", googleMapsUri: "", snippet: "", isReal: true,
+        id: b.id,
+        name: b.name,
+        industry: b.industry,
+        location: b.location,
+        lat: b.lat,
+        lng: b.lng,
+        potentialScore: 70,
+        address: b.location,
+        phone: "",
+        website: "",
+        googleMapsUri: "",
+        snippet: "",
+        isReal: true,
       }));
     return [...filteredLeads, ...partnerLeads];
   }, [filteredLeads, partneredBrands]);
@@ -400,10 +410,7 @@ function LeadsInner() {
   const handleConfirmSent = useCallback(
     (lead, method) => {
       if (!isPartner(lead.id)) {
-        addPartner(
-          { id: lead.id, name: lead.name, industry: lead.industry, location: lead.location, lat: lead.lat ?? null, lng: lead.lng ?? null, outreachMethod: method },
-          "In Progress",
-        );
+        addPartner({ id: lead.id, name: lead.name, industry: lead.industry, location: lead.location, lat: lead.lat ?? null, lng: lead.lng ?? null, outreachMethod: method }, "In Progress");
       } else {
         updateOutreachMethod(lead.id, method);
       }
@@ -471,7 +478,9 @@ Be direct. No fluff. No percentages.`;
   useEffect(() => {
     if (!selectedLead) return;
     if (aiInsightsRef.current[selectedLead.id]) return;
-    const timer = setTimeout(() => { generateAiInsight(selectedLead); }, 600);
+    const timer = setTimeout(() => {
+      generateAiInsight(selectedLead);
+    }, 600);
     return () => clearTimeout(timer);
   }, [selectedLead?.id, generateAiInsight]);
 
@@ -480,15 +489,32 @@ Be direct. No fluff. No percentages.`;
       const existingLead = leadsFound.find((l) => l.id === brand.id);
       if (existingLead) {
         setSelectedLead(existingLead);
+        if (existingLead.lat && existingLead.lng) {
+          userMovedMap.current = false;
+          setUserPos({ latitude: existingLead.lat, longitude: existingLead.lng });
+        }
         mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
         return;
       }
       if (brand.id?.startsWith("place-") && brand.lat && brand.lng) {
         setIsFetchingDetail(true);
+        userMovedMap.current = false;
+        setUserPos({ latitude: brand.lat, longitude: brand.lng });
         setSelectedLead({
-          id: brand.id, name: brand.name, industry: brand.industry, location: brand.location,
-          lat: brand.lat, lng: brand.lng, potentialScore: 70, address: brand.location,
-          phone: "", website: "", googleMapsUri: "", snippet: "", isReal: true, _loading: true,
+          id: brand.id,
+          name: brand.name,
+          industry: brand.industry,
+          location: brand.location,
+          lat: brand.lat,
+          lng: brand.lng,
+          potentialScore: 70,
+          address: brand.location,
+          phone: "",
+          website: "",
+          googleMapsUri: "",
+          snippet: "",
+          isReal: true,
+          _loading: true,
         });
         mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
         try {
@@ -503,9 +529,19 @@ Be direct. No fluff. No percentages.`;
         } catch (err) {
           console.error("Failed to fetch place details:", err);
           setSelectedLead({
-            id: brand.id, name: brand.name, industry: brand.industry, location: brand.location,
-            lat: brand.lat, lng: brand.lng, potentialScore: 70, address: brand.location,
-            phone: "", website: "", googleMapsUri: "", snippet: "", isReal: true,
+            id: brand.id,
+            name: brand.name,
+            industry: brand.industry,
+            location: brand.location,
+            lat: brand.lat,
+            lng: brand.lng,
+            potentialScore: 70,
+            address: brand.location,
+            phone: "",
+            website: "",
+            googleMapsUri: "",
+            snippet: "",
+            isReal: true,
           });
         } finally {
           setIsFetchingDetail(false);
@@ -513,10 +549,22 @@ Be direct. No fluff. No percentages.`;
         return;
       }
       if (brand.lat && brand.lng) {
+        userMovedMap.current = false;
+        setUserPos({ latitude: brand.lat, longitude: brand.lng });
         setSelectedLead({
-          id: brand.id, name: brand.name, industry: brand.industry, location: brand.location,
-          lat: brand.lat, lng: brand.lng, potentialScore: 70, address: brand.location,
-          phone: "", website: "", googleMapsUri: "", snippet: "", isReal: true,
+          id: brand.id,
+          name: brand.name,
+          industry: brand.industry,
+          location: brand.location,
+          lat: brand.lat,
+          lng: brand.lng,
+          potentialScore: 70,
+          address: brand.location,
+          phone: "",
+          website: "",
+          googleMapsUri: "",
+          snippet: "",
+          isReal: true,
         });
         mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
@@ -533,8 +581,14 @@ Be direct. No fluff. No percentages.`;
         <Popup>
           <div className="p-1">
             <p className="font-bold text-sm">{lead.name}</p>
-            <p className="text-[10px] uppercase font-bold">{lead.industry} • {lead.potentialScore}%</p>
-            {lead.rating && <p className="text-[10px] text-amber-500">★ {lead.rating} ({lead.ratingCount?.toLocaleString()})</p>}
+            <p className="text-[10px] uppercase font-bold">
+              {lead.industry} • {lead.potentialScore}%
+            </p>
+            {lead.rating && (
+              <p className="text-[10px] text-amber-500">
+                ★ {lead.rating} ({lead.ratingCount?.toLocaleString()})
+              </p>
+            )}
           </div>
         </Popup>
       </Marker>
@@ -554,24 +608,35 @@ Be direct. No fluff. No percentages.`;
   };
 
   const MapEvents = () => {
-  useMapEvents({
-    dragstart: () => { userMovedMap.current = true; },
-    moveend: (e) => {
-      if (!userMovedMap.current) return;
-      userMovedMap.current = false;
-      const center = e.target.getCenter();
-      const coords = { latitude: center.lat, longitude: center.lng };
-      setUserPos(coords);
-      handleAIScan(coords);
-    },
-  });
-  return null;
-};
+    useMapEvents({
+      dragstart: () => {
+        userMovedMap.current = true;
+      },
+      moveend: (e) => {
+        if (!userMovedMap.current) return;
+        userMovedMap.current = false;
+        const center = e.target.getCenter();
+        const coords = { latitude: center.lat, longitude: center.lng };
+        setUserPos(coords);
+        handleAIScan(coords);
+      },
+    });
+    return null;
+  };
 
   const actionBtn = (bg, color) => ({
-    width: 32, height: 32, borderRadius: "50%", border: "none",
-    background: bg, cursor: "pointer", color,
-    transition: "all 0.15s", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+    width: 32,
+    height: 32,
+    borderRadius: "50%",
+    border: "none",
+    background: bg,
+    cursor: "pointer",
+    color,
+    transition: "all 0.15s",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   });
 
   const canMarkSent = emailInput.trim().length > 0 || waOpened;
@@ -590,8 +655,10 @@ Be direct. No fluff. No percentages.`;
     <>
       <div className="p-4 sm:p-6 border-b border-border flex justify-between items-center">
         <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center shrink-0
-            ${selectedLead.potentialScore >= 85 ? "bg-rose-500 text-white" : selectedLead.potentialScore >= 70 ? "bg-amber-500 text-white" : "bg-slate-500 text-white"}`}>
+          <div
+            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center shrink-0
+            ${selectedLead.potentialScore >= 85 ? "bg-rose-500 text-white" : selectedLead.potentialScore >= 70 ? "bg-amber-500 text-white" : "bg-slate-500 text-white"}`}
+          >
             {isFetchingDetail ? <Loader2 size={18} className="animate-spin" /> : <Shield size={18} />}
           </div>
           <div className="min-w-0">
@@ -614,7 +681,8 @@ Be direct. No fluff. No percentages.`;
       ) : (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {selectedLead.rating && (
-            <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-3 rounded-lg">
+            <div className="flex flex-col gap-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-3 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-500/20 hover:border-amber-300 dark:hover:border-amber-500/40 transition-colors cursor-default">
+              <div className="flex items-center gap-3">
               <Star size={16} className="text-amber-500 fill-amber-500 shrink-0" />
               <span className="font-bold text-amber-600">{selectedLead.rating}</span>
               <span className="text-[10px] text-muted-foreground">({selectedLead.ratingCount?.toLocaleString()} reviews)</span>
@@ -624,24 +692,34 @@ Be direct. No fluff. No percentages.`;
                 </span>
               )}
             </div>
+              <p className="text-[9px] text-amber-600 dark:text-amber-400 font-semibold">Score based on: Google rating, review count, website presence, phone availability & open status</p>
+          </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-muted/30 p-3 rounded-lg border border-border">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Live Fit</p>
-              <p className="text-xl sm:text-2xl font-bold">{selectedLead.potentialScore}%</p>
-            </div>
-            <div className="bg-rose-500/5 p-3 rounded-lg border border-rose-500/10">
-              <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-1">Priority</p>
-              <p className="text-xl sm:text-2xl font-bold text-rose-500">{selectedLead.potentialScore >= 85 ? "P-1 🔥" : selectedLead.potentialScore >= 70 ? "P-2" : "P-3"}</p>
-            </div>
+          <div className="grid grid-cols-1 gap-3">
+            {selectedLead.potentialScore >= 85 ? (
+              <div className="bg-rose-500/5 p-3 rounded-lg border border-rose-500/10 hover:bg-rose-500/10 hover:border-rose-500/30 transition-colors cursor-default">
+                <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-1">Priority</p>
+                <p className="text-xl sm:text-2xl font-bold text-rose-500">P-1 🔥</p>
+              </div>
+            ) : selectedLead.potentialScore >= 70 ? (
+              <div className="bg-amber-500/5 p-3 rounded-lg border border-amber-500/10 hover:bg-amber-500/10 hover:border-amber-500/30 transition-colors cursor-default">
+                <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-1">Priority</p>
+                <p className="text-xl sm:text-2xl font-bold text-amber-500">P-2</p>
+              </div>
+            ) : (
+              <div className="bg-slate-500/5 p-3 rounded-lg border border-slate-500/10 hover:bg-slate-500/10 hover:border-slate-500/30 transition-colors cursor-default">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Priority</p>
+                <p className="text-xl sm:text-2xl font-bold text-slate-500">P-3</p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              <Zap size={14} className="text-primary" /> AI Business Insight
+              <Zap size={14} className="text-[#DB1A1A]" /> AI Business Insight
             </p>
-            <div className="bg-[#2563eb]/5 p-3 rounded-lg border border-[#2563eb]/20 text-sm leading-relaxed min-h-[64px] flex items-center">
+            <div className="bg-[#2563eb]/5 p-3 rounded-lg border border-[#2563eb]/20 text-sm leading-relaxed min-h-[64px] flex items-center hover:bg-[#2563eb]/10 hover:border-[#2563eb]/40 transition-colors cursor-default">
               {loadingInsightIds.current.has(selectedLead.id) && !aiInsights[selectedLead.id] ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Loader2 size={14} className="animate-spin" />
@@ -657,46 +735,56 @@ Be direct. No fluff. No percentages.`;
 
           <div className="space-y-3">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              <Info size={14} /> Contact & Location
+              <Info size={14} className="text-[#DB1A1A]" /> Contact & Location
             </p>
             <div className="space-y-2">
               {selectedLead.address && (
                 <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                  <MapPin size={14} className="mt-0.5 shrink-0" />
+                  <MapPin size={14} className="mt-0.5 shrink-0 text-[#DB1A1A]" />
                   <span className="font-medium">{selectedLead.address}</span>
                 </div>
               )}
               {selectedLead.phone && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Phone size={14} className="text-primary shrink-0" />
+                  <Phone size={14} className="text-[#DB1A1A] shrink-0" />
                   <span className="font-medium">{selectedLead.phone}</span>
                 </div>
               )}
               {selectedLead.website && (
                 <div className="flex items-center gap-2 text-xs">
-                  <Globe size={14} className="text-primary shrink-0" />
-                  <a href={selectedLead.website} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline truncate max-w-[220px] sm:max-w-[280px]">
+                  <Globe size={14} className="text-[#DB1A1A] shrink-0" />
+                  <a href={selectedLead.website} target="_blank" rel="noopener noreferrer" className="font-medium text-[#DB1A1A] hover:underline truncate max-w-[220px] sm:max-w-[280px]">
                     {selectedLead.website.replace(/^https?:\/\//, "")}
                   </a>
                 </div>
               )}
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Navigation size={14} className="shrink-0" />
-                <span className="font-medium font-mono">{selectedLead.lat?.toFixed(4)}, {selectedLead.lng?.toFixed(4)}</span>
+                <Navigation size={14} className="text-[#DB1A1A] shrink-0" />
+                <span className="font-medium font-mono">
+                  {selectedLead.lat?.toFixed(4)}, {selectedLead.lng?.toFixed(4)}
+                </span>
               </div>
             </div>
           </div>
 
           <div className="space-y-2 pb-2">
             {selectedLead.googleMapsUri && (
-              <a href={selectedLead.googleMapsUri} target="_blank" rel="noopener noreferrer"
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-md font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
+              <a
+                href={selectedLead.googleMapsUri}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-2.5 bg-[#2563eb] text-white rounded-md font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#1d4ed8] transition-colors"
+              >
                 <MapPin size={16} /> Open in Google Maps
               </a>
             )}
             {selectedLead.website && (
-              <a href={selectedLead.website} target="_blank" rel="noopener noreferrer"
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-md font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
+              <a
+                href={selectedLead.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-2.5 bg-[#2563eb] text-white rounded-md font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#1d4ed8] transition-colors"
+              >
                 <Globe size={16} /> Visit Website
               </a>
             )}
@@ -705,8 +793,10 @@ Be direct. No fluff. No percentages.`;
                 <CheckCircle2 size={16} /> Contacted via {getPartner(selectedLead.id)?.outreachMethod?.toUpperCase()}
               </div>
             ) : (
-              <button onClick={() => handleContact(selectedLead)}
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-md font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
+              <button
+                onClick={() => handleContact(selectedLead)}
+                className="w-full py-2.5 bg-[#DB1A1A] text-white rounded-md font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#c01515] transition-colors"
+              >
                 <Mail size={16} /> Reach Out
               </button>
             )}
@@ -718,7 +808,6 @@ Be direct. No fluff. No percentages.`;
 
   return (
     <div id="leads-report-container" className="flex flex-col gap-6 sm:gap-8 pb-10">
-
       {/* ── Header HUD ── */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-6">
         <div className="flex items-center gap-3 sm:gap-4">
@@ -743,29 +832,38 @@ Be direct. No fluff. No percentages.`;
           {/* Province */}
           <div className="flex items-center gap-2 bg-muted/50 border border-border px-3 py-2 rounded-md flex-1 sm:flex-none">
             <MapPin size={13} className="text-muted-foreground shrink-0" />
-            <select value={locationFilter} onChange={handleLocationChange}
-              className="bg-transparent text-xs font-semibold outline-none w-full sm:w-36 cursor-pointer hover:text-[#2563eb] transition-colors appearance-none min-w-0">
+            <select value={locationFilter} onChange={handleLocationChange} className="bg-transparent text-xs font-semibold outline-none w-full sm:w-36 cursor-pointer hover:text-[#2563eb] transition-colors appearance-none min-w-0">
               <option value="">ALL PROVINCES</option>
-              {INDONESIAN_PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
+              {INDONESIAN_PROVINCES.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
             </select>
           </div>
 
           {/* Sector + Potential — two separate selects on mobile */}
           <div className="flex items-center gap-2 bg-muted/50 border border-border px-3 py-2 rounded-md flex-1 sm:flex-none">
             <Filter size={13} className="text-muted-foreground shrink-0" />
-            <select value={industryFilter} onChange={handleIndustryChange}
-              className="bg-transparent text-xs font-semibold uppercase outline-none cursor-pointer hover:text-[#2563eb] transition-colors appearance-none min-w-0">
+            <select value={industryFilter} onChange={handleIndustryChange} className="bg-transparent text-xs font-semibold uppercase outline-none cursor-pointer hover:text-[#2563eb] transition-colors appearance-none min-w-0">
               <option value="All">All Sectors</option>
-              {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
+              {INDUSTRIES.map((i) => (
+                <option key={i} value={i}>
+                  {i}
+                </option>
+              ))}
             </select>
           </div>
 
           <div className="flex items-center gap-2 bg-muted/50 border border-border px-3 py-2 rounded-md flex-1 sm:flex-none">
             <Activity size={13} className="text-muted-foreground shrink-0" />
-            <select value={potentialFilter} onChange={(e) => setPotentialFilter(e.target.value)}
-              className="bg-transparent text-xs font-semibold uppercase outline-none cursor-pointer hover:text-[#2563eb] transition-colors appearance-none min-w-0">
+            <select
+              value={potentialFilter}
+              onChange={(e) => setPotentialFilter(e.target.value)}
+              className="bg-transparent text-xs font-semibold uppercase outline-none cursor-pointer hover:text-[#2563eb] transition-colors appearance-none min-w-0"
+            >
               <option value="All">All Potential</option>
-              <option value="High">Elite (Red)</option>
+              <option value="High">HOT (Red)</option>
               <option value="Mid">Growth (Yellow)</option>
               <option value="Low">Low (Gray)</option>
             </select>
@@ -789,7 +887,7 @@ Be direct. No fluff. No percentages.`;
               }
             }}
             disabled={isScanning}
-            className="inline-flex items-center justify-center rounded-md text-xs sm:text-sm font-medium h-10 px-4 sm:px-6 gap-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            className="inline-flex items-center justify-center rounded-md text-xs sm:text-sm font-medium h-10 px-4 sm:px-6 gap-2 bg-[#DB1A1A] text-white shadow hover:bg-[#c01515] disabled:opacity-50 transition-colors"
           >
             {isScanning ? <Loader2 className="animate-spin" size={14} /> : <LocateFixed size={14} />} Rescan
           </button>
@@ -797,24 +895,20 @@ Be direct. No fluff. No percentages.`;
       </div>
 
       {/* ── Map ── */}
-      <div ref={mapSectionRef} className="relative dashboard-card overflow-hidden bg-muted/30 border border-border shrink-0"
-        style={{ height: isMobile ? "65vw" : "600px", minHeight: 280, maxHeight: isMobile ? 380 : 600 }}>
-
-        <MapContainer
-          center={mapCenter} zoom={15}
-          style={{ height: "100%", width: "100%", zIndex: 0 }}
-          zoomControl={!isMobile}
-        >
+      <div ref={mapSectionRef} className="relative dashboard-card overflow-hidden bg-muted/30 border border-border shrink-0" style={{ height: isMobile ? "65vw" : "600px", minHeight: 280, maxHeight: isMobile ? 380 : 600 }}>
+        <MapContainer center={mapCenter} zoom={15} style={{ height: "100%", width: "100%", zIndex: 0 }} zoomControl={!isMobile}>
           <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <FlyToLocation />
           <MapEvents />
-          {allMapLeads.map((lead) => <LeadMarkerComponent key={lead.id} lead={lead} />)}
+          {allMapLeads.map((lead) => (
+            <LeadMarkerComponent key={lead.id} lead={lead} />
+          ))}
         </MapContainer>
 
+        {/* Scanning overlay */}
         <AnimatePresence>
           {isScanning && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center bg-background/20 backdrop-blur-[1px]">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center bg-background/20 backdrop-blur-[1px]">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                 <div className="bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-border text-[10px] font-bold uppercase tracking-widest shadow-sm">
@@ -829,7 +923,9 @@ Be direct. No fluff. No percentages.`;
         <AnimatePresence>
           {selectedLead && !isMobile && (
             <motion.div
-              initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
               className="absolute inset-y-4 right-4 w-[360px] xl:w-[400px] bg-background border border-border rounded-xl z-40 shadow-2xl flex flex-col overflow-hidden"
             >
               <DetailPanelContent />
@@ -838,7 +934,7 @@ Be direct. No fluff. No percentages.`;
         </AnimatePresence>
 
         {/* Coordinates overlay — desktop only */}
-      <div className="absolute bottom-4 left-4 z-30 hidden md:flex">
+        <div className="absolute bottom-4 left-4 z-30 hidden md:flex">
           <div className="bg-background/80 backdrop-blur-md border border-border p-3 rounded-xl shadow-lg flex items-center gap-4">
             <div className="flex items-center gap-1.5">
               <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Lng</span>
@@ -856,13 +952,15 @@ Be direct. No fluff. No percentages.`;
             </div>
           </div>
         </div>
-      </div>  
+      </div>
 
       {/* ── Mobile detail panel (bottom sheet, below the map) ── */}
       <AnimatePresence>
         {selectedLead && isMobile && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
             className="bg-background border border-border rounded-xl shadow-xl flex flex-col overflow-hidden"
             style={{ maxHeight: "70vh" }}
           >
@@ -873,7 +971,6 @@ Be direct. No fluff. No percentages.`;
 
       {/* ── Partnership Table ── */}
       <div className="dashboard-card bg-background border border-border overflow-hidden flex flex-col shadow-sm">
-
         {/* Table header */}
         <div className="p-4 sm:p-6 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between bg-muted/10 gap-4">
           <div className="flex items-center gap-3 sm:gap-4">
@@ -894,14 +991,18 @@ Be direct. No fluff. No percentages.`;
               { label: "Dealing", dot: "bg-purple-500" },
               { label: "Partner", dot: "bg-blue-500" },
             ].map(({ label, dot }) => (
-            <button key={label}
-              onClick={() => { setStatusFilter(label); setCurrentPage(1); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap shrink-0
+              <button
+                key={label}
+                onClick={() => {
+                  setStatusFilter(label);
+                  setCurrentPage(1);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap shrink-0
               ${statusFilter === label ? "bg-[#2563eb] text-white border-[#2563eb]" : "bg-background/50 text-muted-foreground border-border hover:border-[#2563eb]/40 hover:text-[#2563eb]"}`}
-            >
-              <div className={`w-1.5 h-1.5 rounded-full ${dot}`} />
-              {label}
-            </button>
+              >
+                <div className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+                {label}
+              </button>
             ))}
           </div>
         </div>
@@ -923,7 +1024,9 @@ Be direct. No fluff. No percentages.`;
             <div className="hidden lg:block overflow-x-auto">
               <div style={{ display: "grid", gridTemplateColumns: "52px 2fr 1fr 1.2fr 1fr 1fr 1.2fr 110px", borderBottom: "1px solid var(--border)", background: "var(--muted)", padding: "0 8px" }}>
                 {["No", "Business Name", "Sector", "Location", "Date", "Outreach", "Status", "Actions"].map((h) => (
-                  <div key={h} style={{ padding: "12px 14px", fontSize: 9, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.3em", color: "var(--muted-foreground)" }}>{h}</div>
+                  <div key={h} style={{ padding: "12px 14px", fontSize: 9, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.3em", color: "var(--muted-foreground)" }}>
+                    {h}
+                  </div>
                 ))}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "4px 8px" }}>
@@ -931,33 +1034,81 @@ Be direct. No fluff. No percentages.`;
                   const rowNumber = (currentPage - 1) * pageSize + index + 1;
                   const hasCoords = !!(brand.lat && brand.lng);
                   return (
-                    <div key={brand.id}
+                    <div
+                      key={brand.id}
                       onClick={() => hasCoords && handleTableRowClick(brand)}
                       className="leads-table-row"
                       style={{
-                        display: "grid", gridTemplateColumns: "52px 2fr 1fr 1.2fr 1fr 1fr 1.2fr 110px",
-                        alignItems: "center", borderRadius: 12, border: "1px solid var(--border)",
-                        background: "var(--background)", cursor: hasCoords ? "pointer" : "default",
+                        display: "grid",
+                        gridTemplateColumns: "52px 2fr 1fr 1.2fr 1fr 1fr 1.2fr 110px",
+                        alignItems: "center",
+                        borderRadius: 12,
+                        border: "1px solid var(--border)",
+                        background: "var(--background)",
+                        cursor: hasCoords ? "pointer" : "default",
                         transition: "transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, background 0.2s",
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(219,26,26,0.15),0 4px 12px rgba(0,0,0,0.08)"; e.currentTarget.style.borderColor = "rgba(219,26,26,0.3)"; e.currentTarget.style.background = "rgba(219,26,26,0.02)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "var(--background)"; }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-4px)";
+                        e.currentTarget.style.boxShadow = "0 12px 32px rgba(219,26,26,0.15),0 4px 12px rgba(0,0,0,0.08)";
+                        e.currentTarget.style.borderColor = "rgba(219,26,26,0.3)";
+                        e.currentTarget.style.background = "rgba(219,26,26,0.02)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "";
+                        e.currentTarget.style.boxShadow = "";
+                        e.currentTarget.style.borderColor = "var(--border)";
+                        e.currentTarget.style.background = "var(--background)";
+                      }}
                     >
                       <div style={{ padding: "18px 14px" }}>
-                        <span className="lead-row-number" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 6, background: "var(--muted)", fontSize: 10, fontWeight: 700, color: "#2563eb", transition: "background 0.18s, color 0.18s" }}>
+                        <span
+                          className="lead-row-number"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 22,
+                            height: 22,
+                            borderRadius: 6,
+                            background: "var(--muted)",
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: "#2563eb",
+                            transition: "background 0.18s, color 0.18s",
+                          }}
+                        >
                           {rowNumber}
                         </span>
                       </div>
                       <div style={{ padding: "18px 14px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <div style={{ width: 36, height: 36, background: "var(--foreground)", color: "var(--background)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 12, borderRadius: 8, flexShrink: 0 }}>
+                          <div
+                            style={{
+                              width: 36,
+                              height: 36,
+                              background: "var(--foreground)",
+                              color: "var(--background)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontWeight: 900,
+                              fontSize: 12,
+                              borderRadius: 8,
+                              flexShrink: 0,
+                            }}
+                          >
                             {brand.name.substring(0, 2).toUpperCase()}
                           </div>
-                          <span className="lead-name" style={{ fontWeight: 700, fontSize: 13, letterSpacing: "-0.01em", transition: "color 0.15s" }}>{brand.name}</span>
+                          <span className="lead-name" style={{ fontWeight: 700, fontSize: 13, letterSpacing: "-0.01em", transition: "color 0.15s" }}>
+                            {brand.name}
+                          </span>
                         </div>
                       </div>
                       <div style={{ padding: "18px 14px" }}>
-                        <span style={{ fontSize: 9, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", background: "var(--muted)", border: "1px solid var(--border)", padding: "3px 8px", borderRadius: 6 }}>{brand.industry}</span>
+                        <span style={{ fontSize: 9, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em", background: "var(--muted)", border: "1px solid var(--border)", padding: "3px 8px", borderRadius: 6 }}>
+                          {brand.industry}
+                        </span>
                       </div>
                       <div style={{ padding: "18px 14px", display: "flex", alignItems: "center", gap: 5 }}>
                         <MapPin size={11} style={{ color: "var(--primary)", flexShrink: 0 }} />
@@ -977,28 +1128,75 @@ Be direct. No fluff. No percentages.`;
                             </span>
                           </div>
                         ) : (
-                          <button onClick={(e) => { e.stopPropagation(); const lead = leadsFound.find((l) => l.id === brand.id) || brand; handleContact(lead); }}
-                            style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#7c3aed", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const lead = leadsFound.find((l) => l.id === brand.id) || brand;
+                              handleContact(lead);
+                            }}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              fontSize: 9,
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              color: "#7c3aed",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              padding: 0,
+                            }}
+                          >
                             <Mail size={11} /> Send
                           </button>
                         )}
                       </div>
                       <div style={{ padding: "18px 14px" }}>
                         {editingId === brand.id ? (
-                          <select value={brand.status} onChange={(e) => updateStatus(brand.id, e.target.value)} onClick={(e) => e.stopPropagation()}
-                            style={{ fontSize: 9, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.15em", padding: "5px 10px", borderRadius: 20, border: "1px solid", outline: "none", cursor: "pointer",
+                          <select
+                            value={brand.status}
+                            onChange={(e) => updateStatus(brand.id, e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              fontSize: 9,
+                              fontWeight: 900,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.15em",
+                              padding: "5px 10px",
+                              borderRadius: 20,
+                              border: "1px solid",
+                              outline: "none",
+                              cursor: "pointer",
                               background: brand.status === "Partner" ? "rgba(59,130,246,0.1)" : brand.status === "Dealing" ? "rgba(139,92,246,0.1)" : "rgba(100,116,139,0.1)",
                               color: brand.status === "Partner" ? "#3b82f6" : brand.status === "Dealing" ? "#8b5cf6" : "#94a3b8",
-                              borderColor: brand.status === "Partner" ? "rgba(59,130,246,0.3)" : brand.status === "Dealing" ? "rgba(139,92,246,0.3)" : "rgba(100,116,139,0.3)" }}>
+                              borderColor: brand.status === "Partner" ? "rgba(59,130,246,0.3)" : brand.status === "Dealing" ? "rgba(139,92,246,0.3)" : "rgba(100,116,139,0.3)",
+                            }}
+                          >
                             <option value="In Progress">In Progress</option>
                             <option value="Dealing">Dealing</option>
                             <option value="Partner">Partner</option>
                           </select>
                         ) : (
-                          <span style={{ fontSize: 9, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.15em", padding: "5px 14px", borderRadius: 20, border: "1px solid", display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 90,
-                            background: brand.status === "Partner" ? "rgba(59,130,246,0.1)" : brand.status === "Dealing" ? "rgba(139,92,246,0.1)" : "rgba(100,116,139,0.1)",
-                            color: brand.status === "Partner" ? "#3b82f6" : brand.status === "Dealing" ? "#8b5cf6" : "#94a3b8",
-                            borderColor: brand.status === "Partner" ? "rgba(59,130,246,0.3)" : brand.status === "Dealing" ? "rgba(139,92,246,0.3)" : "rgba(100,116,139,0.3)" }}>
+                          <span
+                            style={{
+                              fontSize: 9,
+                              fontWeight: 900,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.15em",
+                              padding: "5px 14px",
+                              borderRadius: 20,
+                              border: "1px solid",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              minWidth: 90,
+                              background: brand.status === "Partner" ? "rgba(59,130,246,0.1)" : brand.status === "Dealing" ? "rgba(139,92,246,0.1)" : "rgba(100,116,139,0.1)",
+                              color: brand.status === "Partner" ? "#3b82f6" : brand.status === "Dealing" ? "#8b5cf6" : "#94a3b8",
+                              borderColor: brand.status === "Partner" ? "rgba(59,130,246,0.3)" : brand.status === "Dealing" ? "rgba(139,92,246,0.3)" : "rgba(100,116,139,0.3)",
+                            }}
+                          >
                             {brand.status}
                           </span>
                         )}
@@ -1006,11 +1204,38 @@ Be direct. No fluff. No percentages.`;
                       <div style={{ padding: "18px 14px" }}>
                         <div style={{ display: "inline-flex", gap: 6 }}>
                           {editingId === brand.id ? (
-                            <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }} style={actionBtn("rgba(34,197,94,0.1)", "#22c55e")} title="Save"><Check size={13} /></button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingId(null);
+                              }}
+                              style={actionBtn("rgba(34,197,94,0.1)", "#22c55e")}
+                              title="Save"
+                            >
+                              <Check size={13} />
+                            </button>
                           ) : (
-                            <button onClick={(e) => { e.stopPropagation(); setEditingId(brand.id); }} style={actionBtn("rgba(219,26,26,0.08)", "#DB1A1A")} title="Edit"><Edit3 size={13} /></button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingId(brand.id);
+                              }}
+                              style={actionBtn("rgba(219,26,26,0.08)", "#DB1A1A")}
+                              title="Edit"
+                            >
+                              <Edit3 size={13} />
+                            </button>
                           )}
-                          <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(brand); }} style={actionBtn("rgba(219,26,26,0.08)", "#DB1A1A")} title="Delete"><Trash2 size={13} /></button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirm(brand);
+                            }}
+                            style={actionBtn("rgba(219,26,26,0.08)", "#DB1A1A")}
+                            title="Delete"
+                          >
+                            <Trash2 size={13} />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1025,7 +1250,8 @@ Be direct. No fluff. No percentages.`;
                 const rowNumber = (currentPage - 1) * pageSize + index + 1;
                 const hasCoords = !!(brand.lat && brand.lng);
                 return (
-                  <div key={brand.id}
+                  <div
+                    key={brand.id}
                     onClick={() => hasCoords && handleTableRowClick(brand)}
                     className="border border-border rounded-xl p-4 bg-background transition-all active:scale-[0.99]"
                     style={{ cursor: hasCoords ? "pointer" : "default" }}
@@ -1033,29 +1259,46 @@ Be direct. No fluff. No percentages.`;
                     {/* Card top row */}
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 bg-foreground text-background flex items-center justify-center font-black text-sm rounded-lg shrink-0">
-                          {brand.name.substring(0, 2).toUpperCase()}
-                        </div>
+                        <div className="w-9 h-9 bg-foreground text-background flex items-center justify-center font-black text-sm rounded-lg shrink-0">{brand.name.substring(0, 2).toUpperCase()}</div>
                         <div className="min-w-0">
                           <p className="font-bold text-sm truncate">{brand.name}</p>
                           <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{brand.industry}</p>
                         </div>
                       </div>
                       {/* Status badge */}
-                      <span style={{ fontSize: 9, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.15em", padding: "4px 10px", borderRadius: 20, border: "1px solid", whiteSpace: "nowrap", flexShrink: 0,
-                        background: brand.status === "Partner" ? "rgba(59,130,246,0.1)" : brand.status === "Dealing" ? "rgba(139,92,246,0.1)" : "rgba(100,116,139,0.1)",
-                        color: brand.status === "Partner" ? "#3b82f6" : brand.status === "Dealing" ? "#8b5cf6" : "#94a3b8",
-                        borderColor: brand.status === "Partner" ? "rgba(59,130,246,0.3)" : brand.status === "Dealing" ? "rgba(139,92,246,0.3)" : "rgba(100,116,139,0.3)" }}>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 900,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.15em",
+                          padding: "4px 10px",
+                          borderRadius: 20,
+                          border: "1px solid",
+                          whiteSpace: "nowrap",
+                          flexShrink: 0,
+                          background: brand.status === "Partner" ? "rgba(59,130,246,0.1)" : brand.status === "Dealing" ? "rgba(139,92,246,0.1)" : "rgba(100,116,139,0.1)",
+                          color: brand.status === "Partner" ? "#3b82f6" : brand.status === "Dealing" ? "#8b5cf6" : "#94a3b8",
+                          borderColor: brand.status === "Partner" ? "rgba(59,130,246,0.3)" : brand.status === "Dealing" ? "rgba(139,92,246,0.3)" : "rgba(100,116,139,0.3)",
+                        }}
+                      >
                         {brand.status}
                       </span>
                     </div>
 
                     {/* Card meta row */}
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3 text-[10px] text-muted-foreground font-semibold">
-                      <span className="flex items-center gap-1"><MapPin size={10} className="text-primary" />{brand.location}</span>
-                      <span className="flex items-center gap-1"><Clock size={10} />{new Date(brand.datePartnered).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                      <span className="flex items-center gap-1">
+                        <MapPin size={10} className="text-primary" />
+                        {brand.location}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock size={10} />
+                        {new Date(brand.datePartnered).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                      </span>
                       {brand.outreachMethod && (
-                        <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 size={10} />
+                        <span className="flex items-center gap-1 text-emerald-600">
+                          <CheckCircle2 size={10} />
                           {brand.outreachMethod === "email" ? "Email" : brand.outreachMethod === "whatsapp" ? "WhatsApp" : "Sent"}
                         </span>
                       )}
@@ -1065,8 +1308,12 @@ Be direct. No fluff. No percentages.`;
                     <div className="flex items-center gap-2 pt-2 border-t border-border/60">
                       {/* Status edit */}
                       {editingId === brand.id ? (
-                        <select value={brand.status} onChange={(e) => updateStatus(brand.id, e.target.value)} onClick={(e) => e.stopPropagation()}
-                          className="flex-1 text-[10px] font-bold uppercase border border-border rounded-lg px-2 py-1.5 bg-background outline-none">
+                        <select
+                          value={brand.status}
+                          onChange={(e) => updateStatus(brand.id, e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex-1 text-[10px] font-bold uppercase border border-border rounded-lg px-2 py-1.5 bg-background outline-none"
+                        >
                           <option value="In Progress">In Progress</option>
                           <option value="Dealing">Dealing</option>
                           <option value="Partner">Partner</option>
@@ -1074,17 +1321,47 @@ Be direct. No fluff. No percentages.`;
                       ) : null}
                       <div className="flex items-center gap-2 ml-auto">
                         {!brand.outreachMethod && (
-                          <button onClick={(e) => { e.stopPropagation(); const lead = leadsFound.find((l) => l.id === brand.id) || brand; handleContact(lead); }}
-                            className="flex items-center gap-1 text-[9px] font-bold uppercase text-violet-600 bg-violet-50 dark:bg-violet-500/10 px-2.5 py-1.5 rounded-lg border border-violet-200 dark:border-violet-500/20">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const lead = leadsFound.find((l) => l.id === brand.id) || brand;
+                              handleContact(lead);
+                            }}
+                            className="flex items-center gap-1 text-[9px] font-bold uppercase text-violet-600 bg-violet-50 dark:bg-violet-500/10 px-2.5 py-1.5 rounded-lg border border-violet-200 dark:border-violet-500/20"
+                          >
                             <Mail size={11} /> Send
                           </button>
                         )}
                         {editingId === brand.id ? (
-                          <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }} style={actionBtn("rgba(34,197,94,0.1)", "#22c55e")}><Check size={13} /></button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingId(null);
+                            }}
+                            style={actionBtn("rgba(34,197,94,0.1)", "#22c55e")}
+                          >
+                            <Check size={13} />
+                          </button>
                         ) : (
-                          <button onClick={(e) => { e.stopPropagation(); setEditingId(brand.id); }} style={actionBtn("rgba(99,102,241,0.08)", "#6366f1")}><Edit3 size={13} /></button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingId(brand.id);
+                            }}
+                            style={actionBtn("rgba(99,102,241,0.08)", "#6366f1")}
+                          >
+                            <Edit3 size={13} />
+                          </button>
                         )}
-                        <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(brand); }} style={actionBtn("rgba(219,26,26,0.08)", "#DB1A1A")}><Trash2 size={13} /></button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm(brand);
+                          }}
+                          style={actionBtn("rgba(219,26,26,0.08)", "#DB1A1A")}
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1098,38 +1375,61 @@ Be direct. No fluff. No percentages.`;
         <div className="p-4 sm:p-6 bg-muted/5 border-t border-border flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Show</span>
-            <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-              className="bg-muted/50 border border-border text-xs font-bold px-2 py-1.5 rounded-md outline-none cursor-pointer hover:bg-muted transition-colors">
-              {[5, 10, 25, 50].map((n) => <option key={n} value={n}>{n}</option>)}
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="bg-muted/50 border border-border text-xs font-bold px-2 py-1.5 rounded-md outline-none cursor-pointer hover:bg-muted transition-colors"
+            >
+              {[5, 10, 25, 50].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
             </select>
             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">entries</span>
           </div>
 
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-center">
             {filteredBrands.length === 0
-              ? statusFilter === "All" ? "No entries" : `No ${statusFilter} partners`
+              ? statusFilter === "All"
+                ? "No entries"
+                : `No ${statusFilter} partners`
               : `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filteredBrands.length)} of ${filteredBrands.length}`}
           </p>
 
           {totalPages > 1 && (
             <div className="flex items-center gap-1">
-              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}
-                className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border border-border rounded-md bg-muted/30 hover:bg-muted/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border border-border rounded-md bg-muted/30 hover:bg-muted/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
                 ‹
               </button>
               {getPageNumbers().map((page, i) =>
                 page === "..." ? (
-                  <span key={`e-${i}`} className="w-8 h-8 flex items-center justify-center text-[10px] text-muted-foreground">…</span>
+                  <span key={`e-${i}`} className="w-8 h-8 flex items-center justify-center text-[10px] text-muted-foreground">
+                    …
+                  </span>
                 ) : (
-                  <button key={page} onClick={() => setCurrentPage(page)}
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
                     className={`w-8 h-8 text-[10px] font-black rounded-md border transition-colors
-                      ${currentPage === page ? "bg-primary text-primary-foreground border-primary" : "border-border bg-muted/30 hover:bg-muted/60 text-muted-foreground"}`}>
+                      ${currentPage === page ? "bg-primary text-primary-foreground border-primary" : "border-border bg-muted/30 hover:bg-muted/60 text-muted-foreground"}`}
+                  >
                     {page}
                   </button>
-                )
+                ),
               )}
-              <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border border-border rounded-md bg-muted/30 hover:bg-muted/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border border-border rounded-md bg-muted/30 hover:bg-muted/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
                 ›
               </button>
             </div>
@@ -1147,21 +1447,30 @@ Be direct. No fluff. No percentages.`;
                 <Trash2 size={22} color="#DB1A1A" />
               </div>
               <div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }} className="text-foreground">Remove Partner?</h3>
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }} className="text-foreground">
+                  Remove Partner?
+                </h3>
                 <p style={{ fontSize: 13, margin: "8px 0 0" }} className="text-muted-foreground">
                   Permanently remove <strong className="text-foreground">{deleteConfirm.name}</strong> from the pipeline.
                 </p>
               </div>
               <div style={{ display: "flex", gap: 10, width: "100%" }}>
-                <button onClick={() => setDeleteConfirm(null)}
+                <button
+                  onClick={() => setDeleteConfirm(null)}
                   style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
-                  className="text-foreground">Cancel</button>
-                <button onClick={() => {
-                  if (paginatedBrands.length === 1 && currentPage > 1) setCurrentPage((p) => p - 1);
-                  removePartner(deleteConfirm.id);
-                  if (editingId === deleteConfirm.id) setEditingId(null);
-                  setDeleteConfirm(null);
-                }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: "#DB1A1A", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                  className="text-foreground"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (paginatedBrands.length === 1 && currentPage > 1) setCurrentPage((p) => p - 1);
+                    removePartner(deleteConfirm.id);
+                    if (editingId === deleteConfirm.id) setEditingId(null);
+                    setDeleteConfirm(null);
+                  }}
+                  style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: "#DB1A1A", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                >
                   Confirm
                 </button>
               </div>
@@ -1173,11 +1482,11 @@ Be direct. No fluff. No percentages.`;
       {/* ── Contact Modal ── */}
       <AnimatePresence>
         {contactModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4"
-            onClick={handleCloseModal}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={handleCloseModal}>
             <motion.div
-              initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
               className="bg-background border border-border rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
@@ -1191,7 +1500,9 @@ Be direct. No fluff. No percentages.`;
                   <h3 className="font-bold text-base sm:text-lg tracking-tight">{contactModal.name}</h3>
                   <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{contactModal.industry} • Partnership Outreach</p>
                 </div>
-                <button onClick={handleCloseModal} className="p-1 hover:bg-muted rounded-md text-muted-foreground ml-2 shrink-0"><X size={18} /></button>
+                <button onClick={handleCloseModal} className="p-1 hover:bg-muted rounded-md text-muted-foreground ml-2 shrink-0">
+                  <X size={18} />
+                </button>
               </div>
 
               <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-700 dark:text-amber-400">
@@ -1203,9 +1514,13 @@ Be direct. No fluff. No percentages.`;
                 {contactModal.phone ? (
                   <div className="space-y-2">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Via WhatsApp</p>
-                    <a href={`https://wa.me/${contactModal.phone.replace(/[^0-9]/g, "").replace(/^0/, "62")}?text=${encodeURIComponent(`Hi ${contactModal.name}, we're from Vidhelp — an Indonesian live commerce platform. We'd love to feature and sell your products through our live streams. Would you be open to a quick discussion?`)}`}
-                      target="_blank" rel="noopener noreferrer" onClick={() => setWaOpened(true)}
-                      className="w-full py-3 bg-green-500 text-white rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-green-600 transition-colors">
+                    <a
+                      href={`https://wa.me/${contactModal.phone.replace(/[^0-9]/g, "").replace(/^0/, "62")}?text=${encodeURIComponent(`Hi ${contactModal.name}, we're from Vidhelp — an Indonesian live commerce platform. We'd love to feature and sell your products through our live streams. Would you be open to a quick discussion?`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setWaOpened(true)}
+                      className="w-full py-3 bg-green-500 text-white rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-green-600 transition-colors"
+                    >
                       <Phone size={15} /> Open WhatsApp — {contactModal.phone}
                     </a>
                   </div>
@@ -1219,19 +1534,30 @@ Be direct. No fluff. No percentages.`;
                     {!websiteVisited && contactModal.website && <span className="text-[9px] text-amber-500 font-bold normal-case tracking-normal">— visit website first</span>}
                   </p>
                   <div className="flex gap-2">
-                    <input type="email" placeholder={!contactModal.website ? "No website available" : !websiteVisited ? "Visit website first..." : "Paste their email here..."}
-                      value={emailInput} onChange={(e) => setEmailInput(e.target.value)}
+                    <input
+                      type="email"
+                      placeholder={!contactModal.website ? "No website available" : !websiteVisited ? "Visit website first..." : "Paste their email here..."}
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
                       disabled={!contactModal.website || !websiteVisited}
-                      className="flex-1 min-w-0 px-3 py-2 text-sm border border-border rounded-md bg-background outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-muted/50" />
+                      className="flex-1 min-w-0 px-3 py-2 text-sm border border-border rounded-md bg-background outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-muted/50"
+                    />
                     {contactModal.website && (
-                      <a href={contactModal.website} target="_blank" rel="noopener noreferrer" onClick={() => setWebsiteVisited(true)}
-                        className={`shrink-0 px-3 py-2 border rounded-md transition-colors flex items-center gap-1 text-[10px] font-bold ${websiteVisited ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600" : "bg-primary text-primary-foreground border-primary hover:bg-primary/90"}`}>
-                        <Globe size={14} />{websiteVisited ? <Check size={11} /> : null}
+                      <a
+                        href={contactModal.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setWebsiteVisited(true)}
+                        className={`shrink-0 px-3 py-2 border rounded-md transition-colors flex items-center gap-1 text-[10px] font-bold ${websiteVisited ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600" : "bg-primary text-primary-foreground border-primary hover:bg-primary/90"}`}
+                      >
+                        <Globe size={14} />
+                        {websiteVisited ? <Check size={11} /> : null}
                       </a>
                     )}
                   </div>
                   {emailInput.trim().length > 0 && (
-                    <a href={`mailto:${emailInput}?subject=${encodeURIComponent(`Partnership Opportunity: Live Commerce Collaboration with Vidhelp × ${contactModal.name}`)}&body=${encodeURIComponent(`Dear ${contactModal.name} Team,
+                    <a
+                      href={`mailto:${emailInput}?subject=${encodeURIComponent(`Partnership Opportunity: Live Commerce Collaboration with Vidhelp × ${contactModal.name}`)}&body=${encodeURIComponent(`Dear ${contactModal.name} Team,
 
 We are reaching out from Vidhelp, an Indonesian live commerce platform with a professional studio, experienced hosts, and a live selling platform.
 
@@ -1249,7 +1575,8 @@ We'd love to explore this partnership. Are you available for a quick call this w
 Best regards,
 Partnership Team — Vidhelp
 vidhelp.com`)}`}
-                      className="w-full py-2.5 bg-primary text-primary-foreground rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
+                      className="w-full py-2.5 bg-primary text-primary-foreground rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
+                    >
                       <Mail size={14} /> Open Email Draft
                     </a>
                   )}
@@ -1257,8 +1584,11 @@ vidhelp.com`)}`}
               </div>
 
               <div className="pt-2 border-t border-border space-y-2">
-                <button disabled={!canMarkSent} onClick={() => handleConfirmSent(contactModal, emailInput.trim() ? "email" : "whatsapp")}
-                  className="w-full py-3 bg-primary text-primary-foreground rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                <button
+                  disabled={!canMarkSent}
+                  onClick={() => handleConfirmSent(contactModal, emailInput.trim() ? "email" : "whatsapp")}
+                  className="w-full py-3 bg-primary text-primary-foreground rounded-md font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
                   <CheckCircle2 size={15} /> Mark as Sent & Add to Pipeline
                 </button>
                 {!canMarkSent && <p className="text-center text-[10px] text-muted-foreground">Open WhatsApp or enter an email address first</p>}
