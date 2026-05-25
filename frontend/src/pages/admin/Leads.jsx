@@ -1111,7 +1111,7 @@ Be direct. No fluff. No percentages.`;
                         </span>
                       </div>
                       <div style={{ padding: "18px 14px", display: "flex", alignItems: "center", gap: 5 }}>
-                        <MapPin size={11} style={{ color: "var(--primary)", flexShrink: 0 }} />
+                        <MapPin size={11} style={{ color: "#DB1A1A", flexShrink: 0 }} />
                         <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-foreground)" }}>{brand.location}</span>
                       </div>
                       <div style={{ padding: "18px 14px" }}>
@@ -1602,8 +1602,8 @@ vidhelp.com`)}`}
         .leaflet-container { background: #f0f2f5 !important; }
         .custom-marker { background: transparent !important; border: none !important; }
         .custom-marker:hover > div { transform: scale(1.15) !important; transition: transform 0.2s ease !important; }
-        .leads-table-row:hover .lead-name { color: var(--primary) !important; }
-        .leads-table-row:hover .lead-row-number { background: var(--primary) !important; color: #fff !important; }
+        .leads-table-row:hover .lead-name { color: #DB1A1A !important; }
+        .leads-table-row:hover .lead-row-number { background: #DB1A1A !important; color: #fff !important; }
 
         /* Prevent horizontal overflow on small screens */
         #leads-report-container { overflow-x: hidden; }
