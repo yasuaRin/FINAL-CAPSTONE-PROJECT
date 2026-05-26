@@ -39,6 +39,7 @@ const RevenueSessionsTable = ({
   resetForm = () => {},
   setShowSessionModal = () => {},
   uniquePeriods = [],
+  canDelete = false,
   loading = false,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -259,13 +260,15 @@ const RevenueSessionsTable = ({
                           <Edit2 size={11} />
                         </button>
 
-                        <button
-                          onClick={() => handleDeleteSession(log)}
-                          className="p-1.5 rounded bg-muted/50 hover:bg-red-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
-                          title="Delete"
-                        >
-                          <Trash2 size={11} />
-                        </button>
+                        {canDelete && (
+  <button
+    onClick={() => handleDeleteSession(log)}
+    className="p-1.5 rounded bg-muted/50 hover:bg-red-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
+    title="Delete"
+  >
+    <Trash2 size={11} />
+  </button>
+)}
                       </div>
                     </td>
                   </tr>
