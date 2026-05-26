@@ -10,6 +10,7 @@ import { SortByButton } from '../../components/layout/SortByButton';
 import { useRevenue } from '../../hooks/useRevenue';
 import { useBrands } from '../../hooks/useBrands';
 import { useTeam } from '../../hooks/useTeam';
+import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../services/supabase';
 
 import {
@@ -100,6 +101,7 @@ const Revenue = () => {
   const { data: revenueData, loading, refetch: refetchRevenue, brandTotals } = useRevenue();
   const { brands } = useBrands(brandTotals);
   const { team } = useTeam();
+  const { role } = useAuth();
 
   // Prevent body scroll when modal is open
   useEffect(() => {
