@@ -10,6 +10,7 @@ import { SortByButton } from '../../components/layout/SortByButton';
 import { useRevenue } from '../../hooks/useRevenue';
 import { useBrands } from '../../hooks/useBrands';
 import { useTeam } from '../../hooks/useTeam';
+import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../services/supabase';
 
 import {
@@ -62,6 +63,7 @@ const Revenue = () => {
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFilterHovered, setIsFilterHovered] = useState(false);
 
   const [sessionFormData, setSessionFormData] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
@@ -87,6 +89,7 @@ const Revenue = () => {
   const [loadingPerformers, setLoadingPerformers] = useState(false);
 
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [hoveredKpi, setHoveredKpi] = useState(null);
 
   const globalFilterRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -94,9 +97,11 @@ const Revenue = () => {
   const dropdownRef = useRef(null);
   const modalRef = useRef(null);
 
+  // ========== CUSTOM HOOKS ==========
   const { data: revenueData, loading, refetch: refetchRevenue, brandTotals } = useRevenue();
   const { brands } = useBrands(brandTotals);
   const { team } = useTeam();
+  const { role } = useAuth();
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -110,6 +115,7 @@ const Revenue = () => {
     };
   }, [showSessionModal]);
 
+  // ========== ALL useEffect HOOKS ==========
   useEffect(() => {
     const handler = (e) => {
       if (globalFilterRef.current && !globalFilterRef.current.contains(e.target)) {
@@ -332,7 +338,6 @@ const Revenue = () => {
     return results.sort((a, b) => b.totalRevenue - a.totalRevenue);
   }, [dateFilteredLogs, brandsList, insightBrandId, periodMap]);
 
-  // FIXED: sessionIntelligence with proper filtering
   const sessionIntelligence = useMemo(() => {
     let rows = dateFilteredLogs.map(log => {
       const periodId = log.period_id;
@@ -355,12 +360,10 @@ const Revenue = () => {
       );
     }
     
-    // Apply brand filter
     if (tableFilter.brandId && tableFilter.brandId !== 'All') {
       rows = rows.filter(r => r.brandId === tableFilter.brandId);
     }
     
-    // Apply period filter
     if (tableFilter.period && tableFilter.period !== 'All') {
       rows = rows.filter(r => r.period === tableFilter.period);
     }
@@ -459,7 +462,7 @@ const Revenue = () => {
     notificationTimeoutRef.current = setTimeout(() => {
       setNotification(null);
       notificationTimeoutRef.current = null;
-    }, 5000);
+    }, 7000);
   };
 
   const resetForm = () => {
@@ -488,6 +491,15 @@ const Revenue = () => {
       }
     }
     return false;
+  };
+
+  // ========== FIX: closeSessionModal no longer owns isSubmitting ==========
+  const closeSessionModal = () => {
+    setShowSessionModal(false);
+    setEditingSession(null);
+    setOpenDropdown(null);
+    // NOTE: intentionally NOT calling setIsSubmitting(false) here.
+    // Only the finally blocks in handleCreateSession / handleUpdateSession own it.
   };
 
   const handleCreateSession = async () => {
@@ -545,6 +557,7 @@ const Revenue = () => {
       console.error('Create error:', err);
       notify(`Failed: ${err.message || 'Unknown error'}`, true);
     } finally {
+      // FIX: setIsSubmitting(false) is FIRST and unconditional — sole owner of this state
       setIsSubmitting(false);
       setEditingSession(null);
       setOpenDropdown(null);
@@ -623,6 +636,7 @@ const Revenue = () => {
       console.error('UPDATE ERROR:', err);
       notify(`Update failed: ${err.message || 'Unknown error'}`, true);
     } finally {
+      // FIX: setIsSubmitting(false) is FIRST and unconditional — sole owner of this state
       setIsSubmitting(false);
       setOpenDropdown(null);
     }
@@ -655,6 +669,7 @@ const Revenue = () => {
       console.error('DELETE ERROR:', err);
       notify(err.message, true);
     } finally {
+      // FIX: setIsSubmitting(false) is FIRST and unconditional — sole owner of this state
       setIsSubmitting(false);
     }
   };
@@ -706,13 +721,6 @@ const Revenue = () => {
     notify(`Showing ${brandName} sessions${period && period !== 'All' ? ` for ${period}` : ''}`);
   };
 
-  const closeSessionModal = () => {
-    setShowSessionModal(false);
-    setEditingSession(null);
-    setOpenDropdown(null);
-    setIsSubmitting(false);
-  };
-
   const dropdownTriggerCls = (isOpen) =>
     `w-full bg-muted/40 border rounded-xl px-3 py-2.5 text-xs text-left flex items-center justify-between transition-all ${
       isOpen ? 'border-primary ring-1 ring-primary/20' : 'border-border'
@@ -736,6 +744,29 @@ const Revenue = () => {
     );
   }
 
+  // KPI Card component with hover effect
+  const KpiCardItem = ({ title, value, children, isHovered, onHover }) => (
+    <div 
+      className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0 transition-all"
+      style={{
+        transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
+        transform: isHovered ? "translateY(-4px)" : "translateY(0)",
+        boxShadow: isHovered ? "0 12px 32px rgba(239,68,68,0.15), 0 4px 12px rgba(0,0,0,0.08)" : "none",
+        borderColor: isHovered ? "rgba(239,68,68,0.3)" : "var(--border)",
+        backgroundColor: isHovered ? "rgba(239,68,68,0.02)" : "var(--card)",
+      }}
+      onMouseEnter={onHover}
+      onMouseLeave={onHover}
+    >
+      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        {title}
+      </p>
+      <p className="text-xl sm:text-2xl font-bold text-foreground leading-tight break-all">{value}</p>
+      {children}
+    </div>
+  );
+
+  // ========== MAIN RETURN ==========
   return (
     <div id="revenue-report-container">
       <AnimatePresence>
@@ -773,11 +804,17 @@ const Revenue = () => {
             <div className="relative" ref={globalFilterRef}>
               <button
                 onClick={() => setGlobalFilterOpen(p => !p)}
-                className={`relative flex items-center gap-2 h-10 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
-                  globalFilterOpen
-                    ? 'border-primary bg-primary/5 text-primary'
-                    : 'border-border bg-muted/20 text-foreground hover:border-primary/40'
-                }`}
+                onMouseEnter={() => setIsFilterHovered(true)}
+                onMouseLeave={() => setIsFilterHovered(false)}
+                className="relative flex items-center gap-2 h-10 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all"
+                style={{
+                  background: globalFilterOpen ? 'rgba(59,130,246,0.05)' : (isFilterHovered ? '#ef4444' : 'rgba(0,0,0,0.05)'),
+                  borderColor: globalFilterOpen ? '#3b82f6' : (isFilterHovered ? '#ef4444' : 'var(--border)'),
+                  color: globalFilterOpen ? '#3b82f6' : (isFilterHovered ? 'white' : 'var(--foreground)'),
+                  transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease, color 0.2s ease",
+                  transform: isFilterHovered && !globalFilterOpen ? "translateY(-2px)" : "translateY(0)",
+                  boxShadow: isFilterHovered && !globalFilterOpen ? "0 8px 20px rgba(239,68,68,0.25)" : "none",
+                }}
               >
                 <SlidersHorizontal size={14} />
                 Filters
@@ -847,22 +884,26 @@ const Revenue = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 min-w-0">
-          <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
-              Revenue <span className="font-normal normal-case text-[9px] text-muted-foreground/50">(range)</span>
-            </p>
-            <p className="text-xl sm:text-2xl font-bold text-foreground leading-tight break-all">{formatCurrency(rangeRevenue)}</p>
+          {/* Revenue KPI Card */}
+          <KpiCardItem 
+            title="Revenue (range)" 
+            value={formatCurrency(rangeRevenue)}
+            isHovered={hoveredKpi === 'revenue'}
+            onHover={() => setHoveredKpi(hoveredKpi === 'revenue' ? null : 'revenue')}
+          >
             <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
               <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">All-time</span>
               <span className="text-[11px] font-bold text-foreground break-all">{formatCurrency(allTimeRevenue)}</span>
             </div>
-          </div>
+          </KpiCardItem>
 
-          <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
-            <div className="flex items-center gap-2 mb-3">
-              <Users size={12} className="text-primary shrink-0" />
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Top Performers</p>
-            </div>
+          {/* Top Performers KPI Card */}
+          <KpiCardItem 
+            title="Top Performers"
+            value=""
+            isHovered={hoveredKpi === 'performers'}
+            onHover={() => setHoveredKpi(hoveredKpi === 'performers' ? null : 'performers')}
+          >
             <div className="space-y-2">
               {topPerformersFromView.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No data in range</p>
@@ -882,29 +923,33 @@ const Revenue = () => {
                 ))
               )}
             </div>
-          </div>
+          </KpiCardItem>
 
-          <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
-              Top Platform <span className="font-normal normal-case text-[9px] text-muted-foreground/50">(range)</span>
-            </p>
-            <p className="text-xl sm:text-2xl font-bold text-foreground">{topPlatform.name}</p>
+          {/* Top Platform KPI Card */}
+          <KpiCardItem 
+            title="Top Platform (range)" 
+            value={topPlatform.name}
+            isHovered={hoveredKpi === 'platform'}
+            onHover={() => setHoveredKpi(hoveredKpi === 'platform' ? null : 'platform')}
+          >
             <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
               <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Revenue</span>
               <span className="text-[11px] font-bold text-foreground break-all">{formatCurrency(topPlatform.revenue)}</span>
             </div>
-          </div>
+          </KpiCardItem>
 
-          <div className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
-              Live Sessions <span className="font-normal normal-case text-[9px] text-muted-foreground/50">(range)</span>
-            </p>
-            <p className="text-xl sm:text-2xl font-bold text-foreground">{totalSessionsInRange.toLocaleString()}</p>
+          {/* Live Sessions KPI Card */}
+          <KpiCardItem 
+            title="Live Sessions (range)" 
+            value={totalSessionsInRange.toLocaleString()}
+            isHovered={hoveredKpi === 'sessions'}
+            onHover={() => setHoveredKpi(hoveredKpi === 'sessions' ? null : 'sessions')}
+          >
             <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
               <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Avg / session</span>
               <span className="text-[11px] font-bold text-foreground break-all">{formatCurrency(Math.round(avgRevenueInRange))}</span>
             </div>
-          </div>
+          </KpiCardItem>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12 min-w-0">
