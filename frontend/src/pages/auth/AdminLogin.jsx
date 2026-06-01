@@ -89,11 +89,9 @@ const LeftPanel = () => (
           <div className="absolute -bottom-2 left-0 right-0 h-1 bg-[#2563eb] opacity-30 rounded-full" />
         </div>
       </div>
-      <h1 className="text-3xl font-bold text-[#2563eb] mb-3 tracking-tight">VIDHELP</h1>
-      <p className="text-[#2563eb] text-base font-medium mb-2 opacity-80">Admin Portal</p>
-      <p className="text-[#2563eb] text-sm max-w-xs mx-auto leading-relaxed opacity-60">
-        Manage your team, brands, and operations all in one place.
-      </p>
+      <h1 className="text-3xl font-bold text-[#2563eb] mb-3 tracking-tight font-sans">VIDHELP</h1>
+      <p className="text-[#2563eb] text-base font-medium mb-2 opacity-80 font-sans">Admin Portal</p>
+      <p className="text-[#2563eb] text-sm max-w-xs mx-auto leading-relaxed opacity-60 font-sans">Manage your team, brands, and operations all in one place.</p>
     </div>
   </div>
 );
@@ -293,17 +291,15 @@ export const AdminLogin = () => {
             <div>
               <button
                 onClick={() => navigate('/')}
-                className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-black dark:hover:text-white transition-colors mb-6"
+                className="flex items-center gap-1 text-sm text-gray-400 dark:text-gray-500 hover:text-black dark:hover:text-white transition-colors mb-6"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
                 Back to Home
               </button>
-             <h2 className="text-2xl font-bold text-gray-900 dark:text-white font-serif">Reset Password</h2>
-<p className="mt-1 text-sm text-gray-500 dark:text-gray-400 font-serif">
-  Enter your email and we'll send you a reset link
-</p>
+             <h2 className="text-2xl font-bold text-gray-900 dark:text-white font-sans">Reset Password</h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 font-sans">Enter your email and we'll send you a reset link</p>
             </div>
             <form className="space-y-4" onSubmit={handleForgotPassword}>
               <div>
@@ -346,15 +342,15 @@ export const AdminLogin = () => {
           <div>
             <button
               onClick={() => navigate('/')}
-              className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-black dark:hover:text-white transition-colors mb-6"
+              className="flex items-center gap-1 text-sm text-gray-400 dark:text-gray-500 hover:text-black dark:hover:text-white transition-colors mb-6"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
               Back to Home
             </button>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white font-serif">Welcome back</h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 font-serif">Sign in to your VIDHELP Admin account</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white font-sans">Welcome back</h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 font-sans">Sign in to your VIDHELP Admin account</p>
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
