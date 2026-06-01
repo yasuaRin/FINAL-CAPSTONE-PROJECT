@@ -203,7 +203,7 @@ export const AdminLayout = () => {
   }
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden relative">
+    <div data-layout="admin" className="flex h-screen bg-background text-foreground overflow-hidden relative">
       {isSidebarOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" onClick={() => setIsSidebarOpen(false)} />
       )}
@@ -290,7 +290,7 @@ export const AdminLayout = () => {
             <Outlet />
           </div>
           {/* Footer — outside the max-w-7xl div so it spans full section width */}
-          <Footer />
+          <Footer variant="admin" />
         </section>
 
         {highlightQuery && (

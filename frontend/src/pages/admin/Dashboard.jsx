@@ -459,17 +459,15 @@ export const Dashboard = () => {
           <p className="text-muted-foreground mt-1">Welcome back, here is what is happening today.</p>
         </div>
         <div className="flex items-center gap-3">
-          {/* Export Report Button with hover */}
+          {/* Export Report Button - Black default, Blue on hover */}
           <button
             onClick={handleExportReport}
             disabled={isExporting}
-            className="inline-flex items-center justify-center rounded-xl text-xs font-bold uppercase tracking-wider transition-all h-10 px-6 py-2 gap-2"
+            className="inline-flex items-center justify-center rounded-xl text-xs font-bold uppercase tracking-wider transition-all h-10 px-6 py-2 gap-2 bg-black text-white hover:bg-blue-600"
             style={{
-              background: hoveredButton === 'export' ? '#ef4444' : 'var(--primary)',
-              color: 'white',
               transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease",
               transform: hoveredButton === 'export' ? "translateY(-2px)" : "translateY(0)",
-              boxShadow: hoveredButton === 'export' ? "0 8px 20px rgba(239,68,68,0.3)" : "0 4px 6px rgba(0,0,0,0.1)",
+              boxShadow: hoveredButton === 'export' ? "0 8px 20px rgba(37,99,235,0.3)" : "0 4px 6px rgba(0,0,0,0.1)",
             }}
             onMouseEnter={() => setHoveredButton('export')}
             onMouseLeave={() => setHoveredButton(null)}
@@ -478,18 +476,15 @@ export const Dashboard = () => {
             Export Report
           </button>
 
-          {/* Rerun ML Model Button with hover */}
+          {/* Rerun ML Model Button - Black default, Blue on hover */}
           <button
             onClick={handleRerunModel}
             disabled={isRetraining}
-            className="inline-flex items-center justify-center gap-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border h-10 px-4 py-2"
+            className="inline-flex items-center justify-center gap-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border h-10 px-4 py-2 bg-black text-white border-black hover:bg-blue-600 hover:border-blue-600"
             style={{
-              background: hoveredButton === 'rerun' ? '#ef4444' : 'rgba(0,0,0,0.05)',
-              borderColor: hoveredButton === 'rerun' ? '#ef4444' : 'var(--border)',
-              color: hoveredButton === 'rerun' ? 'white' : 'var(--foreground)',
-              transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease, color 0.2s ease",
+              transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease",
               transform: hoveredButton === 'rerun' ? "translateY(-2px)" : "translateY(0)",
-              boxShadow: hoveredButton === 'rerun' ? "0 8px 20px rgba(239,68,68,0.25)" : "none",
+              boxShadow: hoveredButton === 'rerun' ? "0 8px 20px rgba(37,99,235,0.25)" : "none",
             }}
             onMouseEnter={() => setHoveredButton('rerun')}
             onMouseLeave={() => setHoveredButton(null)}

@@ -1,48 +1,60 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-// [FROM CURRENT] - Added useAuth for admin authentication
 import { Instagram, Phone, Mail, Cpu } from 'lucide-react';
-// [FROM CURRENT] - Removed ArrowUp (unused), kept Cpu
 import { useAuth } from '../../hooks/useAuth';
-// [FROM CURRENT] - Added useAuth hook
 
-const Footer = () => {
-  // [FROM CURRENT] - Auth logic to show different content for logged-in users
+const Footer = ({ variant = 'public' }) => {
   const { user } = useAuth();
   
   return (
     <>
       <style>{`
-        /* [FROM CURRENT] - Light mode - when html does NOT have dark class */
-        html:not(.dark) .vh-footer { 
+        html:not(.dark) .vh-footer-public { 
           background-color: #e5e7eb !important;
         }
-        /* [FROM CURRENT] - Dark mode */
-        .dark .vh-footer { 
+        .dark .vh-footer-public { 
           background-color: #1e1e1e !important;
+        }
+        html:not(.dark) .vh-footer-admin { 
+          background-color: #e5e7eb !important;
+        }
+        .dark .vh-footer-admin { 
+          background-color: #1e1e1e !important;
+        }
+        .vh-footer-admin .footer-icon-box {
+          color: #2563eb !important;
+          border-color: currentColor;
+        }
+        .vh-footer-admin .footer-icon-box:hover {
+          background-color: #2563eb !important;
+          color: white !important;
+        }
+        .vh-footer-admin .footer-heading {
+          color: #2563eb !important;
+        }
+        .vh-footer-admin .footer-link:hover {
+          color: #2563eb !important;
+        }
+        .vh-footer-admin .footer-admin-portal {
+          color: #2563eb !important;
         }
       `}</style>
 
-      <footer className="vh-footer w-full text-foreground border-t border-border pt-10 pb-6 px-6">
+      <footer className={`vh-footer-${variant} w-full text-foreground border-t border-border pt-10 pb-6 px-6`}>
         <div className="max-w-6xl mx-auto">
-          {/* [FROM INCOMING] - Added text-left class for better alignment */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-10 text-left">
             
             {/* Column 1: Agency Profile */}
             <div>
               <div className="flex items-center gap-3 mb-6">
-                {/* [FROM CURRENT] - Conditional logo for logged-in users */}
                 {user ? (
-                  <span className="text-2xl font-black tracking-tighter uppercase font-sans text-primary">VH</span>
-                ) : (
+<span className={`text-2xl font-black tracking-tighter uppercase font-sans ${variant === 'admin' ? 'text-[#2563eb]' : 'text-primary'}`}>VH</span>                ) : (
                   <>
                     <img src="/VH-removebg.png" alt="VidHelp Logo" className="w-8 h-8 object-contain" />
-                    {/* [FROM INCOMING] - Changed text-foreground from hardcoded blue */}
                     <span className="text-2xl font-black tracking-tighter uppercase font-sans text-foreground">VidHelp</span>
                   </>
                 )}
               </div>
-              {/* [FROM INCOMING] - Cleaner paragraph with line break */}
               <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest leading-loose mb-6">
                 WHERE COMMERCE MEETS HUMAN CONNECTION,<br/>
                 Your digital partner to scale up your business
@@ -50,60 +62,55 @@ const Footer = () => {
             </div>
 
             {/* Column 2: Services & Navigation */}
-            <div>
-              {/* [FROM INCOMING] - Changed to text-primary (CSS variable) instead of hardcoded blue */}
-              <h4 className="font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-primary font-sans">Layanan</h4>
-              <ul className="space-y-4 text-muted-foreground font-black text-[10px] uppercase tracking-[0.2em] mb-8">
-                {/* [FROM INCOMING] - Removed SERVICE link (not needed for public) */}
-                <li>
-                  <button 
-                    onClick={() => window.dispatchEvent(new CustomEvent('open-chatbot'))} 
-                    className="hover:text-primary transition-colors uppercase"
-                  >
-                    FAQ
-                  </button>
-                </li>
-                <li>
-                  {/* [FROM INCOMING] - Cleaner WhatsApp URL */}
-                  <a 
-                    href="https://wa.me/6285121057706?text=Hi%20VidHelp%20Team..." 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    className="hover:text-primary transition-colors uppercase"
-                  >
-                    HIRING
-                  </a>
-                </li>
-                {/* [FROM CURRENT] - LANDING PAGE link only visible when logged in */}
-                {user && (
-                  <li>
-                    <Link to="/" className="hover:text-primary transition-colors uppercase">
-                      LANDING PAGE
-                    </Link>
-                  </li>
-                )}
-              </ul>
-              
-              {/* [FROM CURRENT] - Admin Portal link only visible when logged out */}
-              {!user && (
-                <div className="pt-6 border-t border-border">
-                  <Link 
-                    to="/admin" 
-                    className="text-primary font-black text-[10px] hover:text-foreground transition-colors uppercase tracking-[0.3em] flex items-center gap-2"
-                  >
-                    <Cpu size={14} /> Admin Portal
-                  </Link>
-                </div>
-              )}
-            </div>
+<div>
+  <h4 className="footer-heading font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-primary font-sans">Layanan</h4>
+  <ul className="space-y-4 text-muted-foreground font-black text-[10px] uppercase tracking-[0.2em] mb-8">
+    <li>
+      <button 
+        onClick={() => window.dispatchEvent(new CustomEvent('open-chatbot'))} 
+        className="footer-link hover:text-primary transition-colors uppercase"
+      >
+        FAQ
+      </button>
+    </li>
+    <li>
+      <a 
+        href="https://wa.me/6285121057706?text=Hi%20VidHelp%20Team..." 
+        target="_blank" 
+        rel="noreferrer" 
+        className="footer-link hover:text-primary transition-colors uppercase"
+      >
+        HIRING
+      </a>
+    </li>
+    {user && (
+      <li>
+        <Link to="/" className="transition-colors uppercase text-[#2563eb] hover:text-[#1d4ed8]">
+          LANDING PAGE
+        </Link>
+      </li>
+    )}
+  </ul>
+  
+  {!user && (
+    <div className="pt-6 border-t border-border">
+      <Link 
+        to="/admin" 
+        className="font-black text-[10px] hover:text-foreground transition-colors uppercase tracking-[0.3em] flex items-center gap-2 text-[#DB1A1A]"
+      >
+        <Cpu size={14} /> Admin Portal
+      </Link>
+    </div>
+  )}
+</div>
 
             {/* Column 3: Contact & Office Info */}
             <div>
-              <h4 className="font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-primary font-sans">Contact</h4>
+              <h4 className="footer-heading font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-primary font-sans">Contact</h4>
               <ul className="space-y-6">
                 <li>
                   <a href="https://wa.me/6285121057706" target="_blank" rel="noreferrer" className="flex items-start gap-6 group">
-                    <div className="w-10 h-10 border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+                    <div className="footer-icon-box w-10 h-10 border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
                       <Phone size={18} />
                     </div>
                     <div>
@@ -114,7 +121,7 @@ const Footer = () => {
                 </li>
                 <li>
                   <a href="https://instagram.com/vidhelp.id" target="_blank" rel="noreferrer" className="flex items-start gap-6 group">
-                    <div className="w-10 h-10 border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+                    <div className="footer-icon-box w-10 h-10 border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
                       <Instagram size={18} />
                     </div>
                     <div>
@@ -125,7 +132,7 @@ const Footer = () => {
                 </li>
                 <li>
                   <a href="mailto:vidhelp.admin@gmail.com" className="flex items-start gap-6 group">
-                    <div className="w-10 h-10 border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+                    <div className="footer-icon-box w-10 h-10 border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
                       <Mail size={18} />
                     </div>
                     <div>
@@ -137,8 +144,7 @@ const Footer = () => {
               </ul>
               
               <div className="mt-12 pt-8 border-t border-border">
-                <h4 className="font-black mb-2 uppercase tracking-[0.4em] text-[10px] text-primary font-sans">Office</h4>
-                {/* [FROM CURRENT] - Full Google Maps URL with exact address */}
+                <h4 className="footer-heading font-black mb-2 uppercase tracking-[0.4em] text-[10px] text-primary font-sans">Office</h4>
                 <a 
                   href="https://www.google.com/maps/search/?api=1&query=Jl.+Ki+Hajar+Dewantara+No.15,+RT.2%2FRW.4,+Simpangan,+Cikarang+Utara,+Bekasi" 
                   target="_blank" 

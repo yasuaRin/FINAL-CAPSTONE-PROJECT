@@ -14,7 +14,7 @@ const PublicLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white selection:bg-primary selection:text-white">
+    <div data-layout="public" className="min-h-screen bg-white selection:bg-primary selection:text-white">
       <Header scrollToSection={scrollToSection} />
       <Outlet />
       <Footer />

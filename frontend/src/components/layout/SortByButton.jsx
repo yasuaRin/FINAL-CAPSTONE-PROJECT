@@ -190,14 +190,13 @@ export const SortByButton = ({
         onClick={() => setIsOpen(!isOpen)}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className="relative flex items-center gap-2 h-10 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all"
+        className="relative flex items-center gap-2 h-10 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all text-white"
         style={{
-          background: isHovered && !isOpen ? '#ef4444' : (isOpen ? 'rgba(59,130,246,0.05)' : 'rgba(0,0,0,0.05)'),
-          borderColor: isHovered && !isOpen ? '#ef4444' : (isOpen ? '#3b82f6' : 'var(--border)'),
-          color: isHovered && !isOpen ? 'white' : (isOpen ? '#3b82f6' : 'var(--foreground)'),
-          transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease, color 0.2s ease",
+          backgroundColor: isHovered && !isOpen ? '#2563eb' : '#DB1A1A',
+          borderColor: isHovered && !isOpen ? '#2563eb' : '#DB1A1A',
+          transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease",
           transform: isHovered && !isOpen ? "translateY(-2px)" : "translateY(0)",
-          boxShadow: isHovered && !isOpen ? "0 8px 20px rgba(239,68,68,0.25)" : "none",
+          boxShadow: isHovered && !isOpen ? "0 8px 20px rgba(37,99,235,0.3)" : "0 4px 6px rgba(0,0,0,0.1)",
         }}
       >
         <Filter size={14} />

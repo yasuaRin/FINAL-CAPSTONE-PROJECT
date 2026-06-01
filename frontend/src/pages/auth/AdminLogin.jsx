@@ -300,10 +300,10 @@ export const AdminLogin = () => {
                 </svg>
                 Back to Home
               </button>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Reset Password</h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Enter your email and we'll send you a reset link
-              </p>
+             <h2 className="text-2xl font-bold text-gray-900 dark:text-white font-serif">Reset Password</h2>
+<p className="mt-1 text-sm text-gray-500 dark:text-gray-400 font-serif">
+  Enter your email and we'll send you a reset link
+</p>
             </div>
             <form className="space-y-4" onSubmit={handleForgotPassword}>
               <div>
@@ -353,8 +353,8 @@ export const AdminLogin = () => {
               </svg>
               Back to Home
             </button>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome back</h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Sign in to your VIDHELP Admin account</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white font-serif">Welcome back</h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 font-serif">Sign in to your VIDHELP Admin account</p>
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
