@@ -1,1308 +1,712 @@
-﻿// frontend/src/pages/admin/Revenue.jsx
-
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+﻿import { useMemo, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
-  CheckCircle2, X, AlertTriangle, Plus, Users, SlidersHorizontal, ChevronDown
+  Download, Activity,
+  ShieldAlert, CheckCircle2, ArrowUpRight,
+  PieChart as PieChartIcon, AlertCircle, Brain, RefreshCw, AlertTriangle, Handshake
 } from 'lucide-react';
-
-import { SortByButton } from '../../components/layout/SortByButton';
+import {
+  PieChart, Pie, Cell, ResponsiveContainer,
+  Tooltip as RechartsTooltip
+} from 'recharts';
 import { useRevenue } from '../../hooks/useRevenue';
 import { useBrands } from '../../hooks/useBrands';
 import { useTeam } from '../../hooks/useTeam';
-import { useAuth } from '../../hooks/useAuth';
+import { SortByButton } from '../../components/layout/SortByButton';
+import { usePredictions } from '../../hooks/usePredictions';
 import { supabase } from '../../services/supabase';
+import { RevenueBarChart } from '../../components/dashboard/RevenueBarChart';
+import { exportCompleteReport } from '../../utils/exportPDF';
 
-import {
-  subDays, isWithinInterval, startOfDay, endOfDay,
-  parseISO, format,
-} from 'date-fns';
+const sumRevenue = (item) => (item?.revenue_shopee ?? 0) + (item?.revenue_tiktok ?? 0);
 
-import RevenueBrandsPanel from '../../components/revenue/RevenueBrandsPanel';
-import RevenueSessionsTable from '../../components/revenue/RevenueSessionsTable';
-
-const formatCurrency = (value) => `Rp ${(value || 0).toLocaleString('id-ID')}`;
-const sid = (v) => (v == null ? '' : String(v));
-
-const parseLocalDateStr = (str) => {
-  if (!str) return null;
-  const datePart = typeof str === 'string' ? str.split('T')[0] : str;
-  const parts = datePart.split('-').map(Number);
-  if (parts.length < 3 || parts.some(isNaN)) return null;
-  return new Date(parts[0], parts[1] - 1, parts[2]);
+const formatCurrency = (value) => {
+  if (!value && value !== 0) return 'Rp 0';
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
 };
 
-const normalizePeriodId = (raw) => {
-  if (raw == null) return null;
-  if (typeof raw === 'number') return raw;
-  const str = String(raw).replace(/[^0-9]/g, '');
-  const n = parseInt(str, 10);
-  return isNaN(n) ? null : n;
+const formatCompactCurrency = (value) => {
+  if (!value || value === 0) return 'Rp 0';
+  if (value >= 1_000_000_000) return `Rp ${(value / 1_000_000_000).toFixed(1)}B`;
+  if (value >= 1_000_000)     return `Rp ${(value / 1_000_000).toFixed(0)}M`;
+  return formatCurrency(value);
 };
 
-const LIMIT_OPTIONS = [10, 20, 30, 40, 50, 100, 200, 500, 1000, null];
-
-const PLATFORM_OPTIONS = [
-  { value: 'TikTok',  label: 'TikTok' },
-  { value: 'Shopee',  label: 'Shopee' },
-  { value: 'Multi',   label: 'Multi-Platform' },
-];
-
-const Revenue = () => {
-  const [dateRange, setDateRange] = useState({
-    start: subDays(new Date(), 365 * 10),
-    end: new Date(),
-    preset: 'allData',
-  });
-
-  const [insightBrandId, setInsightBrandId] = useState('All');
-  const [notification, setNotification] = useState(null);
-  const [tableFilter, setTableFilter] = useState({ brandId: 'All', period: 'All' });
-  const [editingSession, setEditingSession] = useState(null);
-  const [sessionToDelete, setSessionToDelete] = useState(null);
-  const [showSessionModal, setShowSessionModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isFilterHovered, setIsFilterHovered] = useState(false);
-
-  const [sessionFormData, setSessionFormData] = useState({
-    date: format(new Date(), 'yyyy-MM-dd'),
-    time: format(new Date(), 'HH:mm'),
-    brandId: '',
-    platform: 'TikTok',
-    viewers: 0,
-    revenue: 0,
-    period_id: '',
-    host_team_member_id: '',
-  });
-
-  const sortCol = 'date';
-  const sortDir = 'desc';
-
-  const [rowLimit, setRowLimit] = useState(25);
-  const [periodsData, setPeriodsData] = useState([]);
-
-  const [globalFilterOpen, setGlobalFilterOpen] = useState(false);
-  const [selectedStaffForDetail, setSelectedStaffForDetail] = useState(null);
-  const [showStaffDetailModal, setShowStaffDetailModal] = useState(false);
-  const [topPerformersFromView, setTopPerformersFromView] = useState([]);
-  const [loadingPerformers, setLoadingPerformers] = useState(false);
-
-  const [openDropdown, setOpenDropdown] = useState(null);
-  const [hoveredKpi, setHoveredKpi] = useState(null);
-
-  const globalFilterRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const notificationTimeoutRef = useRef(null);
-  const dropdownRef = useRef(null);
-  const modalRef = useRef(null);
-
-  // ========== CUSTOM HOOKS ==========
-  const { data: revenueData, loading, refetch: refetchRevenue, brandTotals } = useRevenue();
-  const { brands } = useBrands(brandTotals);
-  const { team } = useTeam();
-  const { role } = useAuth();
-
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (showSessionModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [showSessionModal]);
-
-  // ========== ALL useEffect HOOKS ==========
-  useEffect(() => {
-    const handler = (e) => {
-      if (globalFilterRef.current && !globalFilterRef.current.contains(e.target)) {
-        setGlobalFilterOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setOpenDropdown(null);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  // Close modal on escape key
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape' && showSessionModal) {
-        closeSessionModal();
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [showSessionModal]);
-
-  useEffect(() => {
-    const fetchPeriods = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('periods')
-          .select('period_id, period_name, period_start_date, period_end_date')
-          .order('period_id');
-        if (!error && data) {
-          const uniquePeriodsMap = new Map();
-          data.forEach(p => {
-            const normalizedId = normalizePeriodId(p.period_id);
-            if (!uniquePeriodsMap.has(normalizedId)) {
-              uniquePeriodsMap.set(normalizedId, p);
-            }
-          });
-          setPeriodsData(Array.from(uniquePeriodsMap.values()));
-        }
-      } catch {
-        // silently handle
-      }
-    };
-    fetchPeriods();
-  }, []);
-
-  useEffect(() => {
-    const fetchTopPerformers = async () => {
-      setLoadingPerformers(true);
-      try {
-        const { data, error } = await supabase
-          .from('team_performance_view')
-          .select('team_name, session_count, total_revenue, total_viewers, total_likes, revenue_score, viewer_score, likes_score, final_score')
-          .limit(5);
-
-        if (error) throw error;
-
-        const transformedData = (data || []).map(item => ({
-          staffId: item.team_name,
-          staffName: item.team_name,
-          sessionCount: item.session_count,
-          totalRevenue: item.total_revenue,
-          totalViewers: item.total_viewers,
-          totalLikes: item.total_likes,
-          revenueScore: item.revenue_score,
-          viewerScore: item.viewer_score,
-          likesScore: item.likes_score,
-          finalScore: item.final_score,
-          avgRevenuePerSession: item.session_count > 0 ? item.total_revenue / item.session_count : 0,
-          avgViewersPerSession: item.session_count > 0 ? item.total_viewers / item.session_count : 0,
-          avgLikesPerSession: item.session_count > 0 ? item.total_likes / item.session_count : 0,
-          revenuePerViewer: item.total_viewers > 0 ? item.total_revenue / item.total_viewers : 0,
-        }));
-
-        setTopPerformersFromView(transformedData);
-      } catch (err) {
-        console.error('Error:', err);
-      } finally {
-        setLoadingPerformers(false);
-      }
-    };
-
-    fetchTopPerformers();
-  }, []);
-
-  const periodMap = useMemo(() => {
-    const map = {};
-    periodsData.forEach(p => {
-      const normalizedId = normalizePeriodId(p.period_id);
-      map[normalizedId] = {
-        id: normalizedId,
-        name: p.period_name || `Period ${normalizedId}`,
-        startDate: p.period_start_date,
-        endDate: p.period_end_date,
-      };
-    });
-    return map;
-  }, [periodsData]);
-
-  const brandsList = useMemo(() => {
-    if (!brands) return [];
-    return brands
-      .map(b => ({ id: sid(b.brand_id), name: b.brand_name, totalRevenue: brandTotals.get(sid(b.brand_id)) || 0 }))
-      .sort((a, b) => b.totalRevenue - a.totalRevenue);
-  }, [brands, brandTotals]);
-
-  const teamMap = useMemo(() => {
-    const m = {};
-    (team || []).forEach(t => { m[sid(t.id)] = t.name; });
-    return m;
-  }, [team]);
-
-  const revenueLogs = useMemo(() => {
-    if (!revenueData) return [];
-    return revenueData.map(i => ({
-      id: i.id,
-      _rawId: i.id,
-      brandId: sid(i.brand_id),
-      hostId: sid(i.host_team_member_id),
-      date: i.date,
-      time: i.time || '',
-      period_id: normalizePeriodId(i.period_id),
-      platform: i.revenue_shopee > 0 && i.revenue_tiktok > 0 ? 'Multi'
-        : i.revenue_shopee > 0 ? 'Shopee' : 'TikTok',
-      revenue: (i.revenue_shopee ?? 0) + (i.revenue_tiktok ?? 0),
-      viewers: (i.viewers_shopee ?? 0) + (i.viewers_tiktok ?? 0),
-      likes: (i.likes_shopee ?? 0) + (i.likes_tiktok ?? 0),
-    }));
-  }, [revenueData]);
-
-  const brandMap = useMemo(() => {
-    const m = {};
-    brandsList.forEach(b => { m[b.id] = b.name; });
-    return m;
-  }, [brandsList]);
-
-  const dateFilteredLogs = useMemo(() => {
-    if (!dateRange.start || !dateRange.end) return revenueLogs;
-    const rangeStart = startOfDay(dateRange.start);
-    const rangeEnd = endOfDay(dateRange.end);
-    return revenueLogs.filter(l => {
-      try {
-        const date = parseLocalDateStr(l.date);
-        if (!date) return false;
-        return isWithinInterval(date, { start: rangeStart, end: rangeEnd });
-      } catch {
-        return false;
-      }
-    });
-  }, [revenueLogs, dateRange]);
-
-  const rangeRevenue = useMemo(() => dateFilteredLogs.reduce((s, l) => s + l.revenue, 0), [dateFilteredLogs]);
-  const totalSessionsInRange = dateFilteredLogs.length;
-  const avgRevenueInRange = totalSessionsInRange === 0 ? 0 : rangeRevenue / totalSessionsInRange;
-
-  const allTimeRevenue = useMemo(() => {
-    let t = 0; brandTotals.forEach(v => { t += v; }); return t;
-  }, [brandTotals]);
-
-  const topPlatform = useMemo(() => {
-    const stats = { TikTok: 0, Shopee: 0, Multi: 0 };
-    dateFilteredLogs.forEach(l => { stats[l.platform] += l.revenue; });
-    const entries = Object.entries(stats).filter(([, r]) => r > 0);
-    if (!entries.length) return { name: 'N/A', revenue: 0 };
-    const [name, revenue] = entries.reduce((p, c) => (p[1] > c[1] ? p : c));
-    return { name, revenue };
-  }, [dateFilteredLogs]);
-
-  const brandPerformanceInsights = useMemo(() => {
-    const map = {};
-    brandsList.forEach(b => {
-      map[b.id] = { id: b.id, name: b.name, totalRevenue: 0, peakRevenue: 0, peakPeriod: '', peakPeriodId: null, peakRange: '', overallStartDate: null, overallEndDate: null, overallRange: '', hasSessions: false, sessionCount: 0, periodRevenue: {} };
-    });
-    dateFilteredLogs.forEach(log => {
-      const b = map[log.brandId];
-      if (!b) return;
-      b.totalRevenue += log.revenue; b.sessionCount++; b.hasSessions = true;
-      const ld = parseLocalDateStr(log.date);
-      if (ld) {
-        if (!b.overallStartDate || ld < b.overallStartDate) b.overallStartDate = ld;
-        if (!b.overallEndDate || ld > b.overallEndDate) b.overallEndDate = ld;
-      }
-      const pk = `period_${log.period_id}`;
-      if (!b.periodRevenue[pk]) b.periodRevenue[pk] = { periodId: log.period_id, revenue: 0, sessions: [] };
-      b.periodRevenue[pk].revenue += log.revenue;
-      b.periodRevenue[pk].sessions.push({ date: log.date, revenue: log.revenue });
-      if (log.revenue > b.peakRevenue) b.peakRevenue = log.revenue;
-    });
-    Object.values(map).forEach(b => {
-      if (b.overallStartDate && b.overallEndDate)
-        b.overallRange = `${format(b.overallStartDate, 'dd MMM yyyy')} - ${format(b.overallEndDate, 'dd MMM yyyy')}`;
-      if (b.hasSessions && Object.keys(b.periodRevenue).length > 0) {
-        let best = null, bestRev = 0;
-        Object.values(b.periodRevenue).forEach(p => { if (p.revenue > bestRev) { bestRev = p.revenue; best = p; } });
-        if (best) {
-          b.peakPeriodId = best.periodId; b.peakPeriod = `Period ${best.periodId}`; b.bestPeriodRevenue = bestRev;
-          const pi = periodMap[best.periodId];
-          if (pi?.startDate && pi?.endDate) {
-            b.peakRange = `${format(parseISO(pi.startDate), 'dd MMM yyyy')} - ${format(parseISO(pi.endDate), 'dd MMM yyyy')}`;
-          } else {
-            const dates = best.sessions.map(s => parseLocalDateStr(s.date)).filter(Boolean).sort((a, b) => a - b);
-            if (dates.length > 0) {
-              b.peakRange = `${format(dates[0], 'dd MMM yyyy')} - ${format(dates[dates.length - 1], 'dd MMM yyyy')}`;
-            }
-          }
-        }
-      }
-    });
-    let results = Object.values(map);
-    if (insightBrandId !== 'All') results = results.filter(b => b.id === insightBrandId);
-    return results.sort((a, b) => b.totalRevenue - a.totalRevenue);
-  }, [dateFilteredLogs, brandsList, insightBrandId, periodMap]);
-
-  const sessionIntelligence = useMemo(() => {
-    let rows = dateFilteredLogs.map(log => {
-      const periodId = log.period_id;
-      const periodDisplay = (periodId !== null && periodId !== undefined) ? `Period ${periodId}` : 'No Period';
-      return {
-        ...log,
-        brandName: brandMap[log.brandId] || 'Unknown Brand',
-        staffName: teamMap[log.hostId] || '—',
-        period: periodDisplay,
-        time: log.time || '',
-      };
-    });
-    
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
-      rows = rows.filter(r =>
-        r.brandName.toLowerCase().includes(q) ||
-        r.staffName.toLowerCase().includes(q) ||
-        r.platform.toLowerCase().includes(q)
-      );
-    }
-    
-    if (tableFilter.brandId && tableFilter.brandId !== 'All') {
-      rows = rows.filter(r => r.brandId === tableFilter.brandId);
-    }
-    
-    if (tableFilter.period && tableFilter.period !== 'All') {
-      rows = rows.filter(r => r.period === tableFilter.period);
-    }
-    
-    rows.sort((a, b) => {
-      const av = sortCol === 'date' ? new Date(a.date).getTime() : a[sortCol];
-      const bv = sortCol === 'date' ? new Date(b.date).getTime() : b[sortCol];
-      return sortDir === 'asc' ? av - bv : bv - av;
-    });
-    
-    return rows;
-  }, [dateFilteredLogs, brandMap, teamMap, searchTerm, tableFilter.brandId, tableFilter.period, sortCol, sortDir]);
-
-  const visibleSessions = useMemo(
-    () => rowLimit === null ? sessionIntelligence : sessionIntelligence.slice(0, rowLimit),
-    [sessionIntelligence, rowLimit]
+const KpiCard = ({ title, value, icon: Icon, badge, badgeStyle, action, onAction, children }) => {
+  // All cards now use RED for hover
+  const hoverColorValue = '#ef4444';
+  
+  return (
+    <motion.div
+      whileHover={{ y: -3, scale: 1.015 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={onAction}
+      className="dashboard-card p-4 cursor-pointer rounded-2xl border-l-4 border-l-primary group transition-all"
+      style={{
+        transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-4px)";
+        e.currentTarget.style.boxShadow = `0 12px 32px ${hoverColorValue}20, 0 4px 12px rgba(0,0,0,0.08)`;
+        e.currentTarget.style.borderLeftColor = hoverColorValue;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "none";
+        e.currentTarget.style.borderLeftColor = "var(--primary)";
+      }}
+    >
+      <div className="flex justify-between items-start gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors leading-tight"
+          style={{ color: 'var(--muted-foreground)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = hoverColorValue; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted-foreground)'; }}
+        >
+          {title}
+        </p>
+        {Icon && (
+          <div 
+            className="p-1.5 rounded-lg transition-all shrink-0"
+            style={{ backgroundColor: `${hoverColorValue}15`, color: hoverColorValue }}
+            onMouseEnter={(e) => { 
+              e.currentTarget.style.backgroundColor = hoverColorValue;
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseLeave={(e) => { 
+              e.currentTarget.style.backgroundColor = `${hoverColorValue}15`;
+              e.currentTarget.style.color = hoverColorValue;
+            }}
+          >
+            <Icon size={14} />
+          </div>
+        )}
+      </div>
+      <h3 className="text-base font-mono font-bold mt-2 truncate">{value}</h3>
+      <div className="mt-2.5 flex items-center justify-between">
+        {badge && (
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badgeStyle}`}>
+            {badge}
+          </span>
+        )}
+        {action && (
+          <span className="text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
+            style={{ color: hoverColorValue }}
+          >
+            {action}
+          </span>
+        )}
+      </div>
+      {children}
+    </motion.div>
   );
+};
 
-  const uniquePeriods = useMemo(() => {
-    const periods = new Set();
-    dateFilteredLogs.forEach(log => {
-      const periodId = log.period_id;
-      if (periodId !== null && periodId !== undefined) {
-        periods.add(`Period ${periodId}`);
-      }
-    });
-    return Array.from(periods).sort((a, b) => {
-      const numA = parseInt(a.split(' ')[1]);
-      const numB = parseInt(b.split(' ')[1]);
-      return numA - numB;
-    });
-  }, [dateFilteredLogs]);
+const CriticalRiskMonitor = ({ onBrandClick }) => {
+  const [riskData, setRiskData] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [hoveredItem, setHoveredItem] = useState(null);
 
-  const uniquePeriodsForDropdown = useMemo(() => {
-    const uniqueMap = new Map();
-    periodsData.forEach(p => {
-      const normalizedId = normalizePeriodId(p.period_id);
-      if (!uniqueMap.has(normalizedId)) {
-        uniqueMap.set(normalizedId, p);
-      }
-    });
-    return Array.from(uniqueMap.values())
-      .sort((a, b) => normalizePeriodId(a.period_id) - normalizePeriodId(b.period_id))
-      .map(p => ({
-        id: normalizePeriodId(p.period_id),
-        name: p.period_name || `Period ${normalizePeriodId(p.period_id)}`
-      }));
-  }, [periodsData]);
-
-  const handleSortByBrandChange = (brandId) => {
-    handleGlobalBrand(brandId || 'All');
-  };
-
-  const handleGlobalBrand = (brandId) => {
-    setInsightBrandId(brandId);
-    setTableFilter(prev => ({ ...prev, brandId: brandId || 'All' }));
-    setGlobalFilterOpen(false);
-    
-    if (brandId && brandId !== 'All') {
-      const brand = brandsList.find(b => b.id === brandId);
-      notify(`Filtering by brand: ${brand?.name || 'Brand'}`);
-    } else {
-      notify('Showing all brands');
-    }
-  };
-
-  const handleGlobalPeriod = (period) => {
-    setTableFilter(prev => ({ ...prev, period: period || 'All' }));
-    setGlobalFilterOpen(false);
-    
-    if (period && period !== 'All') {
-      notify(`Filtering by period: ${period}`);
-    } else {
-      notify('Showing all periods');
-    }
-  };
-
-  const resetGlobalFilters = () => {
-    setInsightBrandId('All');
-    setTableFilter({ brandId: 'All', period: 'All' });
-    setRowLimit(25);
-    setGlobalFilterOpen(false);
-    notify('All filters cleared - showing all sessions');
-  };
-
-  const globalActiveCount = [
-    tableFilter.period !== 'All',
-    rowLimit !== 25,
-  ].filter(Boolean).length;
-
-  const notify = (msg, isError = false) => {
-    if (notificationTimeoutRef.current) {
-      clearTimeout(notificationTimeoutRef.current);
-    }
-    setNotification(msg);
-    notificationTimeoutRef.current = setTimeout(() => {
-      setNotification(null);
-      notificationTimeoutRef.current = null;
-    }, 7000);
-  };
-
-  const resetForm = () => {
-    setSessionFormData({
-      date: format(new Date(), 'yyyy-MM-dd'),
-      time: format(new Date(), 'HH:mm'),
-      brandId: brandsList[0]?.id || '',
-      platform: 'TikTok',
-      viewers: 0,
-      revenue: 0,
-      period_id: uniquePeriodsForDropdown[0]?.id ? String(uniquePeriodsForDropdown[0].id) : '',
-      host_team_member_id: team?.[0] ? sid(team[0].id) : '',
-    });
-  };
-
-  const refreshDataWithRetry = async (retries = 3, delay = 1000) => {
-    for (let i = 0; i < retries; i++) {
+  useEffect(() => {
+    const fetchRiskData = async () => {
       try {
-        await refetchRevenue();
-        return true;
+        const [{ data, error }, { data: brands }] = await Promise.all([
+          supabase
+            .from('risk_monitor')
+            .select('brand_id, risk_level, reasons')
+            .order('risk_level', { ascending: false }),
+          supabase.from('brands').select('brand_id, brand_name'),
+        ]);
+        if (error) throw error;
+        const brandMap = new Map(brands?.map((b) => [b.brand_id, b.brand_name]));
+        setRiskData(
+          (data || []).map((item) => ({
+            id:      item.brand_id,
+            name:    brandMap.get(item.brand_id) || 'Unknown',
+            risk:    item.risk_level,
+            reasons: item.reasons || [],
+          }))
+        );
       } catch (err) {
-        console.warn(`Refresh attempt ${i + 1} failed:`, err);
-        if (i < retries - 1) {
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
+        console.error('Error fetching risk data:', err);
+      } finally {
+        setLoading(false);
       }
-    }
-    return false;
-  };
+    };
+    fetchRiskData();
+  }, []);
 
-  const closeSessionModal = () => {
-    setShowSessionModal(false);
-    setEditingSession(null);
-    setOpenDropdown(null);
-  };
-
-  const handleCreateSession = async () => {
-    if (isSubmitting) return;
-    if (!sessionFormData.brandId) { notify('Please select a brand'); return; }
-    if (!sessionFormData.period_id) { notify('Please select a period'); return; }
-    
-    setIsSubmitting(true);
-    try {
-      let platformId = null;
-      try {
-        const { data: platRow } = await supabase
-          .from('platforms')
-          .select('platform_id')
-          .ilike('platform_name', sessionFormData.platform)
-          .maybeSingle();
-        platformId = platRow?.platform_id ?? null;
-      } catch (err) {
-        console.warn('Platform lookup failed:', err);
-      }
-
-      const isShopee = ['Shopee', 'Multi'].includes(sessionFormData.platform);
-      const isTikTok = ['TikTok', 'Multi'].includes(sessionFormData.platform);
-      const normalizedPeriodId = normalizePeriodId(sessionFormData.period_id);
-
-      if (!normalizedPeriodId) { notify('Invalid period selected'); return; }
-
-      const { error } = await supabase.from('live_sessions').insert([{
-        date: sessionFormData.date,
-        time: sessionFormData.time || '00:00',
-        revenue_shopee: isShopee ? Number(sessionFormData.revenue) : 0,
-        revenue_tiktok: isTikTok ? Number(sessionFormData.revenue) : 0,
-        viewers_shopee: isShopee ? Number(sessionFormData.viewers) : 0,
-        viewers_tiktok: isTikTok ? Number(sessionFormData.viewers) : 0,
-        likes_shopee: 0,
-        likes_tiktok: 0,
-        period_id: normalizedPeriodId,
-        host_team_member_id: sessionFormData.host_team_member_id || null,
-        brand_id: sessionFormData.brandId,
-        platform_id: platformId,
-      }]);
-
-      if (error) throw error;
-
-      setShowSessionModal(false);
-      resetForm();
-      
-      const refreshed = await refreshDataWithRetry();
-      if (refreshed) {
-        notify('Session created successfully');
-      } else {
-        notify('Session created but data refresh may be delayed. Please refresh the page manually.', true);
-      }
-    } catch (err) {
-      console.error('Create error:', err);
-      notify(`Failed: ${err.message || 'Unknown error'}`, true);
-    } finally {
-      setIsSubmitting(false);
-      setEditingSession(null);
-      setOpenDropdown(null);
-    }
-  };
-
-  const handleUpdateSession = async () => {
-    if (isSubmitting) return;
-    
-    if (!editingSession) {
-      console.error('No editing session data');
-      notify('Error: No session selected for editing', true);
-      return;
-    }
-    
-    if (!sessionFormData.brandId) { notify('Please select a brand'); return; }
-    if (!sessionFormData.period_id) { notify('Please select a period'); return; }
-    
-    setIsSubmitting(true);
-    try {
-      const isShopee = ['Shopee', 'Multi'].includes(sessionFormData.platform);
-      const isTikTok = ['TikTok', 'Multi'].includes(sessionFormData.platform);
-
-      let platformId = null;
-      const { data: platRow, error: platformError } = await supabase
-        .from('platforms')
-        .select('platform_id')
-        .ilike('platform_name', sessionFormData.platform)
-        .maybeSingle();
-      if (platformError) throw platformError;
-      platformId = platRow?.platform_id;
-      if (!platformId) throw new Error('Platform ID not found');
-
-      const sessionId = editingSession.id || editingSession._rawId;
-      if (!sessionId) {
-        console.error('No session ID found in editingSession:', editingSession);
-        throw new Error('Session ID not found');
-      }
-
-      const { data, error } = await supabase
-        .from('live_sessions')
-        .update({
-          date: sessionFormData.date,
-          time: sessionFormData.time || '00:00',
-          revenue_shopee: isShopee ? Number(sessionFormData.revenue) : 0,
-          revenue_tiktok: isTikTok ? Number(sessionFormData.revenue) : 0,
-          viewers_shopee: isShopee ? Number(sessionFormData.viewers) : 0,
-          viewers_tiktok: isTikTok ? Number(sessionFormData.viewers) : 0,
-          likes_shopee: 0,
-          likes_tiktok: 0,
-          brand_id: sessionFormData.brandId,
-          period_id: normalizePeriodId(sessionFormData.period_id),
-          host_team_member_id: sessionFormData.host_team_member_id || null,
-          platform_id: platformId,
-        })
-        .eq('id', sessionId)
-        .select();
-
-      if (error) throw error;
-      
-      if (!data || data.length === 0) {
-        throw new Error('No rows updated. The session may have been deleted or you lack permission.');
-      }
-
-      const refreshed = await refreshDataWithRetry();
-      if (refreshed) {
-        notify('Session updated successfully');
-      } else {
-        notify('Session updated but data refresh may be delayed. Please refresh the page manually.', true);
-      }
-      
-      setShowSessionModal(false);
-      setEditingSession(null);
-      resetForm();
-    } catch (err) {
-      console.error('UPDATE ERROR:', err);
-      notify(`Update failed: ${err.message || 'Unknown error'}`, true);
-    } finally {
-      setIsSubmitting(false);
-      setOpenDropdown(null);
-    }
-  };
-
-  const confirmDelete = async () => {
-    if (isSubmitting) return;
-    
-    setIsSubmitting(true);
-    try {
-      const matchId = sessionToDelete?._rawId ?? sessionToDelete?.id;
-      if (!matchId) throw new Error('Session ID not found');
-
-      const { error } = await supabase
-        .from('live_sessions')
-        .delete()
-        .eq('id', matchId);
-
-      if (error) throw error;
-
-      const refreshed = await refreshDataWithRetry();
-      if (refreshed) {
-        notify('Session deleted successfully');
-      } else {
-        notify('Session deleted but data refresh may be delayed. Please refresh the page manually.', true);
-      }
-      
-      setSessionToDelete(null);
-    } catch (err) {
-      console.error('DELETE ERROR:', err);
-      notify(err.message, true);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteSession = (session) => {
-    const originalSession = revenueData?.find(item => String(item.id) === String(session.id));
-    setSessionToDelete({ ...session, _rawId: originalSession?.id ?? session.id });
-  };
-
-  const openEditModal = (session) => {
-    const originalSession = revenueData?.find((item) => String(item.id) === String(session.id));
-    if (!originalSession) { 
-      notify('Error: Could not find original session data', true); 
-      return; 
-    }
-    
-    setEditingSession({ 
-      ...session, 
-      _rawId: originalSession.id,
-      id: originalSession.id
-    });
-    
-    setSessionFormData({
-      date: session.date,
-      time: session.time || format(new Date(), 'HH:mm'),
-      brandId: session.brandId,
-      platform: session.platform,
-      viewers: session.viewers,
-      revenue: session.revenue,
-      period_id: session.period_id != null ? String(session.period_id) : '',
-      host_team_member_id: session.hostId || '',
-    });
-    
-    setShowSessionModal(true);
-  };
-
-  const handleHallOfFameClick = (brandId, period) => {
-    const sessionsElement = document.getElementById('session-intelligence');
-    if (sessionsElement) {
-      sessionsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    
-    setInsightBrandId(brandId);
-    setTableFilter({ brandId: brandId, period: period || 'All' });
-    setGlobalFilterOpen(false);
-    
-    const brand = brandsList.find(b => b.id === brandId);
-    const brandName = brand?.name || 'Brand';
-    notify(`Showing ${brandName} sessions${period && period !== 'All' ? ` for ${period}` : ''}`);
-  };
-
-  const dropdownTriggerCls = (isOpen) =>
-    `w-full bg-muted/40 border rounded-xl px-3 py-2.5 text-xs text-left flex items-center justify-between transition-all ${
-      isOpen ? 'border-primary ring-1 ring-primary/20' : 'border-border'
-    }`;
-
-  const dropdownOptionCls = (isSelected) =>
-    `w-full text-left px-3 py-2 text-xs transition-colors ${
-      isSelected
-        ? 'bg-primary/10 text-primary font-semibold'
-        : 'hover:bg-muted/50 text-foreground'
-    }`;
+  const counts = { High: 0, Medium: 0, Low: 0 };
+  riskData.forEach((b) => { if (counts[b.risk] !== undefined) counts[b.risk]++; });
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Loading...</p>
+      <div className="dashboard-card p-0 overflow-hidden">
+        <div className="p-4 border-b">
+          <div className="flex items-center gap-2">
+            <ShieldAlert size={16} className="text-destructive" />
+            <h3 className="text-xs font-bold">Critical Risk Monitor</h3>
+          </div>
         </div>
+        <div className="p-8 text-center text-sm">Loading risk data...</div>
       </div>
     );
   }
 
-  // ── KPI Card — red hover shadow/border ──────────────────────────────────
-  const KpiCardItem = ({ title, value, children, isHovered, onHover }) => (
-    <div
-      className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0 transition-all"
-      style={{
-        transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
-        transform: isHovered ? "translateY(-4px)" : "translateY(0)",
-        boxShadow: isHovered ? "0 12px 32px rgba(219,26,26,0.15), 0 4px 12px rgba(0,0,0,0.08)" : "none",
-        borderColor: isHovered ? "rgba(219,26,26,0.3)" : "var(--border)",
-        backgroundColor: isHovered ? "rgba(219,26,26,0.02)" : "var(--card)",
-      }}
-      onMouseEnter={onHover}
-      onMouseLeave={onHover}
-    >
-      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
-        {title}
-      </p>
-      <p className="text-xl sm:text-2xl font-bold text-foreground leading-tight break-all">{value}</p>
-      {children}
+  const getRiskColor = (risk) => {
+    switch(risk) {
+      case 'High': return '#ef4444';
+      case 'Medium': return '#f59e0b';
+      default: return '#10b981';
+    }
+  };
+
+  return (
+    <div className="dashboard-card p-0 overflow-hidden">
+      <div className="p-4 border-b">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <ShieldAlert size={16} className="text-destructive" />
+            <h3 className="text-xs font-bold">Critical Risk Monitor</h3>
+          </div>
+        </div>
+        <p className="text-[9px] text-muted-foreground mt-2">Click on any brand to filter the chart</p>
+      </div>
+      <div className="p-4 space-y-3 max-h-[400px] overflow-y-auto">
+        {riskData.map((brand) => {
+          const riskColor = getRiskColor(brand.risk);
+          const isHovered = hoveredItem === brand.id;
+          
+          return (
+            <motion.div
+              key={brand.id}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={() => onBrandClick?.(brand.id)}
+              className="p-3 rounded-lg border cursor-pointer transition-all"
+              style={{
+                borderColor: isHovered ? `${riskColor}40` : 'var(--border)',
+                backgroundColor: isHovered ? `${riskColor}08` : 'transparent',
+                transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+                boxShadow: isHovered ? `0 8px 24px ${riskColor}20` : 'none',
+                transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.2s ease, background 0.2s ease",
+              }}
+              onMouseEnter={() => setHoveredItem(brand.id)}
+              onMouseLeave={() => setHoveredItem(null)}
+            >
+              <div className="flex justify-between items-start">
+                <h4 className="text-sm font-bold"
+                  style={{ color: isHovered ? riskColor : 'var(--foreground)' }}
+                >
+                  {brand.name}
+                </h4>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                  brand.risk === 'High'   ? 'bg-destructive text-white' :
+                  brand.risk === 'Medium' ? 'bg-amber-500 text-white'   : 'bg-emerald-500 text-white'
+                }`}>{brand.risk}</span>
+              </div>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {brand.reasons?.slice(0, 2).map((r, i) => (
+                  <span key={i} className="text-[9px] bg-muted/80 px-2 py-0.5 rounded">{r}</span>
+                ))}
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
     </div>
   );
+};
 
-  // ========== MAIN RETURN ==========
+export const Dashboard = () => {
+  const navigate = useNavigate();
+  const [notification, setNotification]     = useState(null);
+  const [isExporting, setIsExporting]       = useState(false);
+  const [selectedBrand, setSelectedBrand]   = useState(null);
+  const [timedOut, setTimedOut]             = useState(false);
+  const [forceShow, setForceShow]           = useState(false);
+  const [dateRange, setDateRange]           = useState({ start: null, end: null, preset: 'allData' });
+  const [isDarkMode, setIsDarkMode]         = useState(false);
+  const [hoveredPlatform, setHoveredPlatform] = useState(null);
+  const [hoveredButton, setHoveredButton] = useState(null);
+
+  const { data: revenue, loading: revenueLoading, totalRevenue: aggregatedTotal, brandTotals, yearlyData } = useRevenue();
+  const { brands, loading: brandsLoading } = useBrands(brandTotals);
+  const { team }                           = useTeam();
+  const { futurePredictions, retrainModels, isRetraining } = usePredictions();
+
+  // Detect dark mode
+  useEffect(() => {
+    const checkDarkMode = () => {
+      const isDark = document.documentElement.classList.contains('dark') ||
+                     (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      setIsDarkMode(isDark);
+    };
+
+    checkDarkMode();
+
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener('change', checkDarkMode);
+
+    return () => {
+      observer.disconnect();
+      mediaQuery.removeEventListener('change', checkDarkMode);
+    };
+  }, []);
+
+  const [partneredBrands, setPartneredBrands] = useState([]);
+  useEffect(() => {
+    const fetchPartneredBrands = async () => {
+      try {
+        const { data, error } = await supabase.from('partners').select('*');
+        if (!error && data) setPartneredBrands(data);
+      } catch { setPartneredBrands([]); }
+    };
+    fetchPartneredBrands();
+  }, []);
+
+  const partnershipStats = {
+    inProgress: partneredBrands.filter(p => p.status === 'In Progress').length,
+    dealing:    partneredBrands.filter(p => p.status === 'Dealing').length,
+    partner:    partneredBrands.filter(p => p.status === 'Partner').length,
+  };
+  const partnerCount = partneredBrands.length;
+
+  useEffect(() => { const t = setTimeout(() => setTimedOut(true),  8000);  return () => clearTimeout(t); }, []);
+  useEffect(() => { const t = setTimeout(() => setForceShow(true), 10000); return () => clearTimeout(t); }, []);
+
+  const globalYears = useMemo(() => yearlyData.map((y) => y.year).sort((a, b) => a - b), [yearlyData]);
+
+  const filteredRevenue = useMemo(() => {
+    if (!revenue || revenue.length === 0) return [];
+    return revenue.filter((item) => {
+      const matchesBrand = !selectedBrand || item.brand_id === selectedBrand;
+      const itemDate = item?.date ? new Date(item.date) : null;
+      const matchesDate =
+        !dateRange?.start || !dateRange?.end || dateRange.preset === 'allData' ||
+        (itemDate && itemDate >= dateRange.start && itemDate <= dateRange.end);
+      return matchesBrand && matchesDate;
+    });
+  }, [revenue, selectedBrand, dateRange]);
+
+  const selectedBrandName = brands?.find((b) => b.brand_id === selectedBrand)?.brand_name;
+
+  const totalRevenue = useMemo(
+    () => filteredRevenue.reduce((sum, item) => sum + sumRevenue(item), 0),
+    [filteredRevenue]
+  );
+
+  const chartData = useMemo(() => {
+    const yearMap = new Map();
+    filteredRevenue.forEach((item) => {
+      if (!item?.date) return;
+      const year = new Date(item.date).getFullYear();
+      yearMap.set(year, (yearMap.get(year) || 0) + sumRevenue(item));
+    });
+    const result = Array.from(yearMap.entries())
+      .map(([year, rev]) => ({ year: year.toString(), actual: rev, forecast: 0 }))
+      .sort((a, b) => parseInt(a.year) - parseInt(b.year));
+
+    if (futurePredictions?.length > 0 && !selectedBrand && dateRange.preset === 'allData') {
+      const predByYear = new Map();
+      futurePredictions.forEach((pred) => {
+        if (pred?.date && pred.is_future === true) {
+          const year = new Date(pred.date).getFullYear();
+          predByYear.set(year, (predByYear.get(year) || 0) + (pred.predicted || 0));
+        }
+      });
+      predByYear.forEach((value, year) => {
+        const existing = result.find((r) => parseInt(r.year) === year);
+        if (existing) existing.forecast = value;
+        else result.push({ year: year.toString(), actual: 0, forecast: value });
+      });
+    }
+    return result.sort((a, b) => parseInt(a.year) - parseInt(b.year));
+  }, [filteredRevenue, futurePredictions, selectedBrand, dateRange.preset]);
+
+  const totalTeamMembers = useMemo(() => team?.length ?? 0, [team]);
+  const activeBrands     = useMemo(() => brands?.filter((b) => b.brand_status === 'active').length ?? 0, [brands]);
+  const atRisk           = useMemo(() => brands?.filter((b) => b.risk_level === 'High').length ?? 0, [brands]);
+  const hasForecast      = useMemo(() => chartData.some((d) => d.forecast > 0), [chartData]);
+
+  const forecastDrop = useMemo(() => {
+    if (!hasForecast) return null;
+    const lastActual    = [...chartData].reverse().find((d) => d.actual > 0);
+    const firstForecast = chartData.find((d) => d.forecast > 0);
+    if (!lastActual || !firstForecast) return null;
+    const dropPct = ((lastActual.actual - firstForecast.forecast) / lastActual.actual) * 100;
+    return dropPct >= 10 ? { dropPct: Math.round(dropPct), forecastYear: firstForecast.year } : null;
+  }, [hasForecast, chartData]);
+
+  const avgConfidence =
+    futurePredictions?.length > 0
+      ? (futurePredictions.reduce((s, p) => s + (p.model_r2 || 0), 0) / futurePredictions.length) * 100
+      : 0;
+
+  // Platform Contribution - Multi color based on theme
+  const multiColor = isDarkMode ? '#ffffff' : '#000000';
+  
+  const platformData = useMemo(() => {
+    if (!filteredRevenue || filteredRevenue.length === 0) return [];
+
+    let totalShopee = 0;
+    let totalTikTok = 0;
+    let totalMulti = 0;
+
+    filteredRevenue.forEach((item) => {
+      const s = item.revenue_shopee ?? 0;
+      const t = item.revenue_tiktok ?? 0;
+      
+      totalShopee += s;
+      totalTikTok += t;
+      
+      if (s > 0 && t > 0) {
+        totalMulti += (s + t);
+      }
+    });
+
+    const shopeeNet = totalShopee;
+    const tiktokNet = totalTikTok;
+
+    const total = shopeeNet + tiktokNet;
+    
+    if (total === 0) return [];
+
+    const segments = [
+      { name: 'TikTok', value: tiktokNet, color: '#2563eb' },
+      { name: 'Shopee', value: shopeeNet, color: '#ee4d2d' },
+    ];
+
+    if (totalMulti > 0) {
+      segments.push({ name: 'Multi', value: totalMulti, color: multiColor });
+    }
+
+    const grandTotal = total + totalMulti;
+    
+    return segments.map(s => ({ 
+      ...s, 
+      value: Math.round((s.value / grandTotal) * 100) 
+    }));
+  }, [filteredRevenue, multiColor]);
+
+  const notify = useCallback((msg) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), 4000);
+  }, []);
+
+  const handleRerunModel = useCallback(async () => {
+    const result = await retrainModels();
+    notify(result.success ? 'ML models retrained successfully!' : `Failed: ${result.error}`);
+  }, [retrainModels, notify]);
+
+  const handleExportReport = useCallback(async () => {
+    setIsExporting(true);
+    await exportCompleteReport();
+    setIsExporting(false);
+  }, []);
+
+  const handleBrandClick = useCallback(
+    (brandId) => {
+      const isDeselecting = brandId === selectedBrand;
+      setSelectedBrand(isDeselecting ? null : brandId);
+      const brandName = brands?.find((b) => b.brand_id === brandId)?.brand_name;
+      notify(isDeselecting ? 'Cleared brand filter' : `Filtering by ${brandName}`);
+    },
+    [selectedBrand, brands, notify]
+  );
+
+  const showLoading =
+    (revenueLoading || brandsLoading) && !timedOut && !forceShow &&
+    revenue?.length === 0 && yearlyData?.length === 0;
+
+  if (showLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <div className="w-11 h-11 border-3 border-muted border-t-primary rounded-full animate-spin" />
+        <p className="text-muted-foreground text-sm">Loading dashboard data...</p>
+        <p className="text-[10px] text-muted-foreground opacity-70">This may take a moment</p>
+      </div>
+    );
+  }
+
   return (
-    <div id="revenue-report-container">
+    <div id="dashboard-report-container" className="space-y-8 pb-12 relative">
       <AnimatePresence>
         {notification && (
           <motion.div
             initial={{ opacity: 0, y: -20, x: '-50%' }}
-            animate={{ opacity: 1, y: 20, x: '-50%' }}
-            exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className="fixed top-4 left-1/2 z-[100] bg-card text-foreground px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-border"
+            animate={{ opacity: 1, y: 20,  x: '-50%' }}
+            exit={{ opacity: 0 }}
+            className="fixed top-4 left-1/2 z-[100] bg-card px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border"
           >
-            <div className={`rounded-full p-1 ${notification.includes('Failed') || notification.includes('error') ? 'bg-red-500' : 'bg-emerald-500'}`}>
-              <CheckCircle2 size={16} className="text-white" />
-            </div>
-            <span className="text-sm font-bold tracking-tight">{notification}</span>
+            <CheckCircle2 size={16} className="text-emerald-500" />
+            <span className="text-sm font-bold">{notification}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="space-y-6 pb-16 relative min-w-0 overflow-x-hidden">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Revenue</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Track performance, analyze trends, and monitor platform distribution.</p>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <SortByButton
-              brands={brands}
-              onBrandChange={handleSortByBrandChange}
-              selectedBrand={insightBrandId !== 'All' ? insightBrandId : null}
-              onDateRangeChange={setDateRange}
-              dateRange={dateRange}
-            />
-
-            <div className="relative" ref={globalFilterRef}>
-              <button
-                onClick={() => setGlobalFilterOpen(p => !p)}
-                onMouseEnter={() => setIsFilterHovered(true)}
-                onMouseLeave={() => setIsFilterHovered(false)}
-                className="relative flex items-center gap-2 h-10 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all"
-                style={{
-                  background: globalFilterOpen ? 'rgba(219,26,26,0.05)' : (isFilterHovered ? '#DB1A1A' : 'rgba(0,0,0,0.05)'),
-                  borderColor: globalFilterOpen ? '#DB1A1A' : (isFilterHovered ? '#DB1A1A' : 'var(--border)'),
-                  color: globalFilterOpen ? '#DB1A1A' : (isFilterHovered ? 'white' : 'var(--foreground)'),
-                  transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease, color 0.2s ease",
-                  transform: isFilterHovered && !globalFilterOpen ? "translateY(-2px)" : "translateY(0)",
-                  boxShadow: isFilterHovered && !globalFilterOpen ? "0 8px 20px rgba(219,26,26,0.25)" : "none",
-                }}
-              >
-                <SlidersHorizontal size={14} />
-                Filters
-                {globalActiveCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-white text-[9px] font-black flex items-center justify-center">
-                    {globalActiveCount}
-                  </span>
-                )}
-                <ChevronDown size={12} className={`transition-transform ${globalFilterOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {globalFilterOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                    transition={{ duration: 0.14 }}
-                    className="absolute right-0 top-full mt-2 z-50 w-[280px] bg-card border border-border rounded-2xl shadow-xl"
-                  >
-                    <div className="p-4 space-y-4">
-                      <div>
-                        <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">Period</label>
-                        <select
-                          value={tableFilter.period}
-                          onChange={(e) => handleGlobalPeriod(e.target.value)}
-                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary/20"
-                        >
-                          <option value="All">All Periods</option>
-                          {uniquePeriods.map(period => (
-                            <option key={`filter-period-${period}`} value={period}>{period}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="border-t border-border/60" />
-
-                      <div>
-                        <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">Rows per page</label>
-                        <select
-                          value={rowLimit === null ? 'All' : rowLimit}
-                          onChange={(e) => setRowLimit(e.target.value === 'All' ? null : parseInt(e.target.value))}
-                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary/20"
-                        >
-                          {LIMIT_OPTIONS.map(opt => (
-                            <option key={opt === null ? 'All' : opt} value={opt === null ? 'All' : opt}>
-                              {opt === null ? 'All' : opt}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <button
-                        onClick={resetGlobalFilters}
-                        className="w-full py-2 rounded-lg border border-border/60 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted/20 transition-all mt-2"
-                      >
-                        Reset all filters
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            <input type="file" ref={fileInputRef} className="hidden" accept=".csv,.xlsx,.json" />
-          </div>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
+          <p className="text-muted-foreground mt-1">Welcome back, here is what is happening today.</p>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 min-w-0">
-          <KpiCardItem 
-            title="Revenue (range)" 
-            value={formatCurrency(rangeRevenue)}
-            isHovered={hoveredKpi === 'revenue'}
-            onHover={() => setHoveredKpi(hoveredKpi === 'revenue' ? null : 'revenue')}
+        <div className="flex items-center gap-3">
+          {/* Export Report Button - Black default, Blue on hover */}
+          <button
+            onClick={handleExportReport}
+            disabled={isExporting}
+            className="inline-flex items-center justify-center rounded-xl text-xs font-bold uppercase tracking-wider transition-all h-10 px-6 py-2 gap-2 bg-black text-white hover:bg-blue-600"
+            style={{
+              transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease",
+              transform: hoveredButton === 'export' ? "translateY(-2px)" : "translateY(0)",
+              boxShadow: hoveredButton === 'export' ? "0 8px 20px rgba(37,99,235,0.3)" : "0 4px 6px rgba(0,0,0,0.1)",
+            }}
+            onMouseEnter={() => setHoveredButton('export')}
+            onMouseLeave={() => setHoveredButton(null)}
           >
-            <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
-              <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">All-time</span>
-              <span className="text-[11px] font-bold text-foreground break-all">{formatCurrency(allTimeRevenue)}</span>
+            {isExporting ? <Activity className="animate-spin" size={16} /> : <Download size={14} />}
+            Export Report
+          </button>
+
+          {/* Rerun ML Model Button - Black default, Blue on hover */}
+          <button
+            onClick={handleRerunModel}
+            disabled={isRetraining}
+            className="inline-flex items-center justify-center gap-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border h-10 px-4 py-2 bg-black text-white border-black hover:bg-blue-600 hover:border-blue-600"
+            style={{
+              transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease",
+              transform: hoveredButton === 'rerun' ? "translateY(-2px)" : "translateY(0)",
+              boxShadow: hoveredButton === 'rerun' ? "0 8px 20px rgba(37,99,235,0.25)" : "none",
+            }}
+            onMouseEnter={() => setHoveredButton('rerun')}
+            onMouseLeave={() => setHoveredButton(null)}
+          >
+            {isRetraining
+              ? <><Activity size={14} className="animate-spin" /> Training...</>
+              : <><RefreshCw size={14} /> Rerun ML Model</>}
+          </button>
+
+          <SortByButton
+            brands={brands}
+            onBrandChange={setSelectedBrand}
+            selectedBrand={selectedBrand}
+            onDateRangeChange={setDateRange}
+            dateRange={dateRange}
+          />
+        </div>
+      </div>
+
+      {selectedBrand && selectedBrandName && (
+        <div className="flex items-center gap-2 flex-wrap bg-primary/5 border border-primary/20 rounded-lg px-4 py-2">
+          <span className="text-[9px] text-muted-foreground">Active filter:</span>
+          <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">Brand: {selectedBrandName}</span>
+          <button onClick={() => setSelectedBrand(null)} className="text-[9px] text-muted-foreground hover:text-primary transition-colors ml-auto">
+            Clear filter
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <KpiCard
+          title="Total Revenue" value={formatCurrency(totalRevenue)} icon={ArrowUpRight}
+          badge={selectedBrandName ? `Brand: ${selectedBrandName}` : 'All Time'} badgeStyle="bg-primary/10 text-primary"
+          action={!selectedBrand ? 'View Analysis →' : ''} onAction={() => !selectedBrand && navigate('/admin/revenue')}
+        />
+        <KpiCard
+          title="Brands Overview" value={`${activeBrands}/${atRisk}`} icon={AlertTriangle}
+          badge={`${atRisk} High Risk of Churn`} badgeStyle={atRisk > 0 ? 'bg-destructive text-white' : 'bg-emerald-500 text-white'}
+          action="Manage Brands →" onAction={() => navigate('/admin/brands')}
+        />
+        <KpiCard
+          title="Total Staff" value={totalTeamMembers} icon={Activity}
+          badge="Active Staff" badgeStyle="bg-primary/10 text-primary"
+          action="Manage Team →" onAction={() => navigate('/admin/team')}
+        />
+        <KpiCard
+          title="Partnership Status" value={partnerCount} icon={Handshake}
+          badge="Total Active Partnerships" badgeStyle="bg-primary/10 text-primary"
+          action="View Partnerships →" onAction={() => navigate('/admin/leads')}
+        >
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-3 text-center"
+              style={{
+                transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 8px 20px rgba(245,158,11,0.2)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              <p className="text-xs text-gray-400">In Progress</p>
+              <p className="text-lg font-bold text-yellow-400">{partnershipStats.inProgress}</p>
             </div>
-          </KpiCardItem>
+            <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3 text-center"
+              style={{
+                transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 8px 20px rgba(59,130,246,0.2)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              <p className="text-xs text-gray-400">Dealing</p>
+              <p className="text-lg font-bold text-blue-400">{partnershipStats.dealing}</p>
+            </div>
+            <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3 text-center"
+              style={{
+                transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 8px 20px rgba(16,185,129,0.2)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              <p className="text-xs text-gray-400">Partner</p>
+              <p className="text-lg font-bold text-green-400">{partnershipStats.partner}</p>
+            </div>
+          </div>
+        </KpiCard>
+      </div>
 
-          <KpiCardItem 
-            title="Top Performers"
-            value=""
-            isHovered={hoveredKpi === 'performers'}
-            onHover={() => setHoveredKpi(hoveredKpi === 'performers' ? null : 'performers')}
-          >
-            <div className="space-y-2">
-              {topPerformersFromView.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No data in range</p>
-              ) : (
-                topPerformersFromView.map((staff, i) => (
-                  <div
-                    key={staff.staffId}
-                    className="flex items-center justify-between gap-2 min-w-0 cursor-pointer hover:bg-muted/50 p-1 rounded-lg transition-colors"
-                    onClick={() => { setSelectedStaffForDetail(staff); setShowStaffDetailModal(true); }}
-                  >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <span className="text-[8px] font-black text-muted-foreground/50 w-3 shrink-0">{i + 1}</span>
-                      <span className="text-[11px] font-bold text-primary truncate hover:underline">{staff.staffName}</span>
-                    </div>
-                    <span className="text-[9px] font-bold text-foreground truncate">See details</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <RevenueBarChart
+          chartData={chartData} hasForecast={hasForecast} isRetraining={isRetraining} isLoading={false}
+          onRerunModel={handleRerunModel} formatCompactCurrency={formatCompactCurrency} formatCurrency={formatCurrency}
+          selectedBrand={selectedBrandName} forecastDrop={forecastDrop}
+        />
+
+        <div className="space-y-8">
+          <div className="dashboard-card p-0 overflow-hidden">
+            <div className="p-4 border-b border-border bg-muted/20">
+              <div className="flex items-center gap-2">
+                <PieChartIcon size={16} className="text-primary" />
+                <h3 className="text-xs font-bold uppercase tracking-widest">Platform Contribution</h3>
+              </div>
+            </div>
+            <div className="p-4">
+              {platformData.length > 0 ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-full h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={platformData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={80}
+                          paddingAngle={4}
+                          dataKey="value"
+                        >
+                          {platformData.map((entry, i) => (
+                            <Cell 
+                              key={i} 
+                              fill={entry.name === 'Multi' ? multiColor : entry.color}
+                              style={{
+                                transition: "filter 0.3s ease, transform 0.3s ease",
+                              }}
+                              onMouseEnter={(e) => {
+                                if (e.currentTarget) {
+                                  e.currentTarget.style.filter = "brightness(0.85)";
+                                  e.currentTarget.style.transform = "scale(1.02)";
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (e.currentTarget) {
+                                  e.currentTarget.style.filter = "brightness(1)";
+                                  e.currentTarget.style.transform = "scale(1)";
+                                }
+                              }}
+                            />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0];
+                            return (
+                              <div className="bg-card/95 backdrop-blur-md border border-border p-2 rounded-lg shadow-lg flex items-center gap-2">
+                                <div 
+                                  className="w-2 h-2 rounded-full" 
+                                  style={{ backgroundColor: d.payload.name === 'Multi' ? multiColor : d.payload.color }} 
+                                />
+                                <span className="text-[10px] font-bold">{d.name}</span>
+                                <span className="text-[10px] font-bold text-primary">{d.value}%</span>
+                              </div>
+                            );
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
-                ))
+                  {/* Legend for Platform Contribution */}
+                  <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+                    {platformData.map((p) => {
+                      const legendColor = p.name === 'Multi' ? multiColor : p.color;
+                      const isHovered = hoveredPlatform === p.name;
+                      
+                      return (
+                        <div 
+                          key={p.name} 
+                          className="flex items-center gap-1.5 cursor-pointer"
+                          style={{
+                            transition: "transform 0.2s ease",
+                            transform: isHovered ? "translateY(-2px)" : "translateY(0)",
+                          }}
+                          onMouseEnter={() => setHoveredPlatform(p.name)}
+                          onMouseLeave={() => setHoveredPlatform(null)}
+                        >
+                          <div 
+                            className="w-2.5 h-2.5 rounded-full shrink-0" 
+                            style={{ 
+                              backgroundColor: legendColor,
+                              transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                              transform: isHovered ? "scale(1.3)" : "scale(1)",
+                              boxShadow: isHovered ? `0 0 8px ${legendColor}` : 'none',
+                            }}
+                          />
+                          <span className="text-[11px] font-semibold text-muted-foreground"
+                            style={{ color: isHovered ? legendColor : 'var(--muted-foreground)' }}
+                          >
+                            {p.name}
+                          </span>
+                          <span className="text-[11px] font-bold text-foreground">{p.value}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground text-sm">No platform data available</div>
               )}
             </div>
-          </KpiCardItem>
+          </div>
 
-          <KpiCardItem 
-            title="Top Platform (range)" 
-            value={topPlatform.name}
-            isHovered={hoveredKpi === 'platform'}
-            onHover={() => setHoveredKpi(hoveredKpi === 'platform' ? null : 'platform')}
-          >
-            <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
-              <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Revenue</span>
-              <span className="text-[11px] font-bold text-foreground break-all">{formatCurrency(topPlatform.revenue)}</span>
-            </div>
-          </KpiCardItem>
-
-          <KpiCardItem 
-            title="Live Sessions (range)" 
-            value={totalSessionsInRange.toLocaleString()}
-            isHovered={hoveredKpi === 'sessions'}
-            onHover={() => setHoveredKpi(hoveredKpi === 'sessions' ? null : 'sessions')}
-          >
-            <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
-              <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Avg / session</span>
-              <span className="text-[11px] font-bold text-foreground break-all">{formatCurrency(Math.round(avgRevenueInRange))}</span>
-            </div>
-          </KpiCardItem>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12 min-w-0">
-          <RevenueBrandsPanel
-            brandsList={brandsList}
-            insightBrandId={insightBrandId}
-            brandPerformanceInsights={brandPerformanceInsights}
-            handleHallOfFameClick={handleHallOfFameClick}
-            formatCurrency={formatCurrency}
-          />
-          <RevenueSessionsTable
-            visibleSessions={visibleSessions}
-            sessionIntelligence={sessionIntelligence}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            tableFilter={tableFilter}
-            setTableFilter={setTableFilter}
-            sortCol={sortCol}
-            sortDir={sortDir}
-            rowLimit={rowLimit}
-            setRowLimit={setRowLimit}
-            openEditModal={openEditModal}
-            handleDeleteSession={handleDeleteSession}
-            formatCurrency={formatCurrency}
-            parseISO={parseISO}
-            format={format}
-            resetForm={resetForm}
-            setShowSessionModal={setShowSessionModal}
-            uniquePeriods={uniquePeriods}
-            loading={loading}
-          />
-        </div>
-
-        <AnimatePresence>
-          {showSessionModal && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="relative bg-card w-full max-w-lg rounded-2xl border border-border shadow-2xl my-8 mx-auto overflow-hidden"
-                ref={modalRef}
-              >
-                <div className="sticky top-0 z-10 px-5 py-4 border-b border-border bg-card">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-foreground">
-                      {editingSession ? 'Edit Session Record' : 'Record New Session'}
-                    </h3>
-                    <button
-                      onClick={closeSessionModal}
-                      disabled={isSubmitting}
-                      className="p-1.5 hover:bg-muted rounded-full transition-colors disabled:opacity-50"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {editingSession ? 'Update existing session data' : 'Add a new live session record'}
-                  </p>
-                </div>
-
-                <div className="overflow-y-auto max-h-[calc(90vh-140px)] px-5 py-5 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Date</label>
-                      <input
-                        type="date"
-                        value={sessionFormData.date}
-                        onChange={e => setSessionFormData(p => ({ ...p, date: e.target.value }))}
-                        disabled={isSubmitting}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Time</label>
-                      <input
-                        type="time"
-                        value={sessionFormData.time}
-                        onChange={e => setSessionFormData(p => ({ ...p, time: e.target.value }))}
-                        disabled={isSubmitting}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Brand <span className="text-primary">*</span></label>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => !isSubmitting && setOpenDropdown(prev => prev === 'brand' ? null : 'brand')}
-                          disabled={isSubmitting}
-                          className={dropdownTriggerCls(openDropdown === 'brand')}
-                        >
-                          <span className={sessionFormData.brandId ? 'text-foreground' : 'text-muted-foreground truncate'}>
-                            {sessionFormData.brandId ? (brandsList.find(b => b.id === sessionFormData.brandId)?.name || 'Unknown') : 'Select Brand'}
-                          </span>
-                          <ChevronDown size={14} className={`text-muted-foreground transition-transform flex-shrink-0 ml-2 ${openDropdown === 'brand' ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openDropdown === 'brand' && !isSubmitting && (
-                          <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[200px]">
-                            {brandsList.map(b => (
-                              <button key={b.id} type="button" onClick={() => { setSessionFormData(p => ({ ...p, brandId: b.id })); setOpenDropdown(null); }} className={dropdownOptionCls(sessionFormData.brandId === b.id)}>
-                                <span className="truncate">{b.name}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Channel</label>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => !isSubmitting && setOpenDropdown(prev => prev === 'platform' ? null : 'platform')}
-                          disabled={isSubmitting}
-                          className={dropdownTriggerCls(openDropdown === 'platform')}
-                        >
-                          <span className="text-foreground truncate">{PLATFORM_OPTIONS.find(p => p.value === sessionFormData.platform)?.label || 'Select Channel'}</span>
-                          <ChevronDown size={14} className={`text-muted-foreground transition-transform flex-shrink-0 ml-2 ${openDropdown === 'platform' ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openDropdown === 'platform' && !isSubmitting && (
-                          <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[180px]">
-                            {PLATFORM_OPTIONS.map(p => (
-                              <button key={p.value} type="button" onClick={() => { setSessionFormData(prev => ({ ...prev, platform: p.value })); setOpenDropdown(null); }} className={dropdownOptionCls(sessionFormData.platform === p.value)}>
-                                {p.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Period <span className="text-primary">*</span></label>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => !isSubmitting && setOpenDropdown(prev => prev === 'period' ? null : 'period')}
-                          disabled={isSubmitting}
-                          className={dropdownTriggerCls(openDropdown === 'period')}
-                        >
-                          <span className={sessionFormData.period_id ? 'text-foreground' : 'text-muted-foreground truncate'}>
-                            {sessionFormData.period_id ? (uniquePeriodsForDropdown.find(p => String(p.id) === String(sessionFormData.period_id))?.name || `Period ${sessionFormData.period_id}`) : 'Select Period'}
-                          </span>
-                          <ChevronDown size={14} className={`text-muted-foreground transition-transform flex-shrink-0 ml-2 ${openDropdown === 'period' ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openDropdown === 'period' && !isSubmitting && (
-                          <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[200px]">
-                            {uniquePeriodsForDropdown.map(period => (
-                              <button key={`modal-period-${period.id}`} type="button" onClick={() => { setSessionFormData(p => ({ ...p, period_id: String(period.id) })); setOpenDropdown(null); }} className={dropdownOptionCls(String(sessionFormData.period_id) === String(period.id))}>
-                                <span className="truncate">{period.name}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Host</label>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => !isSubmitting && setOpenDropdown(prev => prev === 'host' ? null : 'host')}
-                          disabled={isSubmitting}
-                          className={dropdownTriggerCls(openDropdown === 'host')}
-                        >
-                          <span className={sessionFormData.host_team_member_id ? 'text-foreground' : 'text-muted-foreground truncate'}>
-                            {sessionFormData.host_team_member_id ? ((team || []).find(t => sid(t.id) === sessionFormData.host_team_member_id)?.name || 'Unknown') : 'No host'}
-                          </span>
-                          <ChevronDown size={14} className={`text-muted-foreground transition-transform flex-shrink-0 ml-2 ${openDropdown === 'host' ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openDropdown === 'host' && !isSubmitting && (
-                          <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[200px]">
-                            <button type="button" onClick={() => { setSessionFormData(p => ({ ...p, host_team_member_id: '' })); setOpenDropdown(null); }} className={dropdownOptionCls(sessionFormData.host_team_member_id === '')}>No host</button>
-                            {(team || []).map(t => (
-                              <button key={sid(t.id)} type="button" onClick={() => { setSessionFormData(p => ({ ...p, host_team_member_id: sid(t.id) })); setOpenDropdown(null); }} className={dropdownOptionCls(sessionFormData.host_team_member_id === sid(t.id))}>
-                                <span className="truncate">{t.name}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Viewers</label>
-                      <input
-                        type="number" min="0"
-                        value={sessionFormData.viewers}
-                        onChange={e => setSessionFormData(p => ({ ...p, viewers: parseInt(e.target.value) || 0 }))}
-                        disabled={isSubmitting}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Revenue (Rp)</label>
-                      <input
-                        type="number" min="0"
-                        value={sessionFormData.revenue}
-                        onChange={e => setSessionFormData(p => ({ ...p, revenue: parseInt(e.target.value) || 0 }))}
-                        disabled={isSubmitting}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="sticky bottom-0 z-10 px-5 py-4 border-t border-border bg-card flex flex-col sm:flex-row items-center justify-end gap-3">
-                  <button onClick={closeSessionModal} disabled={isSubmitting} className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase text-muted-foreground hover:bg-muted transition-all disabled:opacity-50 order-2 sm:order-1">
-                    Cancel
-                  </button>
-                  <button
-                    onClick={editingSession ? handleUpdateSession : handleCreateSession}
-                    disabled={isSubmitting}
-                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase bg-primary text-white hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 order-1 sm:order-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      editingSession ? 'Update Session' : 'Create Session'
-                    )}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {sessionToDelete && (
-            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-card w-full max-w-sm rounded-[32px] border border-border shadow-2xl p-8 text-center"
-              >
-                <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <AlertTriangle size={32} />
-                </div>
-                <h3 className="text-lg font-bold mb-2">Delete Session?</h3>
-                <p className="text-xs text-muted-foreground mb-8">
-                  This will permanently remove the record for <span className="text-foreground font-bold">{sessionToDelete.brandName}</span>.
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => setSessionToDelete(null)} disabled={isSubmitting} className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase text-muted-foreground hover:bg-muted transition-all disabled:opacity-50">Cancel</button>
-                  <button onClick={confirmDelete} disabled={isSubmitting} className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase bg-red-500 text-white hover:bg-red-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Deleting...
-                      </>
-                    ) : (
-                      'Delete'
-                    )}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {showStaffDetailModal && selectedStaffForDetail && (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-card w-full max-w-sm rounded-2xl border border-border shadow-2xl overflow-hidden"
-              >
-                <div className="px-4 py-3 border-b border-border bg-primary/10">
-                  <h3 className="text-base font-bold text-foreground">{selectedStaffForDetail.staffName}</h3>
-                  <p className="text-[9px] text-muted-foreground mt-0.5">Performance Details</p>
-                </div>
-
-                <div className="p-4 space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-border/40">
-                    <div>
-                      <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Sessions</p>
-                      <p className="text-lg font-bold text-foreground">{selectedStaffForDetail.sessionCount.toLocaleString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Score</p>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-lg font-bold text-primary">{selectedStaffForDetail.finalScore}</span>
-                        <span className="text-[8px] text-muted-foreground">/100</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-muted/30 rounded-lg p-2">
-                      <p className="text-[8px] text-muted-foreground">Revenue</p>
-                      <p className="text-[10px] font-bold text-foreground truncate">{formatCurrency(Math.round(selectedStaffForDetail.totalRevenue / 1000000))}M</p>
-                    </div>
-                    <div className="bg-muted/30 rounded-lg p-2">
-                      <p className="text-[8px] text-muted-foreground">Viewers</p>
-                      <p className="text-[10px] font-bold text-foreground">{(selectedStaffForDetail.totalViewers / 1000).toFixed(0)}K</p>
-                    </div>
-                    <div className="bg-muted/30 rounded-lg p-2">
-                      <p className="text-[8px] text-muted-foreground">Likes</p>
-                      <p className="text-[10px] font-bold text-foreground">{(selectedStaffForDetail.totalLikes / 1000).toFixed(0)}K</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
-                    <span className="text-[8px] font-bold text-muted-foreground">Revenue/Viewer</span>
-                    <span className="text-[10px] font-bold text-foreground">{formatCurrency(Math.round(selectedStaffForDetail.revenuePerViewer))}</span>
-                  </div>
-
-                  <div className="space-y-2 pt-1">
-                    {[
-                      { label: 'Revenue', score: selectedStaffForDetail.revenueScore, color: 'bg-emerald-500' },
-                      { label: 'Viewers', score: selectedStaffForDetail.viewerScore, color: 'bg-blue-500' },
-                      { label: 'Likes',   score: selectedStaffForDetail.likesScore,  color: 'bg-red-500' },
-                    ].map(({ label, score, color }) => (
-                      <div key={label}>
-                        <div className="flex justify-between text-[7px] mb-0.5">
-                          <span>{label}</span><span>{score}%</span>
-                        </div>
-                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                          <div className={`h-full ${color} rounded-full`} style={{ width: `${score}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="p-3 bg-muted/20 border-t border-border">
-                  <button
-                    onClick={() => setShowStaffDetailModal(false)}
-                    className="w-full py-2 rounded-xl text-[9px] font-bold uppercase bg-primary text-white hover:bg-primary/90 transition-all"
-                  >
-                    Close
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        <div className="pt-8 border-t border-border">
-          <p className="text-[9px] text-center text-muted-foreground uppercase tracking-[0.3em] font-bold">
-            VidHelp Intelligence Hub • {revenueData?.length?.toLocaleString() || '0'} Total Sessions
-          </p>
+          <CriticalRiskMonitor onBrandClick={handleBrandClick} />
         </div>
       </div>
     </div>
   );
 };
 
-export default Revenue;
+export default Dashboard;
