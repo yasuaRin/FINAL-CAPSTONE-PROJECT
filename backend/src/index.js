@@ -33,6 +33,7 @@ const supabase = createClient(
 
 import revenueRoutes from './routes/revenueRoutes.js';
 
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MIDDLEWARE - FIXED CORS
 // ─────────────────────────────────────────────────────────────────────────────
