@@ -83,25 +83,25 @@ const Footer = ({ variant = 'public' }) => {
         HIRING
       </a>
     </li>
-    {user && (
-      <li>
-        <Link to="/" className="transition-colors uppercase text-[#2563eb] hover:text-[#1d4ed8]">
-          LANDING PAGE
-        </Link>
-      </li>
-    )}
   </ul>
-  
-  {!user && (
-    <div className="pt-6 border-t border-border">
-      <Link 
-        to="/admin" 
+
+  <div className="pt-6 border-t border-border">
+    {variant === 'admin' ? (
+      <Link
+        to="/"
+        className="font-black text-[10px] hover:text-foreground transition-colors uppercase tracking-[0.3em] flex items-center gap-2 text-[#2563eb]"
+      >
+        <Cpu size={14} /> Landing Page
+      </Link>
+    ) : (
+      <Link
+        to="/admin"
         className="font-black text-[10px] hover:text-foreground transition-colors uppercase tracking-[0.3em] flex items-center gap-2 text-[#DB1A1A]"
       >
         <Cpu size={14} /> Admin Portal
       </Link>
-    </div>
-  )}
+    )}
+  </div>
 </div>
 
             {/* Column 3: Contact & Office Info */}
