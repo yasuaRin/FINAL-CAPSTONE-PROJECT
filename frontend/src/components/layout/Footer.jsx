@@ -1,142 +1,165 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Instagram, Phone, Mail, ArrowUp, Cpu } from 'lucide-react';
+// [FROM CURRENT] - Added useAuth for admin authentication
+import { Instagram, Phone, Mail, Cpu } from 'lucide-react';
+// [FROM CURRENT] - Removed ArrowUp (unused), kept Cpu
 import { useAuth } from '../../hooks/useAuth';
+// [FROM CURRENT] - Added useAuth hook
 
 const Footer = () => {
+  // [FROM CURRENT] - Auth logic to show different content for logged-in users
   const { user } = useAuth();
+  
   return (
     <>
-        <style>{`
-      /* Light mode - when html does NOT have dark class */
-      html:not(.dark) .vh-footer { 
-        background-color: #e5e7eb !important;
-      }
-      /* Dark mode */
-      .dark .vh-footer { 
-        background-color: #1e1e1e !important;      }
+      <style>{`
+        /* [FROM CURRENT] - Light mode - when html does NOT have dark class */
+        html:not(.dark) .vh-footer { 
+          background-color: #e5e7eb !important;
+        }
+        /* [FROM CURRENT] - Dark mode */
+        .dark .vh-footer { 
+          background-color: #1e1e1e !important;
+        }
+      `}</style>
 
-    `}</style>
-    <footer className="vh-footer w-full text-foreground border-t border-border pt-10 pb-6 px-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-10">
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              {user ? (
-                <span className="text-2xl font-black tracking-tighter uppercase font-sans text-[#2563eb]">VH</span>
-              ) : (
-                <>
-                  <img src="/VH-removebg.png" alt="VidHelp Logo" className="w-8 h-8 object-contain" />
-                  <span className="text-2xl font-black tracking-tighter uppercase font-sans text-foreground">VidHelp</span>
-                </>
+      <footer className="vh-footer w-full text-foreground border-t border-border pt-10 pb-6 px-6">
+        <div className="max-w-6xl mx-auto">
+          {/* [FROM INCOMING] - Added text-left class for better alignment */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-10 text-left">
+            
+            {/* Column 1: Agency Profile */}
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                {/* [FROM CURRENT] - Conditional logo for logged-in users */}
+                {user ? (
+                  <span className="text-2xl font-black tracking-tighter uppercase font-sans text-primary">VH</span>
+                ) : (
+                  <>
+                    <img src="/VH-removebg.png" alt="VidHelp Logo" className="w-8 h-8 object-contain" />
+                    {/* [FROM INCOMING] - Changed text-foreground from hardcoded blue */}
+                    <span className="text-2xl font-black tracking-tighter uppercase font-sans text-foreground">VidHelp</span>
+                  </>
+                )}
+              </div>
+              {/* [FROM INCOMING] - Cleaner paragraph with line break */}
+              <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest leading-loose mb-6">
+                WHERE COMMERCE MEETS HUMAN CONNECTION,<br/>
+                Your digital partner to scale up your business
+              </p>
+            </div>
+
+            {/* Column 2: Services & Navigation */}
+            <div>
+              {/* [FROM INCOMING] - Changed to text-primary (CSS variable) instead of hardcoded blue */}
+              <h4 className="font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-primary font-sans">Layanan</h4>
+              <ul className="space-y-4 text-muted-foreground font-black text-[10px] uppercase tracking-[0.2em] mb-8">
+                {/* [FROM INCOMING] - Removed SERVICE link (not needed for public) */}
+                <li>
+                  <button 
+                    onClick={() => window.dispatchEvent(new CustomEvent('open-chatbot'))} 
+                    className="hover:text-primary transition-colors uppercase"
+                  >
+                    FAQ
+                  </button>
+                </li>
+                <li>
+                  {/* [FROM INCOMING] - Cleaner WhatsApp URL */}
+                  <a 
+                    href="https://wa.me/6285121057706?text=Hi%20VidHelp%20Team..." 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="hover:text-primary transition-colors uppercase"
+                  >
+                    HIRING
+                  </a>
+                </li>
+                {/* [FROM CURRENT] - LANDING PAGE link only visible when logged in */}
+                {user && (
+                  <li>
+                    <Link to="/" className="hover:text-primary transition-colors uppercase">
+                      LANDING PAGE
+                    </Link>
+                  </li>
+                )}
+              </ul>
+              
+              {/* [FROM CURRENT] - Admin Portal link only visible when logged out */}
+              {!user && (
+                <div className="pt-6 border-t border-border">
+                  <Link 
+                    to="/admin" 
+                    className="text-primary font-black text-[10px] hover:text-foreground transition-colors uppercase tracking-[0.3em] flex items-center gap-2"
+                  >
+                    <Cpu size={14} /> Admin Portal
+                  </Link>
+                </div>
               )}
             </div>
-            <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest leading-loose mb-6">
-              WHERE COMMERCE MEETS HUMAN CONNECTION, Your digital partner to scales up your business
+
+            {/* Column 3: Contact & Office Info */}
+            <div>
+              <h4 className="font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-primary font-sans">Contact</h4>
+              <ul className="space-y-6">
+                <li>
+                  <a href="https://wa.me/6285121057706" target="_blank" rel="noreferrer" className="flex items-start gap-6 group">
+                    <div className="w-10 h-10 border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+                      <Phone size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Phone / WhatsApp</p>
+                      <p className="text-sm font-black text-foreground tracking-tight">+62 851 2105 7706</p>
+                    </div>
+                  </a>
+                </li>
+                <li>
+                  <a href="https://instagram.com/vidhelp.id" target="_blank" rel="noreferrer" className="flex items-start gap-6 group">
+                    <div className="w-10 h-10 border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+                      <Instagram size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Instagram</p>
+                      <p className="text-sm font-black text-foreground tracking-tight">@vidhelp.id</p>
+                    </div>
+                  </a>
+                </li>
+                <li>
+                  <a href="mailto:vidhelp.admin@gmail.com" className="flex items-start gap-6 group">
+                    <div className="w-10 h-10 border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+                      <Mail size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Email Support</p>
+                      <p className="text-sm font-black text-foreground tracking-tight">vidhelp.admin@gmail.com</p>
+                    </div>
+                  </a>
+                </li>
+              </ul>
+              
+              <div className="mt-12 pt-8 border-t border-border">
+                <h4 className="font-black mb-2 uppercase tracking-[0.4em] text-[10px] text-primary font-sans">Office</h4>
+                {/* [FROM CURRENT] - Full Google Maps URL with exact address */}
+                <a 
+                  href="https://www.google.com/maps/search/?api=1&query=Jl.+Ki+Hajar+Dewantara+No.15,+RT.2%2FRW.4,+Simpangan,+Cikarang+Utara,+Bekasi" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="block text-[10px] font-bold text-muted-foreground leading-relaxed uppercase hover:text-foreground transition-colors"
+                >
+                  Jl. Ki Hajar Dewantara No.15, RT.2/RW.4, Simpangan, Cikarang Utara, Bekasi
+                </a>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Copyright Area */}
+          <div className="pt-8 border-t border-border flex flex-col md:flex-row items-center justify-center gap-10 text-center">
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-muted-foreground">
+              @ Copyright 2026 by VIDHELP AGENCY
             </p>
           </div>
-
-          <div>
-            <h4 className="font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-[#2563eb] font-sans">Services</h4>
-            <ul className="space-y-4 text-muted-foreground font-black text-[10px] uppercase tracking-[0.2em] mb-8">
-              <li><a href="/#results" className="hover:text-[#2563eb] transition-colors">SERVICE</a></li>
-              <li>
-                <button
-                  onClick={() => window.dispatchEvent(new CustomEvent('open-chatbot'))}
-                  className="hover:text-[#2563eb] transition-colors uppercase"
-                >
-                  FAQ
-                </button>
-              </li>
-              <li>
-                <a
-                  href="https://wa.me/6285121057706?text=Hi%20VidHelp%20Team,%20I'm%20interested%20in%20bringing%20my%20creative%20energy%20to%20VH.%20I've%20attached%20my%20profile%20and%20I'd%20love%20to%20discuss%20how%20I%20can%20contribute%20to%20your%20next%20big%20digital%20commerce%20breakthrough.%20Are%20there%20any%20open%20opportunities%20for%20us%20to%20collaborate"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-[#2563eb] transition-colors uppercase"
-                >
-                  HIRING
-                </a>
-              </li>
-               {user && (
-                <li>
-                  <Link to="/" className="hover:text-[#2563eb] transition-colors uppercase">
-                    LANDING PAGE
-                  </Link>
-                </li>
-              )}
-            </ul>
-
-            {!user && (
-              <div className="pt-6 border-t border-border">
-                <Link
-                  to="/admin"
-                  className="text-[#2563eb] font-black text-[10px] hover:text-foreground transition-colors uppercase tracking-[0.3em] flex items-center gap-2"
-                >
-                  <Cpu size={14} /> Admin Portal
-                </Link>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <h4 className="font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-[#2563eb] font-sans">Contact</h4>
-            <ul className="space-y-6">
-              <li>
-                <a href="https://wa.me/6285121057706" target="_blank" rel="noreferrer" className="flex items-start gap-6 group">
-                  <div className="w-10 h-10 border border-border flex items-center justify-center text-[#2563eb] group-hover:bg-[#2563eb] group-hover:text-white transition-all shrink-0">
-                    <Phone size={18} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Phone / WhatsApp</p>
-                    <p className="text-sm font-black text-foreground tracking-tight">+62 851 2105 7706</p>
-                  </div>
-                </a>
-              </li>
-              <li>
-                <a href="https://instagram.com/vidhelp.id" target="_blank" rel="noreferrer" className="flex items-start gap-6 group">
-                  <div className="w-10 h-10 border border-border flex items-center justify-center text-[#2563eb] group-hover:bg-[#2563eb] group-hover:text-white transition-all shrink-0">
-                    <Instagram size={18} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Instagram</p>
-                    <p className="text-sm font-black text-foreground tracking-tight">@vidhelp.id</p>
-                  </div>
-                </a>
-              </li>
-              <li>
-                <a href="mailto:vidhelp.admin@gmail.com" className="flex items-start gap-6 group">
-                  <div className="w-10 h-10 border border-border flex items-center justify-center text-[#2563eb] group-hover:bg-[#2563eb] group-hover:text-white transition-all shrink-0">
-                    <Mail size={18} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Email Support</p>
-                    <p className="text-sm font-black text-foreground tracking-tight">vidhelp.admin@gmail.com</p>
-                  </div>
-                </a>
-              </li>
-            </ul>
-            <div className="mt-12 pt-8 border-t border-border">
-              <h4 className="font-black mb-6 uppercase tracking-[0.4em] text-[10px] text-[#2563eb] font-sans">Office</h4>
-              <a
-                href="https://www.google.com/maps/search/?api=1&query=Jl.+Ki+Hajar+Dewantara+No.15,+RT.2%2FRW.4,+Simpangan,+Cikarang+Utara,+Bekasi"
-                target="_blank"
-                rel="noreferrer"
-                className="block text-[10px] font-bold text-muted-foreground leading-relaxed uppercase hover:text-foreground transition-colors"
-              >
-                Jl. Ki Hajar Dewantara No.15, RT.2/RW.4, Simpangan, Cikarang Utara, Bekasi
-              </a>
-            </div>
-          </div>
         </div>
-
-        <div className="pt-8 border-t border-border flex flex-col md:flex-row items-center justify-center gap-10 text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-muted-foreground">
-            @ Copyright 2026 by VIDHELP AGENCY
-          </p>
-        </div>
-      </div>
-    </footer>
+      </footer>
     </>
   );
 };
