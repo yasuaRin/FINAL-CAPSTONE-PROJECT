@@ -18,13 +18,13 @@ function formatRevenue(value) {
 
 const dropdownTriggerCls = (isOpen) =>
   `w-full bg-background border rounded-xl py-3 px-4 text-sm font-medium text-foreground text-left flex items-center justify-between transition-all outline-none ${
-    isOpen ? 'border-primary ring-2 ring-primary/20' : 'border-input'
+    isOpen ? 'border-blue-600 ring-2 ring-blue-600/20' : 'border-input'
   }`;
 
 const dropdownOptionCls = (isSelected) =>
   `w-full text-left px-4 py-2.5 text-sm transition-colors ${
     isSelected
-      ? 'bg-primary/10 text-primary font-semibold'
+      ? 'bg-blue-600/10 text-blue-600 font-semibold'
       : 'hover:bg-muted/50 text-foreground'
   }`;
 
@@ -207,15 +207,12 @@ export default function Brands() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
-    
     setIsSubmitting(true);
-    
     const brandData = {
       brand_name: formName,
       brand_category: formCategory,
       brand_status: formStatus,
     };
-
     try {
       if (editingBrand) {
         const { error } = await supabase.from('brands').update(brandData).eq('brand_id', editingBrand.brand_id);
@@ -226,7 +223,6 @@ export default function Brands() {
         if (error) throw error;
         notify('Brand created successfully');
       }
-
       closeForm();
       await fetchData();
     } catch (err) {
@@ -239,7 +235,6 @@ export default function Brands() {
 
   const handleDelete = async () => {
     if (!deleteId || isDeleting) return;
-    
     setIsDeleting(true);
     try {
       await supabase.from('live_sessions').delete().eq('brand_id', deleteId);
@@ -261,7 +256,7 @@ export default function Brands() {
     return (
       <div id="brands-report-container" className="flex items-center justify-center h-96">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-12 h-12 border-[3px] border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
             Loading brands...
           </p>
@@ -291,7 +286,7 @@ export default function Brands() {
       <div className="space-y-8 pb-12">
         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
           isSuperAdmin
-            ? 'bg-primary/10 text-primary border border-primary/20'
+            ? 'bg-blue-600/10 text-blue-600 border border-blue-600/20'
             : 'bg-muted/50 text-muted-foreground border border-border'
         }`}>
           <ShieldCheck size={12} />
@@ -301,7 +296,7 @@ export default function Brands() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Globe size={14} className="text-primary" />
+              <Globe size={14} className="text-blue-600" />
               <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Brand Management</span>
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Brand Portfolio</h1>
@@ -309,7 +304,7 @@ export default function Brands() {
           </div>
           <button
             onClick={() => openForm()}
-            className="inline-flex items-center justify-center rounded-xl text-xs font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90 transition-all h-10 px-6 shadow-lg shadow-primary/20 gap-2"
+            className="inline-flex items-center justify-center rounded-xl text-xs font-black uppercase tracking-widest bg-blue-600 text-white hover:bg-blue-700 transition-all h-10 px-6 shadow-lg shadow-blue-600/20 gap-2"
           >
             <Plus size={14} /> Add Brand
           </button>
@@ -323,11 +318,11 @@ export default function Brands() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by brand name or category..."
-              className="w-full bg-card border border-border rounded-2xl pl-12 pr-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+              className="w-full bg-card border border-border rounded-2xl pl-12 pr-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-600/20 outline-none transition-all"
             />
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-card rounded-2xl border border-border">
-            <Activity size={14} className="text-primary" />
+            <Activity size={14} className="text-blue-600" />
             <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{brandMatrix.length} Total Brands</span>
           </div>
         </div>
@@ -351,30 +346,32 @@ export default function Brands() {
               </thead>
               <tbody>
                 {brandMatrix.map((brand) => (
-                  <tr 
-                    key={brand.brand_id} 
-                    className="group transition-all duration-300 border-b border-border/20 last:border-0 hover:bg-primary/5"
+                  <tr
+                    key={brand.brand_id}
+                    className="group transition-all duration-300 border-b border-border/20 last:border-0"
                     style={{
                       transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
                     }}
                     onMouseEnter={(e) => {
-  e.currentTarget.style.transform = "translateY(-4px)";
-  e.currentTarget.style.boxShadow = "0 12px 32px rgba(239,68,68,0.15), 0 4px 12px rgba(0,0,0,0.08)";
-  e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)";
-}}
+                      e.currentTarget.style.transform = "translateY(-4px)";
+                      e.currentTarget.style.boxShadow = "0 12px 32px rgba(239,68,68,0.15), 0 4px 12px rgba(0,0,0,0.08)";
+                      e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)";
+                      e.currentTarget.style.background = "rgba(239,68,68,0.02)";
+                    }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = "translateY(0)";
                       e.currentTarget.style.boxShadow = "none";
                       e.currentTarget.style.borderColor = "var(--border)";
+                      e.currentTarget.style.background = "transparent";
                     }}
                   >
                     <td className="p-5">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center font-black text-white text-lg shadow-lg transform transition-transform group-hover:scale-110 duration-500 flex-shrink-0">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center font-black text-white text-lg shadow-lg transform transition-transform group-hover:scale-110 duration-500 flex-shrink-0">
                           {(brand.brand_name || '?')[0]}
                         </div>
                         <div>
-                          <p className="font-bold text-base tracking-tight text-foreground group-hover:text-primary transition-colors">{brand.brand_name}</p>
+                          <p className="font-bold text-base tracking-tight text-foreground transition-colors">{brand.brand_name}</p>
                           <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-full border border-border/50">
                             {brand.brand_category || 'General'}
                           </span>
@@ -430,7 +427,7 @@ export default function Brands() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={(e) => { e.stopPropagation(); openForm(brand); }}
-                          className="p-2 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-xl transition-all shadow-sm"
+                          className="p-2 bg-blue-600/10 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm"
                           title="Edit brand"
                         >
                           <Edit3 size={14} />
@@ -532,8 +529,8 @@ export default function Brands() {
                 <h3 className="text-xl font-bold text-foreground">
                   {editingBrand ? 'Edit Brand' : 'Add New Brand'}
                 </h3>
-                <button 
-                  onClick={closeForm} 
+                <button
+                  onClick={closeForm}
                   disabled={isSubmitting}
                   className="p-2 hover:bg-muted rounded-xl text-muted-foreground transition-all disabled:opacity-50"
                 >
@@ -552,7 +549,7 @@ export default function Brands() {
                     onChange={(e) => setFormName(e.target.value)}
                     disabled={isSubmitting}
                     placeholder="e.g. Aura Glow"
-                    className="w-full bg-background border border-input rounded-xl py-3 px-4 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all disabled:opacity-50"
+                    className="w-full bg-background border border-input rounded-xl py-3 px-4 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-600/20 outline-none transition-all disabled:opacity-50"
                   />
                 </div>
 
@@ -638,7 +635,7 @@ export default function Brands() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 px-4 py-3 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
                       <>

@@ -4,7 +4,6 @@
 @plugin "tailwindcss-animate";
 
 @theme {
-  /* Combined fonts from both branches */
   --font-sans: "Inter", "Urbanist", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-serif: "Merriweather", "Playfair Display", Georgia, "Times New Roman", serif;
   --font-mono: "JetBrains Mono", "SF Mono", Monaco, "Cascadia Code", monospace;
@@ -185,7 +184,6 @@
     line-height: 1.5;
   }
 
-  /* Public pages use font-sans (Urbanist) */
   [data-layout="public"] {
     font-family: var(--font-sans);
   }
@@ -199,7 +197,6 @@
     font-family: var(--font-sans);
   }
 
-  /* Admin: clean sans-serif */
   [data-layout="admin"] {
     font-family: var(--font-sans);
   }
@@ -513,7 +510,6 @@
   }
 }
 
-/* Bar Chart Hover Effects */
 .bar-actual:hover rect {
   fill: #9A1212 !important;
   transition: fill 0.2s ease;
@@ -536,16 +532,16 @@
 }
 
 /* ============================================ */
-/* ADMIN OVERRIDES - FORCE BLUE THEME ON ADMIN */
+/* ADMIN OVERRIDES - BLUE THEME */
 /* ============================================ */
 [data-layout="admin"] {
   --primary: #2563eb !important;
   --ring: #2563eb !important;
-  --destructive: #ef4444 !important;
   --sidebar-primary: #2563eb !important;
   --sidebar-ring: #2563eb !important;
   --brand-primary: #2563eb !important;
   --chart-1: #2563eb !important;
+  --destructive: #ef4444 !important;
 }
 
 [data-layout="admin"] .primary-gradient {

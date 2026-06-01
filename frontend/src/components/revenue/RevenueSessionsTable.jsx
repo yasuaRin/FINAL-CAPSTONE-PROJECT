@@ -39,7 +39,6 @@ const RevenueSessionsTable = ({
   resetForm = () => {},
   setShowSessionModal = () => {},
   uniquePeriods = [],
-  canDelete = false,
   loading = false,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -99,7 +98,7 @@ const RevenueSessionsTable = ({
           <AnimatePresence>
             {loading && (
               <motion.div
-                className="h-full bg-primary rounded-full"
+                className="h-full bg-blue-600 rounded-full"
                 initial={{ x: '-100%', width: '45%' }}
                 animate={{ x: '280%' }}
                 exit={{ opacity: 0 }}
@@ -113,7 +112,7 @@ const RevenueSessionsTable = ({
         <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-border bg-muted/5">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap">
-              <Activity size={13} className="text-primary" /> Sessions
+              <Activity size={13} className="text-blue-600" /> Sessions
             </h3>
 
             <div className="relative flex-1 min-w-[120px] max-w-[200px]">
@@ -123,14 +122,14 @@ const RevenueSessionsTable = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search brand..."
-                className="w-full bg-background border border-border rounded-lg pl-7 pr-3 py-1.5 text-xs focus:ring-1 focus:ring-primary/20 outline-none"
+                className="w-full bg-background border border-border rounded-lg pl-7 pr-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-600/20 outline-none"
               />
             </div>
 
             {hasActiveFilters && (
               <button
                 onClick={() => setTableFilter({ brandId: 'All', period: 'All' })}
-                className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-[10px] border border-primary/20 whitespace-nowrap"
+                className="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-600/10 text-blue-600 text-[10px] border border-blue-600/20 whitespace-nowrap"
               >
                 Clear: {getFilterDisplay()} <X size={10} />
               </button>
@@ -142,7 +141,7 @@ const RevenueSessionsTable = ({
               </div>
               <button
                 onClick={() => { resetForm(); setShowSessionModal(true); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg text-[11px] font-medium whitespace-nowrap min-h-[32px]"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[11px] font-medium whitespace-nowrap min-h-[32px] hover:bg-blue-700 transition-colors"
               >
                 <Plus size={12} />
                 <span className="hidden xs:inline">Add Session</span>
@@ -184,8 +183,8 @@ const RevenueSessionsTable = ({
                         ? `No sessions found for the selected ${tableFilter.brandId !== 'All' ? 'brand' : 'period'}. Try clearing filters.`
                         : 'No sessions found. Click "Add Session" to create one.'
                     }
-                   </td>
-                 </tr>
+                  </td>
+                </tr>
               )}
 
               {paginatedSessions.map((log) => {
@@ -254,21 +253,19 @@ const RevenueSessionsTable = ({
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => openEditModal(log)}
-                          className="p-1.5 rounded bg-muted/50 hover:bg-blue-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
+                          className="p-1.5 rounded bg-muted/50 hover:bg-blue-600 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
                           title="Edit"
                         >
                           <Edit2 size={11} />
                         </button>
 
-                        {canDelete && (
-  <button
-    onClick={() => handleDeleteSession(log)}
-    className="p-1.5 rounded bg-muted/50 hover:bg-red-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
-    title="Delete"
-  >
-    <Trash2 size={11} />
-  </button>
-)}
+                        <button
+                          onClick={() => handleDeleteSession(log)}
+                          className="p-1.5 rounded bg-muted/50 hover:bg-red-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
+                          title="Delete"
+                        >
+                          <Trash2 size={11} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -294,7 +291,7 @@ const RevenueSessionsTable = ({
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={safePage === 1}
-                className="p-1.5 rounded-lg border border-border bg-background hover:border-primary/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all min-h-[28px] min-w-[28px] flex items-center justify-center"
+                className="p-1.5 rounded-lg border border-border bg-background hover:border-blue-600/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all min-h-[28px] min-w-[28px] flex items-center justify-center"
                 aria-label="Previous page"
               >
                 <ChevronLeft size={12} />
@@ -309,8 +306,8 @@ const RevenueSessionsTable = ({
                     onClick={() => setCurrentPage(page)}
                     className={`min-w-[28px] min-h-[28px] px-2 rounded-lg border text-[10px] font-semibold transition-all ${
                       safePage === page
-                        ? 'bg-primary text-white border-primary shadow-sm'
-                        : 'bg-background border-border hover:border-primary/40 text-foreground'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-background border-border hover:border-blue-600/40 text-foreground'
                     }`}
                   >
                     {page}
@@ -321,7 +318,7 @@ const RevenueSessionsTable = ({
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={safePage === totalPages}
-                className="p-1.5 rounded-lg border border-border bg-background hover:border-primary/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all min-h-[28px] min-w-[28px] flex items-center justify-center"
+                className="p-1.5 rounded-lg border border-border bg-background hover:border-blue-600/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all min-h-[28px] min-w-[28px] flex items-center justify-center"
                 aria-label="Next page"
               >
                 <ChevronRight size={12} />
@@ -332,7 +329,7 @@ const RevenueSessionsTable = ({
           {!showingAll && totalCount > rowLimit && (
             <button
               onClick={() => setRowLimit(null)}
-              className="text-[10px] font-medium text-primary hover:underline transition-colors whitespace-nowrap"
+              className="text-[10px] font-medium text-blue-600 hover:underline transition-colors whitespace-nowrap"
             >
               Show All ({totalCount})
             </button>

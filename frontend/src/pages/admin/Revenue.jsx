@@ -336,7 +336,6 @@ const Revenue = () => {
     return results.sort((a, b) => b.totalRevenue - a.totalRevenue);
   }, [dateFilteredLogs, brandsList, insightBrandId, periodMap]);
 
-  // FIXED: sessionIntelligence with proper filtering
   const sessionIntelligence = useMemo(() => {
     let rows = dateFilteredLogs.map(log => {
       const periodId = log.period_id;
@@ -359,12 +358,10 @@ const Revenue = () => {
       );
     }
     
-    // Apply brand filter
     if (tableFilter.brandId && tableFilter.brandId !== 'All') {
       rows = rows.filter(r => r.brandId === tableFilter.brandId);
     }
     
-    // Apply period filter
     if (tableFilter.period && tableFilter.period !== 'All') {
       rows = rows.filter(r => r.period === tableFilter.period);
     }
@@ -492,6 +489,12 @@ const Revenue = () => {
       }
     }
     return false;
+  };
+
+  const closeSessionModal = () => {
+    setShowSessionModal(false);
+    setEditingSession(null);
+    setOpenDropdown(null);
   };
 
   const handleCreateSession = async () => {
@@ -710,22 +713,15 @@ const Revenue = () => {
     notify(`Showing ${brandName} sessions${period && period !== 'All' ? ` for ${period}` : ''}`);
   };
 
-  const closeSessionModal = () => {
-    setShowSessionModal(false);
-    setEditingSession(null);
-    setOpenDropdown(null);
-    setIsSubmitting(false);
-  };
-
   const dropdownTriggerCls = (isOpen) =>
     `w-full bg-muted/40 border rounded-xl px-3 py-2.5 text-xs text-left flex items-center justify-between transition-all ${
-      isOpen ? 'border-primary ring-1 ring-primary/20' : 'border-border'
+      isOpen ? 'border-blue-600 ring-1 ring-blue-600/20' : 'border-border'
     }`;
 
   const dropdownOptionCls = (isSelected) =>
     `w-full text-left px-3 py-2 text-xs transition-colors ${
       isSelected
-        ? 'bg-primary/10 text-primary font-semibold'
+        ? 'bg-blue-600/10 text-blue-600 font-semibold'
         : 'hover:bg-muted/50 text-foreground'
     }`;
 
@@ -733,14 +729,14 @@ const Revenue = () => {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-12 h-12 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // KPI Card component with hover effect
+  // KPI Card component with RED hover effect
   const KpiCardItem = ({ title, value, children, isHovered, onHover }) => (
     <div 
       className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0 transition-all"
@@ -762,7 +758,6 @@ const Revenue = () => {
     </div>
   );
 
-  // ========== MAIN RETURN ==========
   return (
     <div id="revenue-report-container">
       <AnimatePresence>
@@ -789,14 +784,7 @@ const Revenue = () => {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <SortByButton
-              brands={brands}
-              onBrandChange={handleSortByBrandChange}
-              selectedBrand={insightBrandId !== 'All' ? insightBrandId : null}
-              onDateRangeChange={setDateRange}
-              dateRange={dateRange}
-            />
-
+            {/* Filter button - NOW FIRST */}
             <div className="relative" ref={globalFilterRef}>
               <button
                 onClick={() => setGlobalFilterOpen(p => !p)}
@@ -804,18 +792,18 @@ const Revenue = () => {
                 onMouseLeave={() => setIsFilterHovered(false)}
                 className="relative flex items-center gap-2 h-10 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all"
                 style={{
-                  background: globalFilterOpen ? 'rgba(59,130,246,0.05)' : (isFilterHovered ? '#ef4444' : 'rgba(0,0,0,0.05)'),
-                  borderColor: globalFilterOpen ? '#3b82f6' : (isFilterHovered ? '#ef4444' : 'var(--border)'),
-                  color: globalFilterOpen ? '#3b82f6' : (isFilterHovered ? 'white' : 'var(--foreground)'),
+                  background: globalFilterOpen ? 'rgba(37,99,235,0.05)' : (isFilterHovered ? '#2563eb' : 'rgba(0,0,0,0.05)'),
+                  borderColor: globalFilterOpen ? '#2563eb' : (isFilterHovered ? '#2563eb' : 'var(--border)'),
+                  color: globalFilterOpen ? '#2563eb' : (isFilterHovered ? 'white' : 'var(--foreground)'),
                   transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease, color 0.2s ease",
                   transform: isFilterHovered && !globalFilterOpen ? "translateY(-2px)" : "translateY(0)",
-                  boxShadow: isFilterHovered && !globalFilterOpen ? "0 8px 20px rgba(239,68,68,0.25)" : "none",
+                  boxShadow: isFilterHovered && !globalFilterOpen ? "0 8px 20px rgba(37,99,235,0.25)" : "none",
                 }}
               >
                 <SlidersHorizontal size={14} />
                 Filters
                 {globalActiveCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-white text-[9px] font-black flex items-center justify-center">
+                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-blue-600 text-white text-[9px] font-black flex items-center justify-center">
                     {globalActiveCount}
                   </span>
                 )}
@@ -837,7 +825,7 @@ const Revenue = () => {
                         <select
                           value={tableFilter.period}
                           onChange={(e) => handleGlobalPeriod(e.target.value)}
-                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary/20"
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs font-medium outline-none focus:ring-1 focus:ring-blue-600/20"
                         >
                           <option value="All">All Periods</option>
                           {uniquePeriods.map(period => (
@@ -853,7 +841,7 @@ const Revenue = () => {
                         <select
                           value={rowLimit === null ? 'All' : rowLimit}
                           onChange={(e) => setRowLimit(e.target.value === 'All' ? null : parseInt(e.target.value))}
-                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary/20"
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs font-medium outline-none focus:ring-1 focus:ring-blue-600/20"
                         >
                           {LIMIT_OPTIONS.map(opt => (
                             <option key={opt === null ? 'All' : opt} value={opt === null ? 'All' : opt}>
@@ -875,12 +863,20 @@ const Revenue = () => {
               </AnimatePresence>
             </div>
 
+            {/* SortByButton - NOW SECOND */}
+            <SortByButton
+              brands={brands}
+              onBrandChange={handleSortByBrandChange}
+              selectedBrand={insightBrandId !== 'All' ? insightBrandId : null}
+              onDateRangeChange={setDateRange}
+              dateRange={dateRange}
+            />
+
             <input type="file" ref={fileInputRef} className="hidden" accept=".csv,.xlsx,.json" />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 min-w-0">
-          {/* Revenue KPI Card */}
           <KpiCardItem 
             title="Revenue (range)" 
             value={formatCurrency(rangeRevenue)}
@@ -893,7 +889,6 @@ const Revenue = () => {
             </div>
           </KpiCardItem>
 
-          {/* Top Performers KPI Card */}
           <KpiCardItem 
             title="Top Performers"
             value=""
@@ -912,7 +907,7 @@ const Revenue = () => {
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <span className="text-[8px] font-black text-muted-foreground/50 w-3 shrink-0">{i + 1}</span>
-                      <span className="text-[11px] font-bold text-primary truncate hover:underline">{staff.staffName}</span>
+                      <span className="text-[11px] font-bold text-blue-600 truncate hover:underline">{staff.staffName}</span>
                     </div>
                     <span className="text-[9px] font-bold text-foreground truncate">See details</span>
                   </div>
@@ -921,7 +916,6 @@ const Revenue = () => {
             </div>
           </KpiCardItem>
 
-          {/* Top Platform KPI Card */}
           <KpiCardItem 
             title="Top Platform (range)" 
             value={topPlatform.name}
@@ -934,7 +928,6 @@ const Revenue = () => {
             </div>
           </KpiCardItem>
 
-          {/* Live Sessions KPI Card */}
           <KpiCardItem 
             title="Live Sessions (range)" 
             value={totalSessionsInRange.toLocaleString()}
@@ -979,7 +972,6 @@ const Revenue = () => {
           />
         </div>
 
-        {/* RESPONSIVE ADD/EDIT SESSION MODAL */}
         <AnimatePresence>
           {showSessionModal && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
@@ -991,7 +983,6 @@ const Revenue = () => {
                 className="relative bg-card w-full max-w-lg rounded-2xl border border-border shadow-2xl my-8 mx-auto overflow-hidden"
                 ref={modalRef}
               >
-                {/* Header */}
                 <div className="sticky top-0 z-10 px-5 py-4 border-b border-border bg-card">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-foreground">
@@ -1010,42 +1001,33 @@ const Revenue = () => {
                   </p>
                 </div>
 
-                {/* Scrollable Form Content */}
                 <div className="overflow-y-auto max-h-[calc(90vh-140px)] px-5 py-5 space-y-4">
-                  {/* Date & Time Row */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
-                        Date
-                      </label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Date</label>
                       <input
                         type="date"
                         value={sessionFormData.date}
                         onChange={e => setSessionFormData(p => ({ ...p, date: e.target.value }))}
                         disabled={isSubmitting}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
-                        Time
-                      </label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Time</label>
                       <input
                         type="time"
                         value={sessionFormData.time}
                         onChange={e => setSessionFormData(p => ({ ...p, time: e.target.value }))}
                         disabled={isSubmitting}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
                       />
                     </div>
                   </div>
 
-                  {/* Brand & Channel Row */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
-                        Brand <span className="text-primary">*</span>
-                      </label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Brand <span className="text-blue-600">*</span></label>
                       <div className="relative">
                         <button
                           type="button"
@@ -1054,21 +1036,14 @@ const Revenue = () => {
                           className={dropdownTriggerCls(openDropdown === 'brand')}
                         >
                           <span className={sessionFormData.brandId ? 'text-foreground' : 'text-muted-foreground truncate'}>
-                            {sessionFormData.brandId
-                              ? (brandsList.find(b => b.id === sessionFormData.brandId)?.name || 'Unknown')
-                              : 'Select Brand'}
+                            {sessionFormData.brandId ? (brandsList.find(b => b.id === sessionFormData.brandId)?.name || 'Unknown') : 'Select Brand'}
                           </span>
                           <ChevronDown size={14} className={`text-muted-foreground transition-transform flex-shrink-0 ml-2 ${openDropdown === 'brand' ? 'rotate-180' : ''}`} />
                         </button>
                         {openDropdown === 'brand' && !isSubmitting && (
                           <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[200px]">
                             {brandsList.map(b => (
-                              <button
-                                key={b.id}
-                                type="button"
-                                onClick={() => { setSessionFormData(p => ({ ...p, brandId: b.id })); setOpenDropdown(null); }}
-                                className={dropdownOptionCls(sessionFormData.brandId === b.id)}
-                              >
+                              <button key={b.id} type="button" onClick={() => { setSessionFormData(p => ({ ...p, brandId: b.id })); setOpenDropdown(null); }} className={dropdownOptionCls(sessionFormData.brandId === b.id)}>
                                 <span className="truncate">{b.name}</span>
                               </button>
                             ))}
@@ -1078,9 +1053,7 @@ const Revenue = () => {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
-                        Channel
-                      </label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Channel</label>
                       <div className="relative">
                         <button
                           type="button"
@@ -1088,20 +1061,13 @@ const Revenue = () => {
                           disabled={isSubmitting}
                           className={dropdownTriggerCls(openDropdown === 'platform')}
                         >
-                          <span className="text-foreground truncate">
-                            {PLATFORM_OPTIONS.find(p => p.value === sessionFormData.platform)?.label || 'Select Channel'}
-                          </span>
+                          <span className="text-foreground truncate">{PLATFORM_OPTIONS.find(p => p.value === sessionFormData.platform)?.label || 'Select Channel'}</span>
                           <ChevronDown size={14} className={`text-muted-foreground transition-transform flex-shrink-0 ml-2 ${openDropdown === 'platform' ? 'rotate-180' : ''}`} />
                         </button>
                         {openDropdown === 'platform' && !isSubmitting && (
                           <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[180px]">
                             {PLATFORM_OPTIONS.map(p => (
-                              <button
-                                key={p.value}
-                                type="button"
-                                onClick={() => { setSessionFormData(prev => ({ ...prev, platform: p.value })); setOpenDropdown(null); }}
-                                className={dropdownOptionCls(sessionFormData.platform === p.value)}
-                              >
+                              <button key={p.value} type="button" onClick={() => { setSessionFormData(prev => ({ ...prev, platform: p.value })); setOpenDropdown(null); }} className={dropdownOptionCls(sessionFormData.platform === p.value)}>
                                 {p.label}
                               </button>
                             ))}
@@ -1111,12 +1077,9 @@ const Revenue = () => {
                     </div>
                   </div>
 
-                  {/* Period & Host Row */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
-                        Period <span className="text-primary">*</span>
-                      </label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Period <span className="text-blue-600">*</span></label>
                       <div className="relative">
                         <button
                           type="button"
@@ -1125,21 +1088,14 @@ const Revenue = () => {
                           className={dropdownTriggerCls(openDropdown === 'period')}
                         >
                           <span className={sessionFormData.period_id ? 'text-foreground' : 'text-muted-foreground truncate'}>
-                            {sessionFormData.period_id
-                              ? (uniquePeriodsForDropdown.find(p => String(p.id) === String(sessionFormData.period_id))?.name || `Period ${sessionFormData.period_id}`)
-                              : 'Select Period'}
+                            {sessionFormData.period_id ? (uniquePeriodsForDropdown.find(p => String(p.id) === String(sessionFormData.period_id))?.name || `Period ${sessionFormData.period_id}`) : 'Select Period'}
                           </span>
                           <ChevronDown size={14} className={`text-muted-foreground transition-transform flex-shrink-0 ml-2 ${openDropdown === 'period' ? 'rotate-180' : ''}`} />
                         </button>
                         {openDropdown === 'period' && !isSubmitting && (
                           <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[200px]">
                             {uniquePeriodsForDropdown.map(period => (
-                              <button
-                                key={`modal-period-${period.id}`}
-                                type="button"
-                                onClick={() => { setSessionFormData(p => ({ ...p, period_id: String(period.id) })); setOpenDropdown(null); }}
-                                className={dropdownOptionCls(String(sessionFormData.period_id) === String(period.id))}
-                              >
+                              <button key={`modal-period-${period.id}`} type="button" onClick={() => { setSessionFormData(p => ({ ...p, period_id: String(period.id) })); setOpenDropdown(null); }} className={dropdownOptionCls(String(sessionFormData.period_id) === String(period.id))}>
                                 <span className="truncate">{period.name}</span>
                               </button>
                             ))}
@@ -1149,9 +1105,7 @@ const Revenue = () => {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
-                        Host
-                      </label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Host</label>
                       <div className="relative">
                         <button
                           type="button"
@@ -1160,28 +1114,15 @@ const Revenue = () => {
                           className={dropdownTriggerCls(openDropdown === 'host')}
                         >
                           <span className={sessionFormData.host_team_member_id ? 'text-foreground' : 'text-muted-foreground truncate'}>
-                            {sessionFormData.host_team_member_id
-                              ? ((team || []).find(t => sid(t.id) === sessionFormData.host_team_member_id)?.name || 'Unknown')
-                              : 'No host'}
+                            {sessionFormData.host_team_member_id ? ((team || []).find(t => sid(t.id) === sessionFormData.host_team_member_id)?.name || 'Unknown') : 'No host'}
                           </span>
                           <ChevronDown size={14} className={`text-muted-foreground transition-transform flex-shrink-0 ml-2 ${openDropdown === 'host' ? 'rotate-180' : ''}`} />
                         </button>
                         {openDropdown === 'host' && !isSubmitting && (
                           <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[200px]">
-                            <button
-                              type="button"
-                              onClick={() => { setSessionFormData(p => ({ ...p, host_team_member_id: '' })); setOpenDropdown(null); }}
-                              className={dropdownOptionCls(sessionFormData.host_team_member_id === '')}
-                            >
-                              No host
-                            </button>
+                            <button type="button" onClick={() => { setSessionFormData(p => ({ ...p, host_team_member_id: '' })); setOpenDropdown(null); }} className={dropdownOptionCls(sessionFormData.host_team_member_id === '')}>No host</button>
                             {(team || []).map(t => (
-                              <button
-                                key={sid(t.id)}
-                                type="button"
-                                onClick={() => { setSessionFormData(p => ({ ...p, host_team_member_id: sid(t.id) })); setOpenDropdown(null); }}
-                                className={dropdownOptionCls(sessionFormData.host_team_member_id === sid(t.id))}
-                              >
+                              <button key={sid(t.id)} type="button" onClick={() => { setSessionFormData(p => ({ ...p, host_team_member_id: sid(t.id) })); setOpenDropdown(null); }} className={dropdownOptionCls(sessionFormData.host_team_member_id === sid(t.id))}>
                                 <span className="truncate">{t.name}</span>
                               </button>
                             ))}
@@ -1191,48 +1132,38 @@ const Revenue = () => {
                     </div>
                   </div>
 
-                  {/* Viewers & Revenue Row */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
-                        Viewers
-                      </label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Viewers</label>
                       <input
                         type="number" min="0"
                         value={sessionFormData.viewers}
                         onChange={e => setSessionFormData(p => ({ ...p, viewers: parseInt(e.target.value) || 0 }))}
                         disabled={isSubmitting}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
-                        Revenue (Rp)
-                      </label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Revenue (Rp)</label>
                       <input
                         type="number" min="0"
                         value={sessionFormData.revenue}
                         onChange={e => setSessionFormData(p => ({ ...p, revenue: parseInt(e.target.value) || 0 }))}
                         disabled={isSubmitting}
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Footer - Sticky Buttons */}
                 <div className="sticky bottom-0 z-10 px-5 py-4 border-t border-border bg-card flex flex-col sm:flex-row items-center justify-end gap-3">
-                  <button
-                    onClick={closeSessionModal}
-                    disabled={isSubmitting}
-                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase text-muted-foreground hover:bg-muted transition-all disabled:opacity-50 order-2 sm:order-1"
-                  >
+                  <button onClick={closeSessionModal} disabled={isSubmitting} className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase text-muted-foreground hover:bg-muted transition-all disabled:opacity-50 order-2 sm:order-1">
                     Cancel
                   </button>
                   <button
                     onClick={editingSession ? handleUpdateSession : handleCreateSession}
                     disabled={isSubmitting}
-                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase bg-primary text-white hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 order-1 sm:order-2"
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase bg-blue-600 text-white hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 order-1 sm:order-2"
                   >
                     {isSubmitting ? (
                       <>
@@ -1292,7 +1223,7 @@ const Revenue = () => {
                 exit={{ opacity: 0, scale: 0.9 }}
                 className="bg-card w-full max-w-sm rounded-2xl border border-border shadow-2xl overflow-hidden"
               >
-                <div className="px-4 py-3 border-b border-border bg-primary/10">
+                <div className="px-4 py-3 border-b border-border bg-blue-600/10">
                   <h3 className="text-base font-bold text-foreground">{selectedStaffForDetail.staffName}</h3>
                   <p className="text-[9px] text-muted-foreground mt-0.5">Performance Details</p>
                 </div>
@@ -1306,7 +1237,7 @@ const Revenue = () => {
                     <div className="text-right">
                       <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Score</p>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-lg font-bold text-primary">{selectedStaffForDetail.finalScore}</span>
+                        <span className="text-lg font-bold text-blue-600">{selectedStaffForDetail.finalScore}</span>
                         <span className="text-[8px] text-muted-foreground">/100</span>
                       </div>
                     </div>
@@ -1353,7 +1284,7 @@ const Revenue = () => {
                 <div className="p-3 bg-muted/20 border-t border-border">
                   <button
                     onClick={() => setShowStaffDetailModal(false)}
-                    className="w-full py-2 rounded-xl text-[9px] font-bold uppercase bg-primary text-white hover:bg-primary/90 transition-all"
+                    className="w-full py-2 rounded-xl text-[9px] font-bold uppercase bg-blue-600 text-white hover:bg-blue-700 transition-all"
                   >
                     Close
                   </button>
