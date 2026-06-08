@@ -21,13 +21,13 @@ const RevenueTooltip = ({ active, payload, formatCurrency }) => {
         {dp.actual > 0 && (
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-sm bg-primary" />
-              <span className="text-[10px] font-medium text-muted-foreground">
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#3b82f6' }} />
+              <span className="text-[10px] font-medium" style={{ color: '#3b82f6' }}>
                 Actual Revenue
               </span>
             </div>
 
-            <span className="text-[10px] font-bold text-primary">
+            <span className="text-[10px] font-bold" style={{ color: '#3b82f6' }}>
               {formatCurrency(dp.actual)}
             </span>
           </div>
@@ -36,13 +36,13 @@ const RevenueTooltip = ({ active, payload, formatCurrency }) => {
         {dp.forecast > 0 && (
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-sm bg-red-500" />
-              <span className="text-[10px] font-medium text-muted-foreground">
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#ef4444' }} />
+              <span className="text-[10px] font-medium" style={{ color: '#ef4444' }}>
                 Forecast Revenue
               </span>
             </div>
 
-            <span className="text-[10px] font-bold text-red-500">
+            <span className="text-[10px] font-bold" style={{ color: '#ef4444' }}>
               {formatCurrency(dp.forecast)}
             </span>
           </div>
@@ -164,18 +164,18 @@ export const RevenueBarChart = ({
             )}
           </div>
 
-          {/* Legend - Differentiated colors: Actual = Blue, Forecast = Red */}
+          {/* Legend - Colored text to match bars */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm bg-primary" />
-              <span className="text-[10px] font-medium text-muted-foreground">
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#3b82f6' }} />
+              <span className="text-[10px] font-medium" style={{ color: '#3b82f6' }}>
                 Actual Revenue
               </span>
             </div>
 
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm bg-red-500" />
-              <span className="text-[10px] font-medium text-muted-foreground">
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#ef4444' }} />
+              <span className="text-[10px] font-medium" style={{ color: '#ef4444' }}>
                 Forecast Revenue
               </span>
             </div>
