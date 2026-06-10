@@ -24,7 +24,6 @@ const getExportBg = () => {
 
 // ── Helper: Temporarily fix overflow containers ──────────────────────────────
 const fixOverflowContainers = (element, fix) => {
-  // Find all overflow containers that might cause capture issues
   const overflowElements = [];
   let current = element;
   
@@ -33,16 +32,13 @@ const fixOverflowContainers = (element, fix) => {
     if (style.overflowY === 'auto' || style.overflowY === 'scroll' || style.overflow === 'auto') {
       overflowElements.push(current);
       if (fix) {
-        // Store original styles
         current.dataset.originalOverflow = style.overflowY;
         current.dataset.originalMaxHeight = style.maxHeight;
         current.dataset.originalHeight = style.height;
-        // Temporarily remove overflow restrictions
         current.style.overflow = 'visible';
         current.style.maxHeight = 'none';
         current.style.height = 'auto';
       } else {
-        // Restore original styles
         if (current.dataset.originalOverflow) {
           current.style.overflow = current.dataset.originalOverflow;
           delete current.dataset.originalOverflow;
@@ -62,21 +58,14 @@ const fixOverflowContainers = (element, fix) => {
 };
 
 // ── Resolve the real capture target ──────────────────────────────────────────
-// Priority:
-//   1. Named id on the page's own root element (e.g. team-export-container
-//      added directly to Team.jsx's root div) — most reliable, exact content.
-//   2. The page's main content wrapper (the actual page component)
 const resolveTarget = (id) => {
   const named = document.getElementById(id);
   if (named && named.scrollHeight >= 100) return named;
 
-  // For Team page specifically, look for the Team component's main div
   if (id === 'team-export-container') {
-    // Try to find Team page's main container (first div inside the exported area)
     const teamContainer = document.querySelector('#team-export-container > div');
     if (teamContainer && teamContainer.scrollHeight >= 100) return teamContainer;
     
-    // Fallback: find any div that contains the Team table
     const teamTable = document.querySelector('table');
     if (teamTable) {
       const tableContainer = teamTable.closest('div[style*="padding"]');
@@ -84,7 +73,6 @@ const resolveTarget = (id) => {
     }
   }
 
-  // Fall back to the page's main content area
   const pageContent = document.querySelector('main > section > div');
   if (pageContent && pageContent.scrollHeight >= 100) return pageContent;
 
@@ -102,7 +90,6 @@ const waitForElement = (id, minHeight = 200, timeoutMs = 20000) => {
       if (isAborted()) return resolve(null);
       const el = document.getElementById(id);
       if (el) {
-        // Get the actual content element
         const targetEl = id === 'team-export-container' && el.firstChild ? el.firstChild : el;
         const currentHeight = targetEl.scrollHeight;
         if (currentHeight === lastHeight && currentHeight >= minHeight) {
@@ -147,12 +134,21 @@ const createToast = (message, showStop = false) => {
     z-index: 999998;
   `;
 
+  // ── Theme-aware colors ───────────────────────────────────────────────────
+  const dark = isDarkMode();
+  const toastBg            = dark ? '#111827' : '#ffffff';
+  const toastColor         = dark ? '#ffffff' : '#111827';
+  const spinnerBorder      = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)';
+  const spinnerBorderTop   = dark ? '#ffffff' : '#111827';
+  const stopBtnHoverBg     = '#dc2626';
+  // ────────────────────────────────────────────────────────────────────────
+
   const toast = document.createElement('div');
   toast.id = 'pdf-export-toast';
   toast.style.cssText = `
     position: fixed; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    background: #111827; color: #ffffff;
+    background: ${toastBg}; color: ${toastColor};
     font-size: 0.875rem; font-weight: 700;
     padding: 1.25rem 2rem; border-radius: 1rem;
     box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
@@ -164,8 +160,8 @@ const createToast = (message, showStop = false) => {
   const spinner = document.createElement('span');
   spinner.style.cssText = `
     display: inline-block; width: 1.75rem; height: 1.75rem;
-    border: 3px solid rgba(255,255,255,0.2);
-    border-top-color: #ffffff; border-radius: 9999px;
+    border: 3px solid ${spinnerBorder};
+    border-top-color: ${spinnerBorderTop}; border-radius: 9999px;
     animation: _toast_spin 0.7s linear infinite; flex-shrink: 0;
   `;
 
@@ -187,7 +183,7 @@ const createToast = (message, showStop = false) => {
       font-size: 0.75rem; font-weight: 700; cursor: pointer;
       letter-spacing: 0.03em; transition: background 0.15s;
     `;
-    stopBtn.onmouseenter = () => { stopBtn.style.background = '#dc2626'; };
+    stopBtn.onmouseenter = () => { stopBtn.style.background = stopBtnHoverBg; };
     stopBtn.onmouseleave = () => { stopBtn.style.background = '#ef4444'; };
     stopBtn.onclick = () => { abort(); updateToast('Stopping export...'); hideStopButton(); };
     toast.appendChild(stopBtn);
@@ -213,27 +209,24 @@ const removeToast = () => {
   document.getElementById('pdf-export-backdrop')?.remove();
 };
 
-// ── Capture element as PNG with overflow fix ────────────────────────────────────
+// ── Capture element as PNG with overflow fix ──────────────────────────────────
 const captureElement = async (element, exportBg) => {
-  // Get the actual content to capture (for Team page, use the inner div)
   let captureTarget = element;
   
-  // If this is team-export-container, use its first child (the actual content)
   if (element.id === 'team-export-container' && element.firstChild) {
     captureTarget = element.firstChild;
   }
   
-  // Temporarily fix overflow containers
   fixOverflowContainers(captureTarget, true);
   
   try {
-    // Wait a tick for styles to apply
+    // ✅ Wait for all fonts to be fully loaded before capturing
+    await document.fonts.ready;
+    await Promise.all([...document.fonts].map(f => f.load().catch(() => {})));
     await new Promise(r => setTimeout(r, 50));
     
-    // Get actual dimensions after removing overflow restrictions
-    const rect = captureTarget.getBoundingClientRect();
     const actualHeight = captureTarget.scrollHeight;
-    const actualWidth = captureTarget.scrollWidth;
+    const actualWidth  = captureTarget.scrollWidth;
     
     const dataUrl = await toPng(captureTarget, {
       quality: 1,
@@ -243,31 +236,41 @@ const captureElement = async (element, exportBg) => {
       skipAutoScale: false,
       width: actualWidth,
       height: actualHeight,
+      includeQueryParams: true,
     });
     
     return dataUrl;
   } finally {
-    // Restore overflow settings
     fixOverflowContainers(captureTarget, false);
   }
 };
 
-// ── Add image to PDF — exact content height, no trailing white space ──────────
+// ── Add image to PDF ──────────────────────────────────────────────────────────
+// Uses A4 landscape (297 × 210 mm) — the standard size for wide dashboard
+// reports, matching what Chrome/browsers default to when printing landscape.
+// Each captured page is scaled to fill the full page width. If the content
+// height fits within one page it sits cleanly at the top. If it is taller it
+// flows onto additional pages without any horizontal distortion.
 const addImageToPdf = (pdf, dataUrl, elementWidth, elementHeight, pdfWidth, pdfPageHeight, isFirst) => {
-  const scale       = pdfWidth / elementWidth;
-  const imgHeightMm = elementHeight * scale;
+  const scale  = pdfWidth / elementWidth;   // scale so image fills page width
+  const imgH   = elementHeight * scale;     // proportional height in mm
 
   if (!isFirst) pdf.addPage();
 
-  let remainingHeight = imgHeightMm;
-  let yOffset = 0;
+  if (imgH <= pdfPageHeight) {
+    // Content fits on one page — place flush to top, no slicing
+    pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, imgH);
+  } else {
+    // Content taller than one page — slice cleanly across pages
+    let remaining = imgH;
+    let yOffset   = 0;
 
-  while (remainingHeight > 0) {
-    const sliceHeight = Math.min(remainingHeight, pdfPageHeight);
-    pdf.addImage(dataUrl, 'PNG', 0, -yOffset, pdfWidth, imgHeightMm);
-    yOffset         += sliceHeight;
-    remainingHeight -= sliceHeight;
-    if (remainingHeight > 0) pdf.addPage();
+    while (remaining > 0) {
+      pdf.addImage(dataUrl, 'PNG', 0, -yOffset, pdfWidth, imgH);
+      yOffset   += pdfPageHeight;
+      remaining -= pdfPageHeight;
+      if (remaining > 0) pdf.addPage();
+    }
   }
 };
 
@@ -309,9 +312,11 @@ export const exportCompleteReport = async () => {
     await new Promise((r) => setTimeout(r, 3000));
     if (isAborted()) throw new Error('__aborted__');
 
-    const pdf      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pdfWidth = 210;
-    const pdfPageH = 297;
+    // ── A4 landscape: 297 mm wide × 210 mm tall ───────────────────────────
+    const pdf      = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pdfWidth = 297;
+    const pdfPageH = 210;
+    // ─────────────────────────────────────────────────────────────────────
     let isFirst    = true;
     let capturedCount = 0;
 
@@ -326,7 +331,6 @@ export const exportCompleteReport = async () => {
         continue;
       }
       
-      // Get the actual content element for height check
       let contentElement = element;
       if (page.id === 'team-export-container' && element.firstChild) {
         contentElement = element.firstChild;
@@ -359,7 +363,7 @@ export const exportCompleteReport = async () => {
     updateToast(`Saving PDF (${capturedCount} pages)...`);
     pdf.save(`vidhelp_report_${new Date().toISOString().split('T')[0]}.pdf`);
 
-    updateToast(`✅ Done! ${capturedCount} pages saved.`);
+    updateToast(` Done! ${capturedCount} pages saved.`);
     setTimeout(removeToast, 3000);
     return true;
 
@@ -401,7 +405,6 @@ export const exportToPDF = async (elementId, filename, pageTitle = '') => {
 
     const dataUrl = await captureElement(element, exportBg);
     
-    // Get the actual content element for dimensions
     let contentElement = element;
     if (elementId === 'team-export-container' && element.firstChild) {
       contentElement = element.firstChild;
@@ -409,9 +412,11 @@ export const exportToPDF = async (elementId, filename, pageTitle = '') => {
 
     if (isAborted()) throw new Error('__aborted__');
 
-    const pdf      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pdfWidth = 210;
-    const pdfPageH = 297;
+    // ── A4 landscape: 297 mm wide × 210 mm tall ───────────────────────────
+    const pdf      = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pdfWidth = 297;
+    const pdfPageH = 210;
+    // ─────────────────────────────────────────────────────────────────────
 
     addImageToPdf(pdf, dataUrl, contentElement.scrollWidth, contentElement.scrollHeight, pdfWidth, pdfPageH, true);
 
