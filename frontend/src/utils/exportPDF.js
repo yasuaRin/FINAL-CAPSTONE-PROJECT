@@ -220,7 +220,7 @@ const captureElement = async (element, exportBg) => {
   fixOverflowContainers(captureTarget, true);
   
   try {
-    // ✅ Wait for all fonts to be fully loaded before capturing
+    // Wait for all fonts to be fully loaded before capturing
     await document.fonts.ready;
     await Promise.all([...document.fonts].map(f => f.load().catch(() => {})));
     await new Promise(r => setTimeout(r, 50));
@@ -349,7 +349,7 @@ export const exportCompleteReport = async () => {
         addImageToPdf(pdf, dataUrl, contentElement.scrollWidth, contentElement.scrollHeight, pdfWidth, pdfPageH, isFirst);
         isFirst = false;
         capturedCount++;
-        console.log(`✅ Captured ${page.name} (${contentElement.scrollHeight}px)`);
+        console.log(`Captured ${page.name} (${contentElement.scrollHeight}px)`);
       } catch (err) {
         console.error(`Failed to capture ${page.name}:`, err);
       }
@@ -422,7 +422,7 @@ export const exportToPDF = async (elementId, filename, pageTitle = '') => {
 
     hideStopButton();
     pdf.save(`${filename}_${new Date().toISOString().split('T')[0]}.pdf`);
-    updateToast(`✅ ${pageTitle} saved!`);
+    updateToast(`${pageTitle} saved!`);
     setTimeout(removeToast, 2000);
     return true;
 

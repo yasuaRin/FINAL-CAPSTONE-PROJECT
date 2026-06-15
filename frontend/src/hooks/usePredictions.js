@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 
-const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:5000';
+const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:3001';
 
 export const usePredictions = () => {
   const [futurePredictions, setFuturePredictions] = useState([]);
@@ -37,6 +37,7 @@ export const usePredictions = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPredictions();
   }, [fetchPredictions]);
 
@@ -61,6 +62,7 @@ export const usePredictions = () => {
         throw new Error(errorData.detail || 'Retraining failed');
       }
 
+      // eslint-disable-next-line no-unused-vars
       const result = await response.json();
      // console.log('✅ ML retraining completed:', result);
 

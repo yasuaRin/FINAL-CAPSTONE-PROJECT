@@ -1,5 +1,4 @@
-// frontend/src/components/charts/RevenueBarChart.jsx
-
+import { useState, useEffect } from 'react';
 import { Activity, Brain, BarChart3 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -13,8 +12,9 @@ const RevenueTooltip = ({ active, payload, formatCurrency }) => {
 
   return (
     <div className="bg-card/95 backdrop-blur-md border border-border p-3 rounded-xl shadow-xl min-w-[180px]">
+      {/* CHANGED: shows "Jan '24 · P1" — readable at a glance */}
       <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">
-        {dp.year}
+        {dp.displayName}{dp.periodId ? ` · P${dp.periodId}` : ''}
       </p>
 
       <div className="space-y-2">
@@ -26,7 +26,6 @@ const RevenueTooltip = ({ active, payload, formatCurrency }) => {
                 Actual Revenue
               </span>
             </div>
-
             <span className="text-[10px] font-bold" style={{ color: '#3b82f6' }}>
               {formatCurrency(dp.actual)}
             </span>
@@ -41,7 +40,6 @@ const RevenueTooltip = ({ active, payload, formatCurrency }) => {
                 Forecast Revenue
               </span>
             </div>
-
             <span className="text-[10px] font-bold" style={{ color: '#ef4444' }}>
               {formatCurrency(dp.forecast)}
             </span>
@@ -56,11 +54,7 @@ const RevenueTooltip = ({ active, payload, formatCurrency }) => {
 const ChartSkeleton = () => (
   <div className="flex items-end justify-around h-full px-8 pb-8 gap-6 animate-pulse">
     {[70, 45, 85, 60, 90].map((h, i) => (
-      <div
-        key={i}
-        className="flex-1 bg-muted rounded-t"
-        style={{ height: `${h}%` }}
-      />
+      <div key={i} className="flex-1 bg-muted rounded-t" style={{ height: `${h}%` }} />
     ))}
   </div>
 );
@@ -69,19 +63,14 @@ const ChartSkeleton = () => (
 const EmptyChart = ({ onRerunModel, isRetraining, hasBrandFilter }) => (
   <div className="flex flex-col items-center justify-center h-full text-center gap-4">
     <Activity size={44} className="text-muted-foreground/25" />
-
     <div>
-      <p className="text-sm font-medium text-muted-foreground">
-        No revenue data available
-      </p>
-
+      <p className="text-sm font-medium text-muted-foreground">No revenue data available</p>
       <p className="text-[11px] text-muted-foreground/70 mt-0.5">
         {hasBrandFilter
           ? 'No data available for the selected brand.'
           : 'Run the ML model to generate future revenue forecasts.'}
       </p>
     </div>
-
     {!hasBrandFilter && (
       <button
         onClick={onRerunModel}
@@ -89,30 +78,26 @@ const EmptyChart = ({ onRerunModel, isRetraining, hasBrandFilter }) => (
         className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold"
       >
         {isRetraining ? (
-          <>
-            <Activity size={13} className="animate-spin" />
-            Training…
-          </>
+          <><Activity size={13} className="animate-spin" />Training…</>
         ) : (
-          <>
-            <Brain size={13} />
-            Run ML Models
-          </>
+          <><Brain size={13} />Run ML Models</>
         )}
       </button>
     )}
   </div>
 );
 
-// ── Custom X-axis tick ────────────────────────────────────────────────────────
-const YearTick = ({ x, y, payload }) => (
+// ── CHANGED: Custom X-axis tick — rotated -45°, font 9px, fits 25 labels ────
+const PeriodTick = ({ x, y, payload }) => (
   <text
     x={x}
-    y={y + 14}
-    textAnchor="middle"
+    y={y + 6}
+    textAnchor="end"
+    dominantBaseline="middle"
     fill="var(--muted-foreground)"
-    fontSize={12}
+    fontSize={9}
     fontWeight={600}
+    transform={`rotate(-45, ${x}, ${y + 6})`}
   >
     {payload.value}
   </text>
@@ -129,25 +114,33 @@ export const RevenueBarChart = ({
   formatCurrency,
   selectedBrand = null,
 }) => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+  const id = requestAnimationFrame(() => setMounted(true));
+  return () => cancelAnimationFrame(id);
+}, []);
+
   const hasData = chartData.length > 0;
   const hasBrandFilter = !!selectedBrand;
 
-  const firstForecastYear = hasForecast
-    ? chartData.find((d) => d.forecast > 0)?.year
+  const firstForecastPeriod = hasForecast
+    ? chartData.find((d) => d.forecast > 0)?.displayName
     : null;
 
-  // Calculate dynamic height based on number of data points
-  const chartHeight = hasData ? (chartData.length > 6 ? 380 : 350) : 300;
+  // CHANGED: 25 periods with rotated labels → show all (interval 0); only skip if > 30
+  const xAxisInterval = chartData.length > 30 ? 1 : 0;
+
+  // CHANGED: taller chart for rotated label breathing room
+  const chartHeight = hasData ? (chartData.length > 15 ? 420 : 360) : 300;
 
   return (
-    <div className="lg:col-span-2 dashboard-card p-0 overflow-hidden h-fit">
+    <div className="lg:col-span-2 dashboard-card p-0 overflow-hidden h-[420px]">
 
       {/* Header */}
       <div className="p-4 border-b border-border bg-muted/20">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <BarChart3 size={16} className="text-primary" />
-
             <h3 className="text-xs font-bold uppercase tracking-widest text-foreground">
               Revenue Forecast & Trend Analysis
               {selectedBrand && (
@@ -156,51 +149,40 @@ export const RevenueBarChart = ({
                 </span>
               )}
             </h3>
-
             {hasForecast && (
               <span className="text-[9px] font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                 ML Powered
               </span>
             )}
           </div>
-
-          {/* Legend - Colored text to match bars */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#3b82f6' }} />
-              <span className="text-[10px] font-medium" style={{ color: '#3b82f6' }}>
-                Actual Revenue
-              </span>
+              <span className="text-[10px] font-medium" style={{ color: '#3b82f6' }}>Actual Revenue</span>
             </div>
-
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#ef4444' }} />
-              <span className="text-[10px] font-medium" style={{ color: '#ef4444' }}>
-                Forecast Revenue
-              </span>
+              <span className="text-[10px] font-medium" style={{ color: '#ef4444' }}>Forecast Revenue</span>
             </div>
           </div>
         </div>
-
         <p className="text-[10px] text-muted-foreground mt-1">
           Comparison between historical revenue performance and AI-generated future projections.
         </p>
       </div>
 
-      {/* Chart - Increased height and adjusted margins to prevent x-axis cropping */}
+      {/* Chart */}
       <div
-        className={`w-full px-2 pt-3 ${
-          hasData ? `h-[${chartHeight}px]` : 'py-10'
-        }`}
-        style={hasData ? { height: `${chartHeight}px` } : {}}
+        className="w-full px-2 pt-3"
+        style={{ minHeight: '300px', height: hasData ? `${chartHeight}px` : '300px', width: '100%' }}
       >
         {isLoading ? (
           <ChartSkeleton />
-        ) : hasData ? (
-          <ResponsiveContainer width="100%" height="100%" minHeight={0}>
+        ) : hasData && mounted ? (
+          <ResponsiveContainer width="100%" height="100%" minHeight={300} minWidth={0}>
             <BarChart
               data={chartData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
+              margin={{ top: 20, right: 30, left: 20, bottom: 70 }} // CHANGED: bottom 70 for rotated labels
               barCategoryGap="20%"
               barGap={4}
             >
@@ -211,25 +193,21 @@ export const RevenueBarChart = ({
                 vertical={{ strokeOpacity: 0.12 }}
               />
 
+              {/* CHANGED: dataKey="displayName", tick=PeriodTick, height=65 */}
               <XAxis
-                dataKey="year"
+                dataKey="displayName"
                 axisLine={false}
                 tickLine={{ stroke: 'var(--border)', strokeOpacity: 0.4 }}
-                tick={<YearTick />}
-                padding={{ left: 30, right: 30 }}
-                interval={0}
-                angle={0}
-                dy={8}
+                tick={<PeriodTick />}
+                padding={{ left: 20, right: 20 }}
+                interval={xAxisInterval}
+                height={65}
               />
 
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{
-                  fontSize: 10,
-                  fill: 'var(--muted-foreground)',
-                  fontWeight: 500,
-                }}
+                tick={{ fontSize: 10, fill: 'var(--muted-foreground)', fontWeight: 500 }}
                 tickFormatter={formatCompactCurrency}
                 width={80}
                 dy={0}
@@ -240,14 +218,14 @@ export const RevenueBarChart = ({
                 cursor={{ fill: 'var(--muted)', opacity: 0.15 }}
               />
 
-              {firstForecastYear && (
+              {firstForecastPeriod && (
                 <ReferenceLine
-                  x={firstForecastYear}
+                  x={firstForecastPeriod}
                   stroke="#ef4444"
                   strokeDasharray="6 4"
                   strokeWidth={1.5}
                   label={{
-                    value: 'FORECAST',
+                    value: 'FORECAST →',
                     position: 'insideTopRight',
                     fontSize: 8,
                     fill: '#ef4444',
@@ -257,16 +235,14 @@ export const RevenueBarChart = ({
                 />
               )}
 
-              {/* ACTUAL REVENUE BAR - Primary Blue with hover effect */}
               <Bar
                 dataKey="actual"
                 name="Actual Revenue"
                 fill="var(--primary)"
                 radius={[4, 4, 0, 0]}
-                maxBarSize={80}
+                maxBarSize={60}
                 className="bar-actual"
                 onMouseEnter={(data, index) => {
-                  // Hover effect for actual bars
                   const bars = document.querySelectorAll('.recharts-bar-rectangle');
                   if (bars[index]) {
                     bars[index].style.filter = 'brightness(0.85)';
@@ -283,17 +259,15 @@ export const RevenueBarChart = ({
                 }}
               />
 
-              {/* FORECAST REVENUE BAR - Red with slight transparency and hover effect */}
               <Bar
                 dataKey="forecast"
                 name="Forecast Revenue"
                 fill="#ef4444"
                 radius={[4, 4, 0, 0]}
-                maxBarSize={80}
+                maxBarSize={60}
                 opacity={0.85}
                 className="bar-forecast"
                 onMouseEnter={(data, index) => {
-                  // Hover effect for forecast bars (offset index for actual+forecast)
                   const bars = document.querySelectorAll('.recharts-bar-rectangle');
                   const actualCount = chartData.filter(d => d.actual > 0).length;
                   const forecastIndex = actualCount + index;
@@ -316,11 +290,7 @@ export const RevenueBarChart = ({
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <EmptyChart
-            onRerunModel={onRerunModel}
-            isRetraining={isRetraining}
-            hasBrandFilter={hasBrandFilter}
-          />
+          <EmptyChart onRerunModel={onRerunModel} isRetraining={isRetraining} hasBrandFilter={hasBrandFilter} />
         )}
       </div>
 
@@ -328,26 +298,22 @@ export const RevenueBarChart = ({
       {hasForecast && (
         <div className="border-t border-border/60 bg-gradient-to-r from-muted/20 via-muted/10 to-transparent px-6 py-4">
           <div className="flex items-start gap-3">
-            
             <div className="shrink-0">
               <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/15 flex items-center justify-center">
                 <Brain size={14} className="text-red-500" />
               </div>
             </div>
-
             <div className="space-y-1.5">
               <p className="text-[11px] font-semibold tracking-wide text-foreground">
                 Machine Learning Forecast Analysis
               </p>
-
               <p className="text-[10px] leading-relaxed text-muted-foreground">
                 Forecasts are generated using multiple machine learning models including
                 <span className="font-medium text-foreground"> Linear Regression</span>,
                 <span className="font-medium text-foreground"> Ridge Regression</span>,
                 <span className="font-medium text-foreground"> Random Forest</span>, and
                 <span className="font-medium text-foreground"> Gradient Boosting</span>.
-                Results represent predictive estimates and should be interpreted as
-                analytical guidance rather than guaranteed outcomes.
+                Results represent predictive estimates and should be interpreted as analytical guidance rather than guaranteed outcomes.
               </p>
             </div>
           </div>
