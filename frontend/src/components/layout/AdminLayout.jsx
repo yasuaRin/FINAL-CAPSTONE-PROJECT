@@ -1,15 +1,14 @@
-﻿import { useState, useEffect, useRef, useMemo } from 'react';
+﻿// frontend/src/components/layout/AdminLayout.jsx
+import { useState, useEffect, useRef, useMemo, createContext, useCallback } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../services/supabase';
 import { usePageSearch } from '../../hooks/usePageSearch';
 import {
-  LayoutDashboard, Users, LogOut, Search,
-  TrendingUp, Menu, X, Briefcase, User, Radar,
-  FileText, Zap, Sun, Moon,
+  LogOut, Menu, X, Search, Download
 } from 'lucide-react';
-import AdminAISettings from '../../pages/admin/AdminAISettings';
 import Footer from './Footer';
+import { format } from 'date-fns';
 
 const STATIC_ITEMS = [
   { id: 'p1', title: 'Dashboard',      category: 'Page',   path: '/admin',          keywords: 'home main overview stats' },
@@ -24,18 +23,34 @@ const STATIC_ITEMS = [
 ];
 
 const CategoryIcon = ({ category }) => {
-  const props = { size: 13, style: { flexShrink: 0 } };
-  if (category === 'Page')   return <FileText  {...props} style={{ ...props.style, color: '#1a73e8' }} />;
-  if (category === 'Action') return <Zap       {...props} style={{ ...props.style, color: '#fb8c00' }} />;
-  if (category === 'Brand')  return <Briefcase {...props} style={{ ...props.style, color: '#43a047' }} />;
-  if (category === 'Staff')  return <Users     {...props} style={{ ...props.style, color: '#7b809a' }} />;
   return null;
 };
+
+export const AdminActionContext = createContext({
+  registerActions: () => {},
+});
 
 export const AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen]       = useState(false);
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const avatarMenuRef = useRef(null);
+  const actionHandlers = useRef({
+    onAllData: null,
+    onExportReport: null,
+  });
+
+  const registerActions = useCallback((handlers) => {
+    actionHandlers.current = {
+      ...actionHandlers.current,
+      ...handlers,
+    };
+  }, []);
+
+  const handleExportReport = useCallback(() => {
+    if (actionHandlers.current.onExportReport) {
+      actionHandlers.current.onExportReport();
+    }
+  }, []);
 
   const [searchQuery, setSearchQuery]       = useState('');
   const [supabaseItems, setSupabaseItems]   = useState([]);
@@ -136,13 +151,13 @@ export const AdminLayout = () => {
   useEffect(() => { setIsSidebarOpen(false); }, [location.pathname]);
 
   const navItems = [
-    { icon: <LayoutDashboard size={20} />, label: 'Dashboard',  path: '/admin' },
-    { icon: <TrendingUp size={20} />,      label: 'Revenue',    path: '/admin/revenue' },
-    { icon: <Briefcase size={20} />,       label: 'Brands',     path: '/admin/brands' },
-    { icon: <Radar size={20} />,           label: 'Lead Radar', path: '/admin/leads' },
-    { icon: <Users size={20} />,           label: 'Team',       path: '/admin/team' },
-    { icon: <User size={20} />,            label: 'My Profile', path: '/admin/profile' },
-    { icon: <Zap size={20} />,             label: 'AI Settings', path: '/admin/ai-settings' },
+    { label: 'Dashboard',  path: '/admin' },
+    { label: 'Revenue',    path: '/admin/revenue' },
+    { label: 'Brands',     path: '/admin/brands' },
+    { label: 'Lead Radar', path: '/admin/leads' },
+    { label: 'Team',       path: '/admin/team' },
+    { label: 'My Profile', path: '/admin/profile' },
+    { label: 'AI Settings', path: '/admin/ai-settings' },
   ];
 
   const handleLogout = async () => { await logout(); navigate('/admin/login', { replace: true }); };
@@ -157,7 +172,7 @@ export const AdminLayout = () => {
     <>
       <div className="p-4 sm:p-6 flex items-center justify-between border-b border-sidebar-border">
         <div className="font-serif font-black text-[#2563eb] text-xl">VH</div>
-        <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-lg transition-colors hover:bg-black/5" style={{ color: '#7b809a' }}>
+        <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5" style={{ color: '#7b809a' }}>
           <X size={20} />
         </button>
       </div>
@@ -168,14 +183,13 @@ export const AdminLayout = () => {
             key={item.path}
             to={item.path}
             end={item.path === '/admin'}
-           className={({ isActive }) =>
+            className={({ isActive }) =>
               `flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 ${
-                isActive ? 'bg-[#2563eb] text-white shadow-md' : 'hover:bg-black/5'
+                isActive ? 'bg-[#2563eb] text-white shadow-md' : 'hover:bg-black/5 dark:hover:bg-white/5'
               }`
             }
             style={({ isActive }) => isActive ? {} : { color: '#7b809a' }}
           >
-            <span className="shrink-0">{item.icon}</span>
             <span className="text-[10px] uppercase tracking-widest font-sans">{item.label}</span>
           </NavLink>
         ))}
@@ -203,7 +217,7 @@ export const AdminLayout = () => {
   }
 
   return (
-    <div data-layout="admin" className="flex h-screen bg-background text-foreground overflow-hidden relative">
+    <div data-layout="admin" className="flex h-screen bg-[#EEEEEE] dark:bg-[#0a0f1a] text-foreground overflow-hidden relative">
       {isSidebarOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" onClick={() => setIsSidebarOpen(false)} />
       )}
@@ -213,83 +227,109 @@ export const AdminLayout = () => {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="shrink-0 z-30 px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between bg-background/80 backdrop-blur-md border-b border-border sticky top-0">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setIsSidebarOpen(true)} className="p-2 rounded-md transition-colors hover:bg-red-50 dark:hover:bg-red-950/30" style={{ color: '#DB1A1A' }}>
-              <Menu size={22} />
-            </button>
-            <div className="hidden sm:flex flex-col">
-              <p className="text-[11px] text-muted-foreground font-light">Pages / {pageSegment}</p>
-              <h2 className="text-sm font-bold capitalize text-foreground">{pageSegment}</h2>
-            </div>
-          </div>
+        <header className="shrink-0 z-30 bg-white dark:bg-card border-b border-border sticky top-0 shadow-sm">
+          <div className="px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
-          <div className="flex items-center gap-3 bg-white dark:bg-card rounded-2xl shadow-md border border-border/50 px-4 py-2">
-            <div ref={searchRef} className="hidden lg:flex flex-col min-w-[200px] relative">
-              <div className="flex items-center gap-2">
-                <Search size={16} className="text-muted-foreground flex-shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={e => { setSearchQuery(e.target.value); if (!e.target.value) { setHighlightQuery(''); clearHighlights(); } }}
-                  onKeyDown={e => { if (e.key === 'Enter' && searchQuery.trim()) { setHighlightQuery(searchQuery.trim()); setSearchQuery(''); } }}
-                  className="w-full bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground py-1"
-                />
-                {searchQuery && (
-                  <button onClick={() => { setSearchQuery(''); setHighlightQuery(''); clearHighlights(); }} className="text-muted-foreground hover:text-foreground transition-colors">
-                    <X size={14} />
-                  </button>
-                )}
+            {/* LEFT: Hamburger + Page Title + Date */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="p-1.5 rounded-lg hover:bg-[#f0f0f0] dark:hover:bg-white/5 transition-colors"
+              >
+                <Menu size={18} className="text-[#7b809a]" />
+              </button>
+
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-[#2563eb]">Admin Panel</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-muted-foreground">
+                    {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
               </div>
-              <div className={`h-px mt-1 transition-all duration-200 ${searchQuery ? 'bg-[#2563eb]' : 'bg-border'}`} />
+            </div>
 
-              {showDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-3 bg-white dark:bg-card border border-border rounded-xl shadow-xl overflow-hidden z-50 py-1">
-                  {allResults.length > 0 ? allResults.map(result => (
-                    <button
-                      key={result.id}
-                      onClick={() => { setHighlightQuery(searchQuery.trim()); navigate(result.path); setSearchQuery(''); }}
-                      className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-muted transition-colors text-left"
-                    >
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-sm font-medium text-foreground">{result.title}</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{result.category}</span>
-                      </div>
-                      <CategoryIcon category={result.category} />
+            {/* RIGHT: Search + Action Buttons + Avatar */}
+            <div className="flex items-center gap-2 flex-wrap">
+
+              {/* Search */}
+              <div ref={searchRef} className="flex-1 sm:flex-none relative">
+                <div className="flex items-center gap-2 bg-[#f5f5f5] dark:bg-muted border border-border rounded-lg px-3 py-1.5 focus-within:border-[#2563eb] focus-within:ring-1 focus-within:ring-[#2563eb]/20 transition-all min-w-[160px] sm:min-w-[200px]">
+                  <Search size={14} className="text-muted-foreground flex-shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={e => { setSearchQuery(e.target.value); if (!e.target.value) { setHighlightQuery(''); clearHighlights(); } }}
+                    onKeyDown={e => { if (e.key === 'Enter' && searchQuery.trim()) { setHighlightQuery(searchQuery.trim()); setSearchQuery(''); } }}
+                    className="w-full bg-transparent border-none outline-none text-[13px] text-foreground placeholder:text-muted-foreground/60 py-0.5"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => { setSearchQuery(''); setHighlightQuery(''); clearHighlights(); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                      <X size={14} />
                     </button>
-                  )) : (
-                    <div className="px-4 py-6 text-center text-sm text-muted-foreground">No results for "{searchQuery}"</div>
                   )}
                 </div>
-              )}
-            </div>
 
-            <div className="hidden lg:block w-px h-7 bg-border" />
+                {showDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-card border border-border rounded-xl shadow-xl overflow-hidden z-50 py-1">
+                    {allResults.length > 0 ? allResults.map(result => (
+                      <button
+                        key={result.id}
+                        onClick={() => { setHighlightQuery(searchQuery.trim()); navigate(result.path); setSearchQuery(''); }}
+                        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-muted transition-colors text-left"
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-sm font-medium text-foreground">{result.title}</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{result.category}</span>
+                        </div>
+                        <CategoryIcon category={result.category} />
+                      </button>
+                    )) : (
+                      <div className="px-4 py-6 text-center text-sm text-muted-foreground">No results for "{searchQuery}"</div>
+                    )}
+                  </div>
+                )}
+              </div>
 
-            <div
-              onClick={() => navigate('/admin/profile')}
-              title={displayName}
-              className="relative w-9 h-9 rounded-full border border-border overflow-hidden cursor-pointer flex-shrink-0 bg-muted hover:border-[#2563eb] hover:scale-105 transition-all duration-200"
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={displayName} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <span className="text-sm font-bold text-foreground">{initials}</span>
-                </div>
-              )}
+              {/* Action Buttons */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleExportReport}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-[#2563eb] text-white hover:bg-[#1d4ed8] transition-all whitespace-nowrap"
+                >
+                  <Download size={13} />
+                  Export Report
+                </button>
+              </div>
+
+              {/* Avatar */}
+              <div
+                onClick={() => navigate('/admin/profile')}
+                title={displayName}
+                className="relative w-7 h-7 rounded-full border-2 border-[#2563eb]/20 overflow-hidden cursor-pointer flex-shrink-0 bg-muted hover:border-[#2563eb] hover:scale-105 transition-all duration-200"
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={displayName} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-[#2563eb]/10">
+                    <span className="text-[10px] font-bold text-[#2563eb]">{initials}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
 
-        {/* Page content + footer inside the scrollable section */}
+        {/* Page content */}
         <section ref={pageContentRef} className="flex-1 overflow-y-auto" style={{ position: 'relative' }}>
-          {/* Page content — constrained to max-w-7xl */}
-          <div className="max-w-7xl mx-auto pt-4 p-4 sm:p-6 md:p-8">
-            <Outlet />
-          </div>
-          {/* Footer — outside the max-w-7xl div so it spans full section width */}
+          <AdminActionContext.Provider value={{ registerActions }}>
+            <div className="max-w-7xl mx-auto pt-4 p-4 sm:p-6 md:p-8">
+              <Outlet />
+            </div>
+          </AdminActionContext.Provider>
           <Footer variant="admin" />
         </section>
 
@@ -315,7 +355,7 @@ export const AdminLayout = () => {
         )}
       </main>
 
-      {/* ========== PDF EXPORT CONTAINERS ========== */}
+      {/* PDF Export Containers */}
       <div
         id="pdf-export-wrapper"
         style={{
@@ -326,13 +366,12 @@ export const AdminLayout = () => {
           width: '1200px',
         }}
       >
-        <div id="dashboard-export-container">{/* populated by exportState */}</div>
-        <div id="revenue-export-container">{/* populated by exportState */}</div>
-        <div id="brands-export-container">{/* populated by exportState */}</div>
-        <div id="team-export-container">{/* populated by exportState */}</div>
-        <div id="leads-export-container">{/* populated by exportState */}</div>
+        <div id="dashboard-export-container" />
+        <div id="revenue-export-container" />
+        <div id="brands-export-container" />
+        <div id="team-export-container" />
+        <div id="leads-export-container" />
       </div>
-      {/* ========== END PDF EXPORT CONTAINERS ========== */}
     </div>
   );
 };

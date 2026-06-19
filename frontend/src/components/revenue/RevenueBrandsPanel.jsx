@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, ChevronRight, Calendar } from 'lucide-react';
+import { TrendingUp, Calendar } from 'lucide-react';
 
 const RevenueBrandsPanel = ({
   brandsList = [],
@@ -19,7 +19,6 @@ const RevenueBrandsPanel = ({
       {/* Header */}
       <div className="p-6 border-b border-border bg-muted/20">
         <div className="flex items-center gap-2">
-          <TrendingUp size={16} className="text-primary" />
           <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">
             Brand Performance Overview
           </h3>
@@ -57,32 +56,7 @@ const RevenueBrandsPanel = ({
               onMouseLeave={() => setHoveredItem(null)}
             >
               <div className="relative z-10">
-                <div className="flex justify-between items-start mb-2">
-                  <h4 
-                    className="text-xs font-bold uppercase transition-colors"
-                    style={{ 
-                      color: isHovered && insight.hasSessions ? "#ef4444" : "var(--foreground)",
-                      transition: "color 0.15s ease"
-                    }}
-                  >
-                    {insight.name}
-                  </h4>
-
-                  {insight.hasSessions ? (
-                    <TrendingUp 
-                      size={10} 
-                      className="text-emerald-500"
-                      style={{
-                        transition: "transform 0.2s ease",
-                        transform: isHovered ? "scale(1.2)" : "scale(1)"
-                      }}
-                    />
-                  ) : (
-                    <span className="text-[8px] text-muted-foreground">
-                      No sessions
-                    </span>
-                  )}
-                </div>
+                
 
                 {insight.hasSessions ? (
                   <>
@@ -110,16 +84,6 @@ const RevenueBrandsPanel = ({
                         </span>
                       </div>
                     </div>
-
-                    <ChevronRight 
-                      className="mt-2 transition-all"
-                      size={12}
-                      style={{ 
-                        color: isHovered ? "#ef4444" : "var(--muted-foreground)",
-                        transform: isHovered ? "translateX(4px)" : "translateX(0)",
-                        transition: "transform 0.2s ease, color 0.15s ease"
-                      }}
-                    />
                   </>
                 ) : (
                   <p className="text-[9px] text-muted-foreground">

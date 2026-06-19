@@ -1,10 +1,11 @@
-﻿import { useMemo, useState, useEffect, useCallback } from 'react';
+﻿import { useMemo, useState, useEffect, useCallback, useContext } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Download, Activity,
   ShieldAlert, CheckCircle2, ArrowUpRight,
-  PieChart as PieChartIcon, AlertCircle, Brain, RefreshCw, AlertTriangle, Handshake
+  PieChart as PieChartIcon, AlertTriangle, Handshake,
+  TrendingUp, Users, Layers, GitBranch
 } from 'lucide-react';
 import {
   PieChart, Pie, Cell, ResponsiveContainer,
@@ -13,11 +14,14 @@ import {
 import { useRevenue } from '../../hooks/useRevenue';
 import { useBrands } from '../../hooks/useBrands';
 import { useTeam } from '../../hooks/useTeam';
-import { SortByButton } from '../../components/layout/SortByButton';
 import { usePredictions } from '../../hooks/usePredictions';
 import { supabase } from '../../services/supabase';
-import { RevenueBarChart } from '../../components/dashboard/RevenueBarChart';
+import { RevenueLineChart } from '../../components/dashboard/RevenueLineChart';
+import { AdminActionContext } from '../../components/layout/AdminLayout';
 import { exportCompleteReport } from '../../utils/exportPDF';
+
+const SHOPEE_ORANGE = '#EE4D2D';
+const SHOPEE_ORANGE_HOVER = '#d43d1f';
 
 const sumRevenue = (item) => (item?.revenue_shopee ?? 0) + (item?.revenue_tiktok ?? 0);
 
@@ -40,65 +44,41 @@ const formatCompactCurrency = (value) => {
 
 const KpiCard = ({ title, value, icon: Icon, badge, badgeStyle, action, onAction, children }) => {
   const hoverColorValue = '#ef4444';
-  
   return (
     <Motion.div
-      whileHover={{ y: -3, scale: 1.015 }}
+      whileHover={{ y: -4, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       onClick={onAction}
-      className="dashboard-card p-4 cursor-pointer rounded-2xl border-l-4 border-l-primary group transition-all"
+      className="bg-card rounded-xl border border-border shadow-sm p-5 cursor-pointer transition-all"
       style={{
         transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-4px)";
-        e.currentTarget.style.boxShadow = `0 12px 32px ${hoverColorValue}20, 0 4px 12px rgba(0,0,0,0.08)`;
-        e.currentTarget.style.borderLeftColor = hoverColorValue;
+        e.currentTarget.style.transform = "translateY(-4px) scale(1.02)";
+        e.currentTarget.style.boxShadow = `0 12px 32px ${hoverColorValue}25, 0 4px 12px rgba(0,0,0,0.06)`;
+        e.currentTarget.style.borderColor = hoverColorValue;
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.transform = "translateY(0) scale(1)";
         e.currentTarget.style.boxShadow = "none";
-        e.currentTarget.style.borderLeftColor = "var(--primary)";
+        e.currentTarget.style.borderColor = "var(--border)";
       }}
     >
       <div className="flex justify-between items-start gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors leading-tight"
-          style={{ color: 'var(--muted-foreground)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = hoverColorValue; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted-foreground)'; }}
-        >
-          {title}
-        </p>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
         {Icon && (
-          <div 
-            className="p-1.5 rounded-lg transition-all shrink-0"
-            style={{ backgroundColor: `${hoverColorValue}15`, color: hoverColorValue }}
-            onMouseEnter={(e) => { 
-              e.currentTarget.style.backgroundColor = hoverColorValue;
-              e.currentTarget.style.color = 'white';
-            }}
-            onMouseLeave={(e) => { 
-              e.currentTarget.style.backgroundColor = `${hoverColorValue}15`;
-              e.currentTarget.style.color = hoverColorValue;
-            }}
-          >
+          <div className="p-1.5 rounded-lg bg-[#EE4D2D]/10 text-[#EE4D2D]">
             <Icon size={14} />
           </div>
         )}
       </div>
-      <h3 className="text-base font-mono font-bold mt-2 truncate">{value}</h3>
+      <h3 className="text-xl font-bold font-mono mt-2 truncate text-foreground">{value}</h3>
       <div className="mt-2.5 flex items-center justify-between">
         {badge && (
-          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badgeStyle}`}>
-            {badge}
-          </span>
+          <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${badgeStyle}`}>{badge}</span>
         )}
         {action && (
-          <span className="text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
-            style={{ color: hoverColorValue }}
-          >
-            {action}
-          </span>
+          <span className="text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity ml-auto text-[#EE4D2D]">{action}</span>
         )}
       </div>
       {children}
@@ -106,10 +86,16 @@ const KpiCard = ({ title, value, icon: Icon, badge, badgeStyle, action, onAction
   );
 };
 
+// ── Risk level config ─────────────────────────────────────────────────────────
+const RISK_CONFIG = {
+  High:   { color: '#ef4444', bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.2)',   dot: '#ef4444' },
+  Medium: { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.2)',  dot: '#f59e0b' },
+  Low:    { color: '#10b981', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.2)',  dot: '#10b981' },
+};
+
 const CriticalRiskMonitor = ({ onBrandClick }) => {
   const [riskData, setRiskData] = useState([]);
   const [loading, setLoading]   = useState(true);
-  const [hoveredItem, setHoveredItem] = useState(null);
 
   useEffect(() => {
     const fetchRiskData = async () => {
@@ -145,78 +131,101 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
 
   if (loading) {
     return (
-      <div className="dashboard-card p-0 overflow-hidden">
-        <div className="p-4 border-b">
-          <div className="flex items-center gap-2">
-            <ShieldAlert size={16} className="text-destructive" />
-            <h3 className="text-xs font-bold">Critical Risk Monitor</h3>
-          </div>
+      <div className="w-full p-3">
+        <div className="space-y-1.5">
+          {[1,2,3].map(i => (
+            <div key={i} className="h-8 rounded-md bg-muted/40 animate-pulse" />
+          ))}
         </div>
-        <div className="p-8 text-center text-sm">Loading risk data...</div>
       </div>
     );
   }
 
-  const getRiskColor = (risk) => {
-    switch(risk) {
-      case 'High': return '#ef4444';
-      case 'Medium': return '#f59e0b';
-      default: return '#10b981';
-    }
-  };
-
   return (
-    <div className="dashboard-card p-0 overflow-hidden">
-      <div className="p-4 border-b">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <ShieldAlert size={16} className="text-destructive" />
-            <h3 className="text-xs font-bold">Critical Risk Monitor</h3>
-          </div>
+    <div className="w-full">
+      {/* Header */}
+      <div className="px-4 py-2 border-b border-border bg-muted/30 flex items-center justify-between">
+        <div>
+          <h2 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Brand Risk Monitor</h2>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Real-time risk assessment across all monitored brands</p>
         </div>
-        <p className="text-[9px] text-muted-foreground mt-2">Click on any brand to filter the chart</p>
       </div>
-      <div className="p-4 space-y-3 max-h-[400px] overflow-y-auto">
-        {riskData.map((brand) => {
-          const riskColor = getRiskColor(brand.risk);
-          const isHovered = hoveredItem === brand.id;
-          
-          return (
-            <Motion.div
-              key={brand.id}
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.99 }}
-              onClick={() => onBrandClick?.(brand.id)}
-              className="p-3 rounded-lg border cursor-pointer transition-all"
-              style={{
-                borderColor: isHovered ? `${riskColor}40` : 'var(--border)',
-                backgroundColor: isHovered ? `${riskColor}08` : 'transparent',
-                transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
-                boxShadow: isHovered ? `0 8px 24px ${riskColor}20` : 'none',
-                transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.2s ease, background 0.2s ease",
-              }}
-              onMouseEnter={() => setHoveredItem(brand.id)}
-              onMouseLeave={() => setHoveredItem(null)}
-            >
-              <div className="flex justify-between items-start">
-                <h4 className="text-sm font-bold"
-                  style={{ color: isHovered ? riskColor : 'var(--foreground)' }}
+
+      {/* Grid Layout - Replaces table */}
+      <div className="w-full overflow-x-auto p-3">
+        {/* Header Row */}
+        <div className="grid grid-cols-[180px_120px_1fr] gap-3 px-4 py-1.5 border-b border-border/40 bg-muted/10 rounded-t-lg">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Brand</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Risk Level</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Risk Factors</div>
+        </div>
+
+        {/* Data Rows */}
+        <div className="divide-y divide-border/30">
+          {riskData.length === 0 ? (
+            <div className="px-4 py-4 text-center text-sm text-muted-foreground">
+              No risk data available
+            </div>
+          ) : (
+            riskData.map((brand, idx) => {
+              const cfg = RISK_CONFIG[brand.risk] || RISK_CONFIG.Low;
+              return (
+                <div
+                  key={brand.id}
+                  className="grid grid-cols-[180px_120px_1fr] gap-3 px-4 py-2 items-center transition-all cursor-pointer"
+                  style={{
+                    transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
+                    borderRadius: idx === 0 ? '8px 8px 0 0' : idx === riskData.length - 1 ? '0 0 8px 8px' : '0',
+                    border: '1px solid var(--border)',
+                    background: 'var(--card)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-4px)";
+                    e.currentTarget.style.boxShadow = "0 12px 32px rgba(219,26,26,0.15), 0 4px 12px rgba(0,0,0,0.08)";
+                    e.currentTarget.style.borderColor = "rgba(219,26,26,0.3)";
+                    e.currentTarget.style.background = "rgba(219,26,26,0.02)";
+                    const name = e.currentTarget.querySelector(".brand-name");
+                    if (name) name.style.color = "#ef4444";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "none";
+                    e.currentTarget.style.borderColor = "var(--border)";
+                    e.currentTarget.style.background = "var(--card)";
+                    const name = e.currentTarget.querySelector(".brand-name");
+                    if (name) name.style.color = "var(--foreground)";
+                  }}
+                  onClick={() => onBrandClick?.(brand.id)}
                 >
-                  {brand.name}
-                </h4>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                  brand.risk === 'High'   ? 'bg-destructive text-white' :
-                  brand.risk === 'Medium' ? 'bg-amber-500 text-white'   : 'bg-emerald-500 text-white'
-                }`}>{brand.risk}</span>
-              </div>
-              <div className="flex flex-wrap gap-1 mt-2">
-                {brand.reasons?.slice(0, 2).map((r, i) => (
-                  <span key={i} className="text-[9px] bg-muted/80 px-2 py-0.5 rounded">{r}</span>
-                ))}
-              </div>
-            </Motion.div>
-          );
-        })}
+                  {/* Brand */}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="brand-name text-[11px] font-bold text-foreground truncate transition-colors" style={{ transition: "color 0.15s ease" }}>
+                      {brand.name}
+                    </span>
+                  </div>
+
+                  {/* Risk Level */}
+                  <div>
+                    <div
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full"
+                      style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: cfg.dot }} />
+                      <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: cfg.color }}>{brand.risk}</span>
+                    </div>
+                  </div>
+
+                  {/* Risk Factors */}
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {brand.reasons?.join(' • ') || 'No risk factors detected'}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );
@@ -231,8 +240,6 @@ export const Dashboard = () => {
   const [forceShow, setForceShow]           = useState(false);
   const [dateRange, setDateRange]           = useState({ start: null, end: null, preset: 'allData' });
   const [isDarkMode, setIsDarkMode]         = useState(false);
-  const [hoveredPlatform, setHoveredPlatform] = useState(null);
-  const [hoveredButton, setHoveredButton]   = useState(null);
 
   const [periodsMap, setPeriodsMap] = useState(new Map());
 
@@ -263,7 +270,6 @@ export const Dashboard = () => {
     fetchPeriods();
   }, []);
 
-  // ── FIX: destructure brandTotals correctly so useBrands gets real data ──
   const { data: revenue, loading: revenueLoading, brandTotals, yearlyData } = useRevenue();
   const { brands, loading: brandsLoading } = useBrands(brandTotals);
   const { team }                           = useTeam();
@@ -297,11 +303,6 @@ export const Dashboard = () => {
     fetchPartneredBrands();
   }, []);
 
-  const partnershipStats = {
-    inProgress: partneredBrands.filter(p => p.status === 'In Progress').length,
-    dealing:    partneredBrands.filter(p => p.status === 'Dealing').length,
-    partner:    partneredBrands.filter(p => p.status === 'Partner').length,
-  };
   const partnerCount = partneredBrands.length;
 
   useEffect(() => { const t = setTimeout(() => setTimedOut(true),  8000);  return () => clearTimeout(t); }, []);
@@ -341,7 +342,6 @@ export const Dashboard = () => {
         return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
       }
       if (p?.name) return p.name;
-
       const basePeriod = 22;
       const baseDate = new Date(2025, 11, 1);
       const monthsDiff = periodId - basePeriod;
@@ -361,7 +361,6 @@ export const Dashboard = () => {
 
     if (futurePredictions?.length > 0 && !selectedBrand && dateRange.preset === 'allData') {
       const predByPeriod = new Map();
-
       futurePredictions.forEach((pred) => {
         if (pred?.period_id && pred.is_future === true) {
           predByPeriod.set(
@@ -370,7 +369,6 @@ export const Dashboard = () => {
           );
         }
       });
-
       predByPeriod.forEach((value, periodId) => {
         const existing = result.find((r) => r.periodId === periodId);
         if (existing) {
@@ -403,8 +401,10 @@ export const Dashboard = () => {
     return dropPct >= 10 ? { dropPct: Math.round(dropPct), forecastYear: firstForecast.year } : null;
   }, [hasForecast, chartData]);
 
-  const multiColor = isDarkMode ? '#ffffff' : '#000000';
-  
+  // TikTok color based on dark mode
+  const tiktokColor = isDarkMode ? '#3b82f6' : '#000000';
+  const multiColor = isDarkMode ? '#ffffff' : '#1DA1F2';
+
   const platformData = useMemo(() => {
     if (!filteredRevenue || filteredRevenue.length === 0) return [];
     let totalShopee = 0;
@@ -420,13 +420,15 @@ export const Dashboard = () => {
     const total = totalShopee + totalTikTok;
     if (total === 0) return [];
     const segments = [
-      { name: 'TikTok', value: totalTikTok, color: '#2563eb' },
-      { name: 'Shopee', value: totalShopee, color: '#ee4d2d' },
+      { name: 'TikTok', value: totalTikTok, color: tiktokColor },
+      { name: 'Shopee', value: totalShopee, color: '#EE4D2D' },
     ];
     if (totalMulti > 0) segments.push({ name: 'Multi', value: totalMulti, color: multiColor });
     const grandTotal = total + totalMulti;
     return segments.map(s => ({ ...s, value: Math.round((s.value / grandTotal) * 100) }));
-  }, [filteredRevenue, multiColor]);
+  }, [filteredRevenue, multiColor, tiktokColor]);
+
+  const { registerActions } = useContext(AdminActionContext);
 
   const notify = useCallback((msg) => {
     setNotification(msg);
@@ -435,7 +437,7 @@ export const Dashboard = () => {
 
   const handleRerunModel = useCallback(async () => {
     const result = await retrainModels();
-    notify(result.success ? 'ML models retrained successfully!' : `Failed: ${result.error}`);
+    notify(result.success ? 'ML models retrained successfully' : 'Failed: ' + result.error);
   }, [retrainModels, notify]);
 
   const handleExportReport = useCallback(async () => {
@@ -444,12 +446,23 @@ export const Dashboard = () => {
     setIsExporting(false);
   }, []);
 
+  useEffect(() => {
+    registerActions({
+      onAllData: () => {
+        setSelectedBrand(null);
+        setDateRange({ start: null, end: null, preset: 'allData' });
+        notify('Showing all data');
+      },
+      onExportReport: handleExportReport,
+    });
+  }, [registerActions, handleExportReport, notify]);
+
   const handleBrandClick = useCallback(
     (brandId) => {
       const isDeselecting = brandId === selectedBrand;
       setSelectedBrand(isDeselecting ? null : brandId);
       const brandName = brands?.find((b) => b.brand_id === brandId)?.brand_name;
-      notify(isDeselecting ? 'Cleared brand filter' : `Filtering by ${brandName}`);
+      notify(isDeselecting ? 'Cleared brand filter' : 'Filtering by ' + brandName);
     },
     [selectedBrand, brands, notify]
   );
@@ -461,7 +474,7 @@ export const Dashboard = () => {
   if (showLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-        <div className="w-11 h-11 border-3 border-muted border-t-primary rounded-full animate-spin" />
+        <div className="w-11 h-11 border-3 border-muted border-t-[#EE4D2D] rounded-full animate-spin" />
         <p className="text-muted-foreground text-sm">Loading dashboard data...</p>
         <p className="text-[10px] text-muted-foreground opacity-70">This may take a moment</p>
       </div>
@@ -469,207 +482,170 @@ export const Dashboard = () => {
   }
 
   return (
-    <div id="dashboard-report-container" className="space-y-8 pb-12 relative">
+    <div id="dashboard-report-container" className="space-y-6 pb-12 relative">
       <AnimatePresence>
         {notification && (
           <Motion.div
             initial={{ opacity: 0, y: -20, x: '-50%' }}
             animate={{ opacity: 1, y: 20,  x: '-50%' }}
             exit={{ opacity: 0 }}
-            className="fixed top-4 left-1/2 z-[100] bg-card px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border"
+            className="fixed top-4 left-1/2 z-[100] bg-[#0a0f1a] border border-white/10 px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3"
           >
-            <CheckCircle2 size={16} className="text-emerald-500" />
-            <span className="text-sm font-bold">{notification}</span>
+            <CheckCircle2 size={16} className="text-emerald-400" />
+            <span className="text-sm font-semibold text-white">{notification}</span>
           </Motion.div>
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      {/* Page Title */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
-          <p className="text-muted-foreground mt-1">Welcome back, here is what is happening today.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleExportReport}
-            disabled={isExporting}
-            className="inline-flex items-center justify-center rounded-xl text-xs font-bold uppercase tracking-wider transition-all h-10 px-6 py-2 gap-2 bg-black text-white hover:bg-blue-600"
-            style={{
-              transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease",
-              transform: hoveredButton === 'export' ? "translateY(-2px)" : "translateY(0)",
-              boxShadow: hoveredButton === 'export' ? "0 8px 20px rgba(37,99,235,0.3)" : "0 4px 6px rgba(0,0,0,0.1)",
-            }}
-            onMouseEnter={() => setHoveredButton('export')}
-            onMouseLeave={() => setHoveredButton(null)}
-          >
-            {isExporting ? <Activity className="animate-spin" size={16} /> : <Download size={14} />}
-            Export Report
-          </button>
-
-          <button
-            onClick={handleRerunModel}
-            disabled={isRetraining}
-            className="inline-flex items-center justify-center gap-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border h-10 px-4 py-2 bg-black text-white border-black hover:bg-blue-600 hover:border-blue-600"
-            style={{
-              transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease",
-              transform: hoveredButton === 'rerun' ? "translateY(-2px)" : "translateY(0)",
-              boxShadow: hoveredButton === 'rerun' ? "0 8px 20px rgba(37,99,235,0.25)" : "none",
-            }}
-            onMouseEnter={() => setHoveredButton('rerun')}
-            onMouseLeave={() => setHoveredButton(null)}
-          >
-            {isRetraining
-              ? <><Activity size={14} className="animate-spin" /> Training...</>
-              : <><RefreshCw size={14} /> Rerun ML Model</>}
-          </button>
-
-          <SortByButton
-            brands={brands}
-            onBrandChange={setSelectedBrand}
-            selectedBrand={selectedBrand}
-            onDateRangeChange={setDateRange}
-            dateRange={dateRange}
-          />
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Overview</span>
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground mt-1 font-light text-xs">Real-time performance metrics and risk monitoring across all brands.</p>
         </div>
       </div>
 
-      {selectedBrand && selectedBrandName && (
-        <div className="flex items-center gap-2 flex-wrap bg-primary/5 border border-primary/20 rounded-lg px-4 py-2">
-          <span className="text-[9px] text-muted-foreground">Active filter:</span>
-          <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">Brand: {selectedBrandName}</span>
-          <button onClick={() => setSelectedBrand(null)} className="text-[9px] text-muted-foreground hover:text-primary transition-colors ml-auto">
-            Clear filter
-          </button>
-        </div>
-      )}
+      {/* KPI Cards Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard
+          title="Total Revenue"
+          value={formatCurrency(totalRevenue)}
+          icon={TrendingUp}
+          badge={selectedBrandName ? selectedBrandName : 'All Time'}
+          badgeStyle="bg-[#EE4D2D]/10 text-[#EE4D2D]"
+          action={!selectedBrand ? 'View Analysis' : ''}
+          onAction={() => !selectedBrand && navigate('/admin/revenue')}
+        />
+        <KpiCard
+          title="Brands Overview"
+          value={`${activeBrands} / ${atRisk}`}
+          icon={Layers}
+          badge={`${atRisk} High Risk`}
+          badgeStyle={atRisk > 0 ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}
+          action="Manage Brands"
+          onAction={() => navigate('/admin/brands')}
+        />
+        <KpiCard
+          title="Total Staff"
+          value={totalTeamMembers}
+          icon={Users}
+          badge="Active Members"
+          badgeStyle="bg-violet-500/10 text-violet-500"
+          action="Manage Team"
+          onAction={() => navigate('/admin/team')}
+        />
+        <KpiCard
+          title="Partnerships"
+          value={partnerCount}
+          icon={Handshake}
+          badge="Total Active"
+          badgeStyle="bg-amber-500/10 text-amber-500"
+          action="View Leads"
+          onAction={() => navigate('/admin/leads')}
+        />
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KpiCard
-          title="Total Revenue" value={formatCurrency(totalRevenue)} icon={ArrowUpRight}
-          badge={selectedBrandName ? `Brand: ${selectedBrandName}` : 'All Time'} badgeStyle="bg-primary/10 text-primary"
-          action={!selectedBrand ? 'View Analysis →' : ''} onAction={() => !selectedBrand && navigate('/admin/revenue')}
-        />
-        <KpiCard
-          title="Brands Overview" value={`${activeBrands}/${atRisk}`} icon={AlertTriangle}
-          badge={`${atRisk} High Risk of Churn`} badgeStyle={atRisk > 0 ? 'bg-destructive text-white' : 'bg-emerald-500 text-white'}
-          action="Manage Brands →" onAction={() => navigate('/admin/brands')}
-        />
-        <KpiCard
-          title="Total Staff" value={totalTeamMembers} icon={Activity}
-          badge="Active Staff" badgeStyle="bg-primary/10 text-primary"
-          action="Manage Team →" onAction={() => navigate('/admin/team')}
-        />
-        <KpiCard
-          title="Partnership Status" value={partnerCount} icon={Handshake}
-          badge="Total Active Partnerships" badgeStyle="bg-primary/10 text-primary"
-          action="View Partnerships →" onAction={() => navigate('/admin/leads')}
-        >
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-3 text-center"
-              style={{ transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease" }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(245,158,11,0.2)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-            >
-              <p className="text-xs text-gray-400">In Progress</p>
-              <p className="text-lg font-bold text-yellow-400">{partnershipStats.inProgress}</p>
-            </div>
-            <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3 text-center"
-              style={{ transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease" }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(59,130,246,0.2)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-            >
-              <p className="text-xs text-gray-400">Dealing</p>
-              <p className="text-lg font-bold text-blue-400">{partnershipStats.dealing}</p>
-            </div>
-            <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3 text-center"
-              style={{ transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease" }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(16,185,129,0.2)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-            >
-              <p className="text-xs text-gray-400">Partner</p>
-              <p className="text-lg font-bold text-green-400">{partnershipStats.partner}</p>
+      {/* Revenue Chart - Full Width */}
+      <RevenueLineChart
+        chartData={chartData}
+        hasForecast={hasForecast}
+        isRetraining={isRetraining}
+        isLoading={false}
+        onRerunModel={handleRerunModel}
+        formatCompactCurrency={formatCompactCurrency}
+        formatCurrency={formatCurrency}
+        selectedBrand={selectedBrandName}
+        forecastDrop={forecastDrop}
+      />
+
+      {/* Platform Split + Risk Monitor - Side by Side with adjusted widths */}
+      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
+        {/* Platform Split - Smaller */}
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col">
+          <div className="px-4 py-3 border-b border-border bg-muted/30">
+            <div className="flex items-center gap-2">
+              <PieChartIcon size={14} className="text-[#EE4D2D]" />
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-foreground">Platform Contribution</h3>
             </div>
           </div>
-        </KpiCard>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <RevenueBarChart
-          chartData={chartData} hasForecast={hasForecast} isRetraining={isRetraining} isLoading={false}
-          onRerunModel={handleRerunModel} formatCompactCurrency={formatCompactCurrency} formatCurrency={formatCurrency}
-          selectedBrand={selectedBrandName} forecastDrop={forecastDrop}
-        />
-
-        <div className="space-y-8">
-          <div className="dashboard-card p-0 overflow-hidden">
-            <div className="p-4 border-b border-border bg-muted/20">
-              <div className="flex items-center gap-2">
-                <PieChartIcon size={16} className="text-primary" />
-                <h3 className="text-xs font-bold uppercase tracking-widest">Platform Contribution</h3>
-              </div>
-            </div>
-            <div className="p-4">
-              {platformData.length > 0 ? (
-                <div className="flex flex-col items-center gap-3">
-                  {/* ── FIX: explicit pixel height on wrapper + ResponsiveContainer ── */}
-                  <div className="w-full" style={{ height: '200px' }}>
-                    <ResponsiveContainer width="100%" height={200} minHeight={200}>
-                      <PieChart>
-                        <Pie data={platformData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value">
-                          {platformData.map((entry, i) => (
-                            <Cell
-                              key={i}
-                              fill={entry.name === 'Multi' ? multiColor : entry.color}
-                              style={{ transition: "filter 0.3s ease, transform 0.3s ease" }}
-                              onMouseEnter={(e) => { if (e.currentTarget) { e.currentTarget.style.filter = "brightness(0.85)"; e.currentTarget.style.transform = "scale(1.02)"; } }}
-                              onMouseLeave={(e) => { if (e.currentTarget) { e.currentTarget.style.filter = "brightness(1)"; e.currentTarget.style.transform = "scale(1)"; } }}
-                            />
-                          ))}
-                        </Pie>
-                        <RechartsTooltip
-                          content={({ active, payload }) => {
-                            if (!active || !payload?.length) return null;
-                            const d = payload[0];
-                            return (
-                              <div className="bg-card/95 backdrop-blur-md border border-border p-2 rounded-lg shadow-lg flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.payload.name === 'Multi' ? multiColor : d.payload.color }} />
-                                <span className="text-[10px] font-bold">{d.name}</span>
-                                <span className="text-[10px] font-bold text-primary">{d.value}%</span>
-                              </div>
-                            );
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-                    {platformData.map((p) => {
-                      const legendColor = p.name === 'Multi' ? multiColor : p.color;
-                      const isHovered = hoveredPlatform === p.name;
-                      return (
-                        <div
-                          key={p.name}
-                          className="flex items-center gap-1.5 cursor-pointer"
-                          style={{ transition: "transform 0.2s ease", transform: isHovered ? "translateY(-2px)" : "translateY(0)" }}
-                          onMouseEnter={() => setHoveredPlatform(p.name)}
-                          onMouseLeave={() => setHoveredPlatform(null)}
-                        >
-                          <div className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: legendColor, transition: "transform 0.2s ease, box-shadow 0.2s ease", transform: isHovered ? "scale(1.3)" : "scale(1)", boxShadow: isHovered ? `0 0 8px ${legendColor}` : 'none' }}
+          <div className="flex-1 p-4 flex flex-col items-center justify-center">
+            {platformData.length > 0 ? (
+              <div className="w-full">
+                <div className="relative">
+                  <ResponsiveContainer width="100%" height={180}>
+                    <PieChart>
+                      <Pie
+                        data={platformData}
+                        cx="50%" cy="50%"
+                        innerRadius={50} outerRadius={72}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {platformData.map((entry, i) => (
+                          <Cell
+                            key={i}
+                            fill={entry.name === 'Multi' ? multiColor : entry.color}
+                            stroke="transparent"
                           />
-                          <span className="text-[11px] font-semibold" style={{ color: isHovered ? legendColor : 'var(--muted-foreground)' }}>{p.name}</span>
-                          <span className="text-[11px] font-bold text-foreground">{p.value}%</span>
-                        </div>
+                        ))}
+                      </Pie>
+                      <RechartsTooltip
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const d = payload[0];
+                          return (
+                            <div className="bg-card border border-border p-2 rounded-lg shadow-lg flex items-center gap-2">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.payload.name === 'Multi' ? multiColor : d.payload.color }} />
+                              <span className="text-[10px] font-semibold text-foreground">{d.name}</span>
+                              <span className="text-[10px] font-bold text-[#EE4D2D]">{d.value}%</span>
+                            </div>
+                          );
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    {(() => {
+                      const top = [...platformData].sort((a, b) => b.value - a.value)[0];
+                      const topColor = top.name === 'Multi' ? multiColor : top.color;
+                      return (
+                        <>
+                          <span className="text-xl font-bold tabular-nums" style={{ color: topColor }}>{top.value}%</span>
+                          <span className="text-[10px] text-muted-foreground font-medium mt-0.5">{top.name}</span>
+                        </>
                       );
-                    })}
+                    })()}
                   </div>
                 </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground text-sm">No platform data available</div>
-              )}
-            </div>
+                <div className="mt-4 space-y-2">
+                  {platformData.map((p) => {
+                    const color = p.name === 'Multi' ? multiColor : p.color;
+                    return (
+                      <div key={p.name} className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: color }} />
+                        <span className="text-[10px] text-muted-foreground flex-1">{p.name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-1 rounded-full bg-border w-12 overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${p.value}%`, backgroundColor: color }} />
+                          </div>
+                          <span className="text-[10px] font-bold tabular-nums w-7 text-right" style={{ color }}>{p.value}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6 text-muted-foreground text-sm">No platform data available</div>
+            )}
           </div>
+        </div>
 
+        {/* Risk Monitor - Takes remaining space */}
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
           <CriticalRiskMonitor onBrandClick={handleBrandClick} />
         </div>
       </div>

@@ -430,28 +430,31 @@ export default function Team() {
             <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--foreground)", margin: 0, letterSpacing: "-0.5px" }}>Team Management</h1>
             <p style={{ color: "var(--muted-foreground)", fontSize: 13, margin: "4px 0 0" }}>Manage team members and administrative oversight.</p>
           </div>
-          {currentRole !== "staff" && (
-            <button onClick={() => openForm()} style={primaryBtn}><UserPlus size={16} /> Add Member</button>
-          )}
         </div>
 
-        {/* Search + Count */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
-          <div style={{ position: "relative", width: "100%", maxWidth: 340 }}>
-            <Search size={15} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted-foreground)" }} />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search members..."
-              style={{ ...inputStyle, paddingLeft: 36, paddingRight: 16 }}
-            />
+        {/* Add Member button row — replaces the old search + count row */}
+        {currentRole !== "staff" && (
+          <div style={{ marginBottom: 20 }}>
+            <button
+              onClick={() => openForm()}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "10px 20px",
+                borderRadius: 10,
+                border: "none",
+                background: "#2563eb",
+                color: "#ffffff",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              <UserPlus size={16} /> Add Member
+            </button>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: "var(--foreground)" }}>
-            <Activity size={13} style={{ color: "#2563eb" }} />
-            {filtered.length} members found
-          </div>
-        </div>
+        )}
 
         {/* Main Card */}
         <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, overflow: "hidden", boxShadow: "0 1px 8px rgba(0,0,0,0.06)" }}>

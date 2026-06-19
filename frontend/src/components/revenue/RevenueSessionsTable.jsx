@@ -3,9 +3,13 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, Edit2, Trash2, Plus, X, Activity,
+  Edit2, Trash2, Plus, X,
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
+
+const BASE_STYLE = `
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+`;
 
 function getPageList(currentPage, totalPages) {
   if (totalPages <= 7) {
@@ -19,6 +23,9 @@ function getPageList(currentPage, totalPages) {
   }
   return [1, '…', currentPage - 1, currentPage, currentPage + 1, '…', totalPages];
 }
+
+// Grid template with wider columns for better readability
+const GRID_COLS = "50px 110px 80px 1.8fr 100px 100px 90px 120px 90px";
 
 const RevenueSessionsTable = ({
   visibleSessions = [],
@@ -42,7 +49,6 @@ const RevenueSessionsTable = ({
   loading = false,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [hoveredRow, setHoveredRow] = useState(null);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -87,8 +93,51 @@ const RevenueSessionsTable = ({
     return '';
   };
 
+  const platformBadgeStyle = (platform) => {
+    if (platform === 'TikTok') return { background: '#000000', color: '#fff' };
+    if (platform === 'Shopee') return { background: '#f97316', color: '#fff' };
+    return { background: '#3b82f6', color: '#fff' };
+  };
+
+  // Custom styles matching Team page pagination
+  const paginationButtonStyle = (isActive = false, isDisabled = false) => ({
+    padding: '6px 10px',
+    borderRadius: 8,
+    border: isActive ? '1px solid var(--primary)' : '1px solid var(--border)',
+    background: isActive ? 'var(--primary)' : 'var(--bg)',
+    color: isActive ? '#fff' : 'var(--foreground)',
+    cursor: isDisabled ? 'not-allowed' : 'pointer',
+    opacity: isDisabled ? 0.5 : 1,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: 11,
+    fontWeight: 600,
+    minWidth: 32,
+    height: 32,
+    justifyContent: 'center',
+    transition: 'all 0.15s ease',
+  });
+
+  const pageNumberStyle = (isActive = false) => ({
+    minWidth: 32,
+    height: 32,
+    borderRadius: 8,
+    border: isActive ? '1px solid var(--primary)' : '1px solid var(--border)',
+    background: isActive ? 'var(--primary)' : 'var(--bg)',
+    color: isActive ? '#fff' : 'var(--foreground)',
+    cursor: 'pointer',
+    fontSize: 12,
+    fontWeight: 600,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.15s ease',
+  });
+
   return (
     <div className="lg:col-span-2 flex flex-col min-h-[500px] lg:h-[700px]">
+      <style>{BASE_STYLE}</style>
       <div
         id="session-intelligence"
         className="bg-card rounded-3xl border border-border shadow-sm flex flex-col h-full"
@@ -111,20 +160,9 @@ const RevenueSessionsTable = ({
         {/* Toolbar */}
         <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-border bg-muted/5">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap">
-              <Activity size={13} className="text-blue-600" /> Sessions
+            <h3 className="text-xs font-bold text-foreground uppercase tracking-wider whitespace-nowrap">
+              Live Session Record
             </h3>
-
-            <div className="relative flex-1 min-w-[120px] max-w-[200px]">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={12} />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search brand..."
-                className="w-full bg-background border border-border rounded-lg pl-7 pr-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-600/20 outline-none"
-              />
-            </div>
 
             {hasActiveFilters && (
               <button
@@ -149,7 +187,7 @@ const RevenueSessionsTable = ({
               </button>
             </div>
           </div>
-          
+
           {hasActiveFilters && (
             <div className="mt-2 text-[9px] text-muted-foreground md:hidden">
               Filtered by: {getFilterDisplay()}
@@ -157,193 +195,315 @@ const RevenueSessionsTable = ({
           )}
         </div>
 
-        {/* Table */}
-        <div className="flex-1 overflow-auto">
-          <table className="w-full text-left min-w-[720px]">
-            <thead className="sticky top-0 bg-card z-20">
-              <tr className="text-[10px] font-medium text-muted-foreground border-b border-border/50 bg-muted/10">
-                <th className="px-3 sm:px-6 py-3 whitespace-nowrap">Date</th>
-                <th className="px-3 sm:px-6 py-3 whitespace-nowrap">Time</th>
-                <th className="px-3 sm:px-6 py-3 whitespace-nowrap">Brand</th>
-                <th className="px-3 sm:px-6 py-3 hidden sm:table-cell whitespace-nowrap">Period</th>
-                <th className="px-3 sm:px-6 py-3 whitespace-nowrap">Platform</th>
-                <th className="px-3 sm:px-6 py-3 text-right hidden md:table-cell whitespace-nowrap">Viewers</th>
-                <th className="px-3 sm:px-6 py-3 text-right whitespace-nowrap">Revenue</th>
-                <th className="px-3 sm:px-6 py-3 text-right whitespace-nowrap">Actions</th>
-              </tr>
-            </thead>
+        {/* Table - styled to match Brands page (grid rows, blue header, rounded cards) */}
+        <div className="flex-1 overflow-auto px-2 sm:px-3 py-2">
+          <div style={{ minWidth: 900 }}>
+            {/* Header bar - matches Brands blue header */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: GRID_COLS,
+                background: '#2563eb',
+                borderRadius: 10,
+                padding: '0 4px',
+              }}
+            >
+              {['No', 'Date', 'Time', 'Brand', 'Period', 'Platform', 'Viewers', 'Revenue', 'Actions'].map((h, i) => (
+                <div
+                  key={h}
+                  style={{
+                    padding: '12px 10px',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    color: '#fff',
+                    textAlign: h === 'Actions' || h === 'Revenue' || h === 'Viewers' ? 'right' : 
+                              h === 'Brand' ? 'center' : 'left',
+                    whiteSpace: 'nowrap',
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                  className={
+                    h === 'Period' ? 'hidden sm:block' :
+                    h === 'Viewers' ? 'hidden md:block' : ''
+                  }
+                >
+                  {h}
+                </div>
+              ))}
+            </div>
 
-            <tbody className="divide-y divide-border/20">
+            {/* Rows */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 0' }}>
               {paginatedSessions.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-xs text-muted-foreground">
-                    {loading 
-                      ? 'Loading sessions…' 
-                      : hasActiveFilters 
-                        ? `No sessions found for the selected ${tableFilter.brandId !== 'All' ? 'brand' : 'period'}. Try clearing filters.`
-                        : 'No sessions found. Click "Add Session" to create one.'
-                    }
-                  </td>
-                </tr>
+                <div className="px-6 py-12 text-center text-xs text-muted-foreground">
+                  {loading
+                    ? 'Loading sessions…'
+                    : hasActiveFilters
+                      ? `No sessions found for the selected ${tableFilter.brandId !== 'All' ? 'brand' : 'period'}. Try clearing filters.`
+                      : 'No sessions found. Click "Add Session" to create one.'
+                  }
+                </div>
               )}
 
-              {paginatedSessions.map((log) => {
-                const isHovered = hoveredRow === log.id;
-                
+              {paginatedSessions.map((log, idx) => {
+                const rowNumber = showingAll ? idx + 1 : (safePage - 1) * rowLimit + idx + 1;
+                const pStyle = platformBadgeStyle(log.platform);
+
                 return (
-                  <tr 
-                    key={log.id} 
-                    className="transition-all group"
+                  <div
+                    key={log.id}
                     style={{
-                      transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
-                      transform: isHovered ? "translateY(-2px)" : "translateY(0)",
-                      boxShadow: isHovered ? "0 8px 20px rgba(239,68,68,0.12)" : "none",
-                      backgroundColor: isHovered ? "rgba(239,68,68,0.02)" : "transparent",
+                      display: 'grid',
+                      gridTemplateColumns: GRID_COLS,
+                      alignItems: 'center',
+                      borderRadius: 12,
+                      border: '1px solid var(--border)',
+                      background: 'var(--card)',
+                      transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease',
                     }}
-                    onMouseEnter={() => setHoveredRow(log.id)}
-                    onMouseLeave={() => setHoveredRow(null)}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 12px 32px rgba(219,26,26,0.15), 0 4px 12px rgba(0,0,0,0.08)';
+                      e.currentTarget.style.borderColor = 'rgba(219,26,26,0.3)';
+                      e.currentTarget.style.background = 'rgba(219,26,26,0.02)';
+                      const name = e.currentTarget.querySelector('.session-brand-name');
+                      const num = e.currentTarget.querySelector('.row-number');
+                      const actions = e.currentTarget.querySelector('.row-actions');
+                      if (name) name.style.color = '#DB1A1A';
+                      if (num) { num.style.background = '#DB1A1A'; num.style.color = '#fff'; }
+                      if (actions) actions.style.opacity = '1';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.background = 'var(--card)';
+                      const name = e.currentTarget.querySelector('.session-brand-name');
+                      const num = e.currentTarget.querySelector('.row-number');
+                      const actions = e.currentTarget.querySelector('.row-actions');
+                      if (name) name.style.color = 'var(--foreground)';
+                      if (num) { num.style.background = 'var(--muted)'; num.style.color = '#2563eb'; }
+                      if (actions) actions.style.opacity = '0';
+                    }}
                   >
-                    <td className="px-3 sm:px-6 py-3 text-[11px] text-muted-foreground whitespace-nowrap">
-                      {format(parseISO(log.date), 'MMM dd, yyyy')}
-                    </td>
-
-                    <td className="px-3 sm:px-6 py-3 text-[11px] text-muted-foreground whitespace-nowrap">
-                      {log.time || '00:00'}
-                    </td>
-
-                    <td className="px-3 sm:px-6 py-3">
-                      <span 
-                        className="text-[11px] font-medium transition-colors"
-                        style={{ 
-                          color: isHovered ? "#ef4444" : "var(--foreground)",
-                          transition: "color 0.15s ease"
+                    {/* No */}
+                    <div style={{ padding: '14px 6px', textAlign: 'center', minWidth: 0 }}>
+                      <span
+                        className="row-number"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 28,
+                          height: 28,
+                          borderRadius: 8,
+                          background: 'var(--muted)',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: '#2563eb',
+                          transition: 'background 0.18s ease, color 0.18s ease',
                         }}
                       >
+                        {rowNumber}
+                      </span>
+                    </div>
+
+                    {/* Date */}
+                    <div style={{ padding: '14px 8px', minWidth: 0, overflow: 'hidden' }}>
+                      <span style={{ fontSize: 12, color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+                        {format(parseISO(log.date), 'MMM dd, yyyy')}
+                      </span>
+                    </div>
+
+                    {/* Time */}
+                    <div style={{ padding: '14px 8px', minWidth: 0, overflow: 'hidden' }}>
+                      <span style={{ fontSize: 12, color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>
+                        {log.time || '00:00'}
+                      </span>
+                    </div>
+
+                    {/* Brand - Centered */}
+                    <div style={{ padding: '14px 8px', textAlign: 'center', minWidth: 0, overflow: 'hidden' }}>
+                      <span className="session-brand-name" style={{ fontSize: 12, fontWeight: 600, color: 'var(--foreground)', whiteSpace: 'nowrap', transition: 'color 0.15s ease' }}>
                         {log.brandName}
                       </span>
-                    </td>
+                    </div>
 
-                    <td className="px-3 sm:px-6 py-3 hidden sm:table-cell">
-                      <span className="text-[10px] text-muted-foreground">
+                    {/* Period */}
+                    <div className="hidden sm:block" style={{ padding: '14px 8px', minWidth: 0, overflow: 'hidden' }}>
+                      <span style={{ fontSize: 11, color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
                         {log.period}
                       </span>
-                    </td>
+                    </div>
 
-                    <td className="px-3 sm:px-6 py-3">
-                      <span className={`text-[9px] font-medium uppercase px-2 py-0.5 rounded text-white ${
-                        log.platform === 'TikTok'
-                          ? 'bg-black'
-                          : log.platform === 'Shopee'
-                          ? 'bg-orange-500'
-                          : 'bg-blue-500'
-                      }`}>
+                    {/* Platform */}
+                    <div style={{ padding: '14px 6px', minWidth: 0, overflow: 'hidden' }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          padding: '3px 10px',
+                          borderRadius: 6,
+                          letterSpacing: '0.04em',
+                          whiteSpace: 'nowrap',
+                          display: 'inline-block',
+                          ...pStyle,
+                        }}
+                      >
                         {log.platform}
                       </span>
-                    </td>
+                    </div>
 
-                    <td className="px-3 sm:px-6 py-3 text-right text-[11px] hidden md:table-cell">
-                      {log.viewers?.toLocaleString()}
-                    </td>
+                    {/* Viewers */}
+                    <div className="hidden md:block" style={{ padding: '14px 8px', textAlign: 'right', minWidth: 0, overflow: 'hidden' }}>
+                      <span style={{ fontSize: 12, color: 'var(--foreground)', whiteSpace: 'nowrap' }}>
+                        {log.viewers?.toLocaleString()}
+                      </span>
+                    </div>
 
-                    <td className="px-3 sm:px-6 py-3 text-right text-[11px] font-medium whitespace-nowrap">
-                      {formatCurrency(log.revenue)}
-                    </td>
+                    {/* Revenue */}
+                    <div style={{ padding: '14px 10px', textAlign: 'right', minWidth: 0, overflow: 'hidden' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--foreground)', whiteSpace: 'nowrap' }}>
+                        {formatCurrency(log.revenue)}
+                      </span>
+                    </div>
 
-                    <td className="px-3 sm:px-6 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Actions */}
+                    <div style={{ padding: '14px 8px', textAlign: 'right', minWidth: 0 }}>
+                      <div
+                        className="row-actions"
+                        style={{ display: 'inline-flex', gap: 6, opacity: 0, transition: 'opacity 0.15s ease' }}
+                      >
                         <button
                           onClick={() => openEditModal(log)}
-                          className="p-1.5 rounded bg-muted/50 hover:bg-blue-600 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
                           title="Edit"
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            border: 'none',
+                            background: 'rgba(37,99,235,0.08)',
+                            cursor: 'pointer',
+                            color: '#2563eb',
+                            transition: 'all 0.15s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(37,99,235,0.2)';
+                            e.currentTarget.style.transform = 'scale(1.12)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(37,99,235,0.08)';
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
                         >
-                          <Edit2 size={11} />
+                          <Edit2 size={13} />
                         </button>
 
                         <button
                           onClick={() => handleDeleteSession(log)}
-                          className="p-1.5 rounded bg-muted/50 hover:bg-red-500 hover:text-white transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
                           title="Delete"
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            border: 'none',
+                            background: 'rgba(219,26,26,0.08)',
+                            cursor: 'pointer',
+                            color: '#DB1A1A',
+                            transition: 'all 0.15s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(219,26,26,0.2)';
+                            e.currentTarget.style.transform = 'scale(1.12)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(219,26,26,0.08)';
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
                         >
-                          <Trash2 size={11} />
+                          <Trash2 size={13} />
                         </button>
                       </div>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="px-3 sm:px-6 py-2.5 border-t border-border/60 bg-muted/5 flex items-center justify-between gap-2 min-h-[44px] flex-wrap rounded-b-3xl">
-          <p className="text-[9px] text-muted-foreground whitespace-nowrap shrink-0">
-            {totalCount === 0
-              ? 'No sessions'
-              : showingAll
-                ? `All ${totalCount.toLocaleString()} session${totalCount !== 1 ? 's' : ''}`
-                : `Showing ${rowStart.toLocaleString()}–${rowEnd.toLocaleString()} of ${totalCount.toLocaleString()} session${totalCount !== 1 ? 's' : ''}`
-            }
-          </p>
-
-          {!showingAll && totalPages > 1 && totalCount > 0 && (
-            <div className="flex items-center gap-1 flex-wrap justify-end">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+        {/* Footer - Now matches Team page exactly */}
+        {sessionIntelligence.length > 0 && (
+          <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Show:</span>
+              <select 
+                value={showingAll ? 'all' : rowLimit} 
+                onChange={(e) => setRowLimit(e.target.value === 'all' ? null : Number(e.target.value))}
+                style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--foreground)", fontSize: 12, fontWeight: 500, cursor: "pointer", outline: "none" }}
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value="all">All</option>
+              </select>
+              <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>entries</span>
+            </div>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+              {totalCount === 0
+                ? 'No sessions'
+                : showingAll
+                  ? `All ${totalCount.toLocaleString()} session${totalCount !== 1 ? 's' : ''}`
+                  : `Showing ${rowStart.toLocaleString()} to ${rowEnd.toLocaleString()} of ${totalCount.toLocaleString()} sessions`
+              }
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <button 
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
                 disabled={safePage === 1}
-                className="p-1.5 rounded-lg border border-border bg-background hover:border-blue-600/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all min-h-[28px] min-w-[28px] flex items-center justify-center"
-                aria-label="Previous page"
+                style={paginationButtonStyle(false, safePage === 1)}
               >
-                <ChevronLeft size={12} />
+                <ChevronLeft size={12} /> Prev
               </button>
-
-              {pageList.map((page, idx) =>
-                page === '…' ? (
-                  <span key={`ellipsis-${idx}`} className="text-[10px] text-muted-foreground px-1 select-none">…</span>
-                ) : (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`min-w-[28px] min-h-[28px] px-2 rounded-lg border text-[10px] font-semibold transition-all ${
-                      safePage === page
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : 'bg-background border-border hover:border-blue-600/40 text-foreground'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                )
-              )}
-
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              <div style={{ display: "flex", gap: 4 }}>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) pageNum = i + 1;
+                  else if (safePage <= 3) pageNum = i + 1;
+                  else if (safePage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                  else pageNum = safePage - 2 + i;
+                  return (
+                    <button 
+                      key={pageNum} 
+                      onClick={() => setCurrentPage(pageNum)}
+                      style={pageNumberStyle(safePage === pageNum)}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button 
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
                 disabled={safePage === totalPages}
-                className="p-1.5 rounded-lg border border-border bg-background hover:border-blue-600/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all min-h-[28px] min-w-[28px] flex items-center justify-center"
-                aria-label="Next page"
+                style={paginationButtonStyle(false, safePage === totalPages)}
               >
-                <ChevronRight size={12} />
+                Next <ChevronRight size={12} />
               </button>
             </div>
-          )}
-
-          {!showingAll && totalCount > rowLimit && (
-            <button
-              onClick={() => setRowLimit(null)}
-              className="text-[10px] font-medium text-blue-600 hover:underline transition-colors whitespace-nowrap"
-            >
-              Show All ({totalCount})
-            </button>
-          )}
-
-          {showingAll && totalCount > 25 && (
-            <button
-              onClick={() => setRowLimit(25)}
-              className="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-            >
-              Show less (25 per page) ←
-            </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

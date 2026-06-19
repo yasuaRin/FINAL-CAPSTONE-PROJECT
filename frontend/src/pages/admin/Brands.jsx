@@ -4,29 +4,76 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Search, Edit3, Trash2, X, Activity, AlertTriangle,
-  CheckCircle2, ArrowUpRight, ArrowDown, Globe, ShieldCheck, ChevronDown, Loader2
+  CheckCircle2, ArrowUpRight, ArrowDown, ShieldCheck, ChevronDown, Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useRevenue } from '../../hooks/useRevenue';
 
+const BASE_STYLE = `
+  @keyframes spin  { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+`;
+
+const inputStyle = {
+  width: "100%",
+  padding: "9px 12px",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  fontSize: 13,
+  outline: "none",
+  background: "var(--muted)",
+  color: "var(--foreground)",
+};
+
+const labelStyle = {
+  fontSize: 10,
+  fontWeight: 700,
+  color: "var(--muted-foreground)",
+  textTransform: "uppercase",
+  letterSpacing: "0.06em",
+  display: "block",
+  marginBottom: 6,
+};
+
+const cancelBtn = {
+  flex: 1,
+  padding: 10,
+  borderRadius: 8,
+  border: "1px solid var(--border)",
+  background: "var(--card)",
+  color: "var(--foreground)",
+  fontWeight: 600,
+  fontSize: 13,
+  cursor: "pointer",
+};
+
+const primaryBtn = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "10px 20px",
+  borderRadius: 10,
+  border: "none",
+  background: "#2563eb",
+  color: "#ffffff",
+  fontWeight: 700,
+  fontSize: 13,
+  cursor: "pointer",
+};
+
 function formatRevenue(value) {
   if (!value && value !== 0) return 'Rp 0';
   return `Rp ${Number(value).toLocaleString('id-ID')}`;
 }
 
-const dropdownTriggerCls = (isOpen) =>
-  `w-full bg-background border rounded-xl py-3 px-4 text-sm font-medium text-foreground text-left flex items-center justify-between transition-all outline-none ${
-    isOpen ? 'border-blue-600 ring-2 ring-blue-600/20' : 'border-input'
-  }`;
-
-const dropdownOptionCls = (isSelected) =>
-  `w-full text-left px-4 py-2.5 text-sm transition-colors ${
-    isSelected
-      ? 'bg-blue-600/10 text-blue-600 font-semibold'
-      : 'hover:bg-muted/50 text-foreground'
-  }`;
+const StatusBadge = ({ status }) => (
+  <div style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", background: status === "active" ? "rgba(34,197,94,0.1)" : "var(--muted)", color: status === "active" ? "#22c55e" : "var(--muted-foreground)" }}>
+    <div style={{ width: 6, height: 6, borderRadius: "50%", background: status === "active" ? "#22c55e" : "var(--muted-foreground)", animation: status === "active" ? "pulse 2s infinite" : "none" }} />
+    {status}
+  </div>
+);
 
 const CATEGORY_OPTIONS = ['Beauty', 'Gadgets', 'F&B', 'Luxury', 'Fashion', 'Sports'];
 const STATUS_OPTIONS = [
@@ -254,404 +301,385 @@ export default function Brands() {
 
   if (isLoading || isRoleLoading || revenueLoading) {
     return (
-      <div id="brands-report-container" className="flex items-center justify-center h-96">
-        <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-[3px] border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-            Loading brands...
-          </p>
-        </div>
+      <div id="brands-report-container" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh", gap: 12, flexDirection: "column" }}>
+        <style>{BASE_STYLE}</style>
+        <div style={{ width: 40, height: 40, border: "3px solid var(--border)", borderTopColor: "var(--primary)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+        <p style={{ color: "var(--muted-foreground)", fontSize: 13, fontWeight: 500 }}>Loading brands...</p>
       </div>
     );
   }
 
   return (
-    <div id="brands-report-container">
-      <AnimatePresence>
-        {notification && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, x: '-50%' }}
-            animate={{ opacity: 1, y: 20, x: '-50%' }}
-            exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className="fixed top-4 left-1/2 z-[100] bg-card text-foreground px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-border"
-          >
-            <div className={`rounded-full p-1 ${notification.includes('Failed') ? 'bg-red-500' : 'bg-emerald-500'}`}>
-              <CheckCircle2 size={16} className="text-white" />
-            </div>
-            <span className="text-sm font-bold tracking-tight">{notification}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div id="brands-export-container">
+      <div style={{ paddingTop: 8, paddingBottom: 48 }}>
+        <style>{BASE_STYLE}</style>
 
-      <div className="space-y-8 pb-12">
-        <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-          isSuperAdmin
-            ? 'bg-blue-600/10 text-blue-600 border border-blue-600/20'
-            : 'bg-muted/50 text-muted-foreground border border-border'
-        }`}>
-          <ShieldCheck size={12} />
-          {isSuperAdmin ? 'Super Admin - Full Access' : 'Admin - Limited Access (No Delete)'}
-        </div>
+        <AnimatePresence>
+          {notification && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, x: "-50%" }} animate={{ opacity: 1, y: 20, x: "-50%" }} exit={{ opacity: 0, y: -20, x: "-50%" }}
+              style={{ position: "fixed", top: 4, left: "50%", zIndex: 100, background: "var(--card)", color: "var(--foreground)", padding: "12px 24px", borderRadius: 16, boxShadow: "0 8px 40px rgba(0,0,0,0.18)", display: "flex", alignItems: "center", gap: 12, border: "1px solid var(--border)", minWidth: 260 }}
+            >
+              <div style={{ borderRadius: "50%", padding: 4, display: "flex", alignItems: "center", justifyContent: "center", background: notification.includes("Failed") ? "#ef4444" : "#22c55e", flexShrink: 0 }}>
+                <CheckCircle2 size={16} color="white" />
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em" }}>{notification}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        {/* Page Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 16 }}>
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Globe size={14} className="text-blue-600" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Brand Management</span>
+            <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "0 0 4px" }}>Pages / brands</p>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--foreground)", margin: 0, letterSpacing: "-0.5px" }}>Brand Portfolio</h1>
+            <p style={{ color: "var(--muted-foreground)", fontSize: 13, margin: "4px 0 0" }}>Track and manage all your brands in one place.</p>
+          </div>
+        </div>
+
+        {/* Add Button - Below the description */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", marginBottom: 20 }}>
+          <button onClick={() => openForm()} style={primaryBtn}><Plus size={16} /> Add Brand</button>
+        </div>
+
+        {/* Main Card */}
+        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, overflow: "hidden", boxShadow: "0 1px 8px rgba(0,0,0,0.06)" }}>
+          <div style={{ overflowX: "auto" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "60px 2fr 1.4fr 1.2fr 1fr 100px", background: "#2563eb", padding: "0 8px" }}>
+              {["No", "Brand", "Revenue", "Risk Level", "Status", "Actions"].map((h) => (
+                <div key={h} style={{ padding: "14px 16px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#fff", textAlign: h === "Actions" ? "right" : "left" }}>
+                  {h}
+                </div>
+              ))}
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Brand Portfolio</h1>
-            <p className="text-muted-foreground mt-1 font-light text-xs">Track and manage all your brands in one place.</p>
-          </div>
-          <button
-            onClick={() => openForm()}
-            className="inline-flex items-center justify-center rounded-xl text-xs font-black uppercase tracking-widest bg-blue-600 text-white hover:bg-blue-700 transition-all h-10 px-6 shadow-lg shadow-blue-600/20 gap-2"
-          >
-            <Plus size={14} /> Add Brand
-          </button>
-        </div>
 
-        <div className="flex flex-col md:flex-row items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by brand name or category..."
-              className="w-full bg-card border border-border rounded-2xl pl-12 pr-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-600/20 outline-none transition-all"
-            />
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-card rounded-2xl border border-border">
-            <Activity size={14} className="text-blue-600" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{brandMatrix.length} Total Brands</span>
-          </div>
-        </div>
-
-        <div className="mt-8 overflow-hidden rounded-[2rem] border border-border bg-card shadow-xl">
-          <div className="p-6 border-b border-border bg-muted/20">
-            <h3 className="text-xl font-bold tracking-tight text-foreground">All Brands</h3>
-            <p className="text-muted-foreground text-xs font-light mt-1">Complete overview of your brand performance and risk status.</p>
-          </div>
-
-          <div className="overflow-x-auto w-full">
-            <table className="w-full min-w-[700px] text-left border-collapse">
-              <thead>
-                <tr className="border-b border-border bg-muted/10">
-                  <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60 w-[220px]">Brand</th>
-                  <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60 w-[240px]">Revenue</th>
-                  <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60">Churned Level</th>
-                  <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60">Status</th>
-                  <th className="p-5 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-60 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {brandMatrix.map((brand) => (
-                  <tr
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "4px 8px" }}>
+              {brandMatrix.length === 0 ? (
+                <div style={{ padding: 48, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>No brands found.</div>
+              ) : (
+                brandMatrix.map((brand, idx) => (
+                  <div
                     key={brand.brand_id}
-                    className="group transition-all duration-300 border-b border-border/20 last:border-0"
                     style={{
+                      display: "grid",
+                      gridTemplateColumns: "60px 2fr 1.4fr 1.2fr 1fr 100px",
+                      alignItems: "center",
+                      borderRadius: 12,
+                      border: "1px solid var(--border)",
+                      background: "var(--card)",
                       transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
+                      opacity: brand.isActive ? 1 : 0.5,
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-4px)";
-                      e.currentTarget.style.boxShadow = "0 12px 32px rgba(239,68,68,0.15), 0 4px 12px rgba(0,0,0,0.08)";
-                      e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)";
-                      e.currentTarget.style.background = "rgba(239,68,68,0.02)";
+                      if (brand.isActive) {
+                        e.currentTarget.style.transform = "translateY(-4px)";
+                        e.currentTarget.style.boxShadow = "0 12px 32px rgba(219,26,26,0.15), 0 4px 12px rgba(0,0,0,0.08)";
+                        e.currentTarget.style.borderColor = "rgba(219,26,26,0.3)";
+                        e.currentTarget.style.background = "rgba(219,26,26,0.02)";
+                        const name = e.currentTarget.querySelector(".brand-name");
+                        const num = e.currentTarget.querySelector(".row-number");
+                        if (name) name.style.color = "#DB1A1A";
+                        if (num) { num.style.background = "#DB1A1A"; num.style.color = "#fff"; }
+                      }
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = "translateY(0)";
                       e.currentTarget.style.boxShadow = "none";
                       e.currentTarget.style.borderColor = "var(--border)";
-                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.background = "var(--card)";
+                      const name = e.currentTarget.querySelector(".brand-name");
+                      const num = e.currentTarget.querySelector(".row-number");
+                      if (name) name.style.color = "var(--foreground)";
+                      if (num) { num.style.background = "var(--muted)"; num.style.color = "#2563eb"; }
                     }}
                   >
-                    <td className="p-5">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center font-black text-white text-lg shadow-lg transform transition-transform group-hover:scale-110 duration-500 flex-shrink-0">
-                          {(brand.brand_name || '?')[0]}
-                        </div>
+                    <div style={{ padding: "16px 12px", textAlign: "center" }}>
+                      <span className="row-number" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 8, background: "var(--muted)", fontSize: 11, fontWeight: 700, color: "#2563eb", transition: "background 0.18s ease, color 0.18s ease" }}>
+                        {idx + 1}
+                      </span>
+                    </div>
+
+                    <div style={{ padding: "16px 20px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        {/* Removed the initial letter div */}
                         <div>
-                          <p className="font-bold text-base tracking-tight text-foreground transition-colors">{brand.brand_name}</p>
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-full border border-border/50">
+                          <p className="brand-name" style={{ fontSize: 13, fontWeight: 700, color: brand.isActive ? "var(--foreground)" : "var(--muted-foreground)", margin: 0, transition: "color 0.15s ease", textDecoration: brand.isActive ? "none" : "line-through" }}>
+                            {brand.brand_name}
+                          </p>
+                          <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "3px 0 0" }}>
                             {brand.brand_category || 'General'}
-                          </span>
+                          </p>
                         </div>
                       </div>
-                    </td>
+                    </div>
 
-                    <td className="p-5">
-                      <div className="flex items-center gap-3">
-                        <span className="font-medium font-mono tracking-tight text-foreground whitespace-nowrap">
+                    <div style={{ padding: "16px 20px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: brand.isActive ? "var(--foreground)" : "var(--muted-foreground)", textDecoration: brand.isActive ? "none" : "line-through" }}>
                           {formatRevenue(brand.totalRevenue)}
                         </span>
-                        <div className={`inline-flex items-center justify-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 ${
-                          brand.growth >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
-                        }`}>
-                          {brand.growth >= 0 ? <ArrowUpRight size={10} /> : <ArrowDown size={10} />}
-                          {Math.abs(brand.growth)}%
-                        </div>
+                        {brand.isActive && (
+                          <div className={`inline-flex items-center justify-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 ${brand.growth >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                            {brand.growth >= 0 ? <ArrowUpRight size={10} /> : <ArrowDown size={10} />}
+                            {Math.abs(brand.growth)}%
+                          </div>
+                        )}
                       </div>
-                      <div className="mt-1 text-[9px] text-muted-foreground font-bold uppercase tracking-widest whitespace-nowrap">
+                      <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "3px 0 0" }}>
                         {brand.sessionCount} live sessions
-                      </div>
-                    </td>
+                      </p>
+                    </div>
 
-                    <td className="p-5">
+                    <div style={{ padding: "16px 20px" }}>
                       {brand.riskLevel ? (
                         <span className={`inline-flex px-3 py-1 rounded-xl text-[9px] font-bold uppercase tracking-wider border ${
-                          brand.riskLevel === 'High' ? 'bg-red-500/10 text-red-500 border-red-500/20'
+                          !brand.isActive ? 'bg-gray-500/10 text-gray-500 border-gray-500/20'
+                          : brand.riskLevel === 'High' ? 'bg-red-500/10 text-red-500 border-red-500/20'
                           : brand.riskLevel === 'Medium' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
                           : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                        }`}>{brand.riskLevel}</span>
+                        }`}>
+                          {brand.riskLevel}
+                        </span>
                       ) : (
                         <span className="inline-flex px-3 py-1 rounded-xl text-[9px] font-bold uppercase tracking-wider border bg-gray-500/10 text-gray-500 border-gray-500/20">
                           Not Assessed
                         </span>
                       )}
                       {brand.riskReasons.length > 0 && (
-                        <div className="mt-1 text-[8px] text-muted-foreground max-w-[200px]">{brand.riskReasons[0]}</div>
+                        <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 4, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {brand.riskReasons[0]}
+                        </div>
                       )}
-                    </td>
+                    </div>
 
-                    <td className="p-5">
-                      <span className={`inline-flex px-3 py-1 rounded-xl text-[9px] font-bold uppercase tracking-wider border ${
-                        brand.isActive
-                          ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                          : 'bg-red-500/10 text-red-500 border-red-500/20'
-                      }`}>
-                        {brand.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
+                    <div style={{ padding: "16px 20px" }}>
+                      <StatusBadge status={brand.isActive ? 'active' : 'inactive'} />
+                    </div>
 
-                    <td className="p-5 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openForm(brand); }}
-                          className="p-2 bg-blue-600/10 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm"
-                          title="Edit brand"
+                    <div style={{ padding: "16px 20px", textAlign: "right" }}>
+                      <div style={{ display: "inline-flex", gap: 6 }}>
+                        <button 
+                          onClick={() => openForm(brand)} 
+                          style={{ 
+                            width: 32, height: 32, borderRadius: "50%", border: "none", 
+                            background: brand.isActive ? "rgba(37,99,235,0.08)" : "rgba(128,128,128,0.08)", 
+                            cursor: "pointer", 
+                            color: brand.isActive ? "#2563eb" : "#999", 
+                            transition: "all 0.15s", 
+                            display: "flex", 
+                            alignItems: "center", 
+                            justifyContent: "center" 
+                          }}
+                          onMouseEnter={(e) => { 
+                            if (brand.isActive) {
+                              e.currentTarget.style.background = "rgba(37,99,235,0.2)"; 
+                              e.currentTarget.style.transform = "scale(1.12)"; 
+                            }
+                          }}
+                          onMouseLeave={(e) => { 
+                            if (brand.isActive) {
+                              e.currentTarget.style.background = "rgba(37,99,235,0.08)"; 
+                              e.currentTarget.style.transform = "scale(1)"; 
+                            }
+                          }}
                         >
-                          <Edit3 size={14} />
+                          <Edit3 size={13} />
                         </button>
                         {isSuperAdmin && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDeleteId(brand.brand_id); }}
-                            className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm"
-                            title="Delete brand (Super Admin only)"
+                          <button 
+                            onClick={() => setDeleteId(brand.brand_id)} 
+                            style={{ 
+                              width: 32, height: 32, borderRadius: "50%", border: "none", 
+                              background: "rgba(219,26,26,0.08)", 
+                              cursor: "pointer", 
+                              color: "#DB1A1A", 
+                              transition: "all 0.15s", 
+                              display: "flex", 
+                              alignItems: "center", 
+                              justifyContent: "center" 
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.2)"; e.currentTarget.style.transform = "scale(1.12)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.08)"; e.currentTarget.style.transform = "scale(1)"; }}
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={13} />
                           </button>
                         )}
                       </div>
-                      {!isSuperAdmin && (
-                        <div className="text-[8px] text-muted-foreground mt-1 text-right">Delete restricted</div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="pt-6 border-t border-border">
-          <p className="text-[9px] text-center text-muted-foreground uppercase tracking-[0.3em] font-bold">
-            VidHelp Brand Management - Real-time Analytics - {brandMatrix.length} Active Brands
-          </p>
-        </div>
-      </div>
-
-      {isSuperAdmin && (
-        <AnimatePresence>
-          {deleteId && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                onClick={() => !isDeleting && setDeleteId(null)}
-                className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-              />
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-card border border-border rounded-2xl p-6 max-w-md w-full relative z-10 shadow-2xl"
-              >
-                <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center text-red-500">
-                    <AlertTriangle size={24} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-foreground">Delete Brand?</h3>
-                    <p className="text-muted-foreground text-sm font-light mt-1">This action cannot be undone. The brand will be permanently removed.</p>
-                  </div>
-                  <div className="flex gap-3 w-full pt-2">
-                    <button
-                      onClick={() => !isDeleting && setDeleteId(null)}
-                      disabled={isDeleting}
-                      className="flex-1 px-4 py-2 bg-muted text-muted-foreground rounded-xl text-sm font-bold disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                      className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {isDeleting ? (
-                        <>
-                          <Loader2 size={14} className="animate-spin" />
-                          Deleting...
-                        </>
-                      ) : (
-                        'Delete Permanently'
-                      )}
-                    </button>
-                  </div>
+        {/* Delete Modal */}
+        {isSuperAdmin && deleteId && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+            <div onClick={() => !isDeleting && setDeleteId(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
+            <div style={{ position: "relative", zIndex: 10, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: 32, maxWidth: 420, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center" }}>
+                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(219,26,26,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <AlertTriangle size={24} color="#DB1A1A" />
                 </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-      )}
-
-      <AnimatePresence>
-        {isFormOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={closeForm}
-              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="bg-card border border-border rounded-2xl p-8 max-w-md w-full relative z-10 shadow-2xl"
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-foreground">
-                  {editingBrand ? 'Edit Brand' : 'Add New Brand'}
-                </h3>
-                <button
-                  onClick={closeForm}
-                  disabled={isSubmitting}
-                  className="p-2 hover:bg-muted rounded-xl text-muted-foreground transition-all disabled:opacity-50"
-                >
-                  <X size={20} />
-                </button>
+                <div>
+                  <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>Delete Brand?</h3>
+                  <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "8px 0 0" }}>
+                    This will permanently remove <strong style={{ color: "var(--foreground)" }}>{brandMatrix.find(b => b.brand_id === deleteId)?.brand_name}</strong> from the system.
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: 12, width: "100%" }}>
+                  <button onClick={() => !isDeleting && setDeleteId(null)} style={cancelBtn}>Cancel</button>
+                  <button onClick={handleDelete} style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "#DB1A1A", color: "#ffffff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Confirm</button>
+                </div>
               </div>
-
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Brand Name *
-                  </label>
-                  <input
-                    required
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    disabled={isSubmitting}
-                    placeholder="e.g. Aura Glow"
-                    className="w-full bg-background border border-input rounded-xl py-3 px-4 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-600/20 outline-none transition-all disabled:opacity-50"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4" ref={dropdownRef}>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      Category
-                    </label>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => !isSubmitting && setOpenDropdown(prev => prev === 'category' ? null : 'category')}
-                        disabled={isSubmitting}
-                        className={dropdownTriggerCls(openDropdown === 'category')}
-                      >
-                        <span>{formCategory}</span>
-                        <ChevronDown
-                          size={14}
-                          className={`text-muted-foreground transition-transform flex-shrink-0 ${openDropdown === 'category' ? 'rotate-180' : ''}`}
-                        />
-                      </button>
-                      {openDropdown === 'category' && !isSubmitting && (
-                        <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[200px]">
-                          {CATEGORY_OPTIONS.map(cat => (
-                            <button
-                              key={cat}
-                              type="button"
-                              onClick={() => { setFormCategory(cat); setOpenDropdown(null); }}
-                              className={dropdownOptionCls(formCategory === cat)}
-                            >
-                              {cat}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      Status
-                    </label>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => !isSubmitting && setOpenDropdown(prev => prev === 'status' ? null : 'status')}
-                        disabled={isSubmitting}
-                        className={dropdownTriggerCls(openDropdown === 'status')}
-                      >
-                        <span>{STATUS_OPTIONS.find(s => s.value === formStatus)?.label}</span>
-                        <ChevronDown
-                          size={14}
-                          className={`text-muted-foreground transition-transform flex-shrink-0 ${openDropdown === 'status' ? 'rotate-180' : ''}`}
-                        />
-                      </button>
-                      {openDropdown === 'status' && !isSubmitting && (
-                        <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[120px]">
-                          {STATUS_OPTIONS.map(s => (
-                            <button
-                              key={s.value}
-                              type="button"
-                              onClick={() => { setFormStatus(s.value); setOpenDropdown(null); }}
-                              className={dropdownOptionCls(formStatus === s.value)}
-                            >
-                              {s.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={closeForm}
-                    disabled={isSubmitting}
-                    className="flex-1 px-4 py-3 bg-muted text-muted-foreground rounded-xl text-sm font-bold disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" />
-                        {editingBrand ? 'Processing...' : 'Creating...'}
-                      </>
-                    ) : (
-                      editingBrand ? 'Save Changes' : 'Add Brand'
-                    )}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
+            </div>
           </div>
         )}
-      </AnimatePresence>
+
+        {/* Add / Edit Modal */}
+        {isFormOpen && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+            <div onClick={closeForm} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
+            <div style={{ position: "relative", zIndex: 10, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, maxWidth: 600, width: "100%", maxHeight: "90vh", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", overflow: "hidden" }}>
+              <div style={{ padding: "16px 24px", background: "#2563eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>{editingBrand ? "Edit Brand" : "Add New Brand"}</h3>
+                <button onClick={closeForm} style={{ padding: 6, borderRadius: 8, border: "none", background: "rgba(255,255,255,0.15)", cursor: "pointer", color: "#fff", display: "flex" }}><X size={16} /></button>
+              </div>
+              <div style={{ padding: 28, overflowY: "auto", maxHeight: "calc(90vh - 60px)" }}>
+                <form onSubmit={handleSubmit}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                    <div>
+                      <label style={labelStyle}>Brand Name *</label>
+                      <input
+                        name="name"
+                        required
+                        value={formName}
+                        onChange={(e) => setFormName(e.target.value)}
+                        placeholder="e.g. Aura Glow"
+                        style={inputStyle}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Category</label>
+                      <div ref={dropdownRef} style={{ position: "relative" }}>
+                        <button
+                          type="button"
+                          onClick={() => !isSubmitting && setOpenDropdown(prev => prev === 'category' ? null : 'category')}
+                          disabled={isSubmitting}
+                          style={{
+                            width: "100%",
+                            padding: "9px 12px",
+                            border: `1px solid ${openDropdown === 'category' ? '#DB1A1A' : 'var(--border)'}`,
+                            borderRadius: 8,
+                            fontSize: 13,
+                            outline: "none",
+                            background: "var(--muted)",
+                            color: "var(--foreground)",
+                            textAlign: "left",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            cursor: "pointer",
+                            transition: "border-color 0.15s ease",
+                          }}
+                        >
+                          <span>{formCategory}</span>
+                          <ChevronDown
+                            size={14}
+                            style={{
+                              transition: "transform 0.15s ease",
+                              transform: openDropdown === 'category' ? "rotate(180deg)" : "rotate(0deg)",
+                              color: "var(--muted-foreground)",
+                            }}
+                          />
+                        </button>
+                        {openDropdown === 'category' && !isSubmitting && (
+                          <div style={{
+                            position: "absolute",
+                            top: "calc(100% + 4px)",
+                            left: 0,
+                            right: 0,
+                            zIndex: 200,
+                            background: "var(--card)",
+                            border: "1px solid var(--border)",
+                            borderRadius: 8,
+                            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                            overflow: "hidden",
+                            maxHeight: 200,
+                            overflowY: "auto",
+                          }}>
+                            {CATEGORY_OPTIONS.map(cat => (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => { setFormCategory(cat); setOpenDropdown(null); }}
+                                style={{
+                                  display: "block",
+                                  width: "100%",
+                                  padding: "8px 14px",
+                                  border: "none",
+                                  background: formCategory === cat ? "rgba(219,26,26,0.08)" : "transparent",
+                                  color: formCategory === cat ? "#DB1A1A" : "var(--foreground)",
+                                  fontSize: 13,
+                                  cursor: "pointer",
+                                  textAlign: "left",
+                                  transition: "background 0.12s",
+                                  fontWeight: formCategory === cat ? 600 : 400,
+                                }}
+                                onMouseEnter={e => { if (formCategory !== cat) e.currentTarget.style.background = "var(--muted)"; }}
+                                onMouseLeave={e => { if (formCategory !== cat) e.currentTarget.style.background = "transparent"; }}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={labelStyle}>Status</label>
+                    <select
+                      name="status"
+                      value={formStatus}
+                      onChange={(e) => setFormStatus(e.target.value)}
+                      style={inputStyle}
+                    >
+                      {STATUS_OPTIONS.map(s => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <button type="button" onClick={closeForm} style={cancelBtn}>Cancel</button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      style={{
+                        flex: 1,
+                        padding: 10,
+                        borderRadius: 8,
+                        border: "none",
+                        background: "#2563eb",
+                        color: "#ffffff",
+                        fontWeight: 700,
+                        fontSize: 13,
+                        cursor: "pointer",
+                        opacity: isSubmitting ? 0.7 : 1,
+                      }}
+                    >
+                      {isSubmitting ? "Saving..." : editingBrand ? "Save Changes" : "Add Brand"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

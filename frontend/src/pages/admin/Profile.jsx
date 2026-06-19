@@ -358,12 +358,6 @@ export default function ProfileSettings() {
                 <h2 style={{ margin: '0 0 4px', color: '#fff', fontWeight: 600, fontSize: 15 }}>Profile Settings</h2>
                 <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Manage your administrative identity and security preferences.</p>
               </div>
-              <div style={{
-                width: 40, height: 40, background: 'rgba(255,255,255,0.15)',
-                borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <UserIcon size={20} style={{ color: 'rgba(255,255,255,0.8)' }} />
-              </div>
             </div>
 
             <div style={{ padding: 24, display: 'grid', gridTemplateColumns: 'minmax(220px,260px) 1fr', gap: 24 }}>
@@ -454,7 +448,7 @@ export default function ProfileSettings() {
                             display: 'inline-flex', alignItems: 'center', gap: 6,
                             padding: '8px 16px', border: '1px solid var(--border)',
                             borderRadius: 12, fontSize: 11, fontWeight: 700,
-                            color: '#fff', background: '#DB1A1A', border: 'none', cursor: 'pointer',
+                            color: '#fff', background: '#2563eb', border: 'none', cursor: 'pointer',
                             letterSpacing: '0.05em', transition: 'all 0.15s',
                           }}
                         >
@@ -542,7 +536,6 @@ export default function ProfileSettings() {
             borderRadius: 20, overflow: 'hidden',
           }}>
             <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Shield size={13} style={{ color: '#DB1A1A' }} />
               <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--muted)' }}>Security Settings</span>
             </div>
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
