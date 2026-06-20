@@ -1,5 +1,5 @@
 // frontend/src/hooks/usePredictions.js
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../services/supabase';
 
 const ML_API_URL = import.meta.env.VITE_ML_API_URL;
@@ -10,6 +10,10 @@ export const usePredictions = () => {
   const [loading, setLoading] = useState(true);
   const [isRetraining, setIsRetraining] = useState(false);
   const [error, setError] = useState(null);
+
+  // Holds the AbortController for the in-flight retrain request, so it can
+  // be cancelled on demand (e.g. user presses "Stop" in the UI).
+  const retrainAbortRef = useRef(null);
 
   const fetchPredictions = useCallback(async () => {
     setLoading(true);
@@ -44,6 +48,11 @@ export const usePredictions = () => {
   const retrainModels = useCallback(async () => {
     setIsRetraining(true);
     setError(null);
+
+    // Create a fresh AbortController for this retrain run and keep a ref to
+    // it so cancelRetrain() can abort the underlying fetch on demand.
+    const controller = new AbortController();
+    retrainAbortRef.current = controller;
     
     try {
       // Step 1: Call ML API to retrain
@@ -55,6 +64,7 @@ export const usePredictions = () => {
         body: JSON.stringify({ 
           n_future: 12  // Predict next 12 periods
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -72,13 +82,26 @@ export const usePredictions = () => {
       return { success: true, message: 'Models retrained successfully' };
       
     } catch (err) {
+      if (err.name === 'AbortError') {
+        // Cancelled by the user — not a real error, just report it as such
+        // so callers can distinguish a manual stop from a genuine failure.
+        return { success: false, aborted: true, error: 'Training stopped by user' };
+      }
      // console.error('❌ Retrain error:', err);
       setError(err.message);
       return { success: false, error: err.message };
     } finally {
       setIsRetraining(false);
+      retrainAbortRef.current = null;
     }
   }, [fetchPredictions]);
+
+  // Cancels the in-flight retrain request, if any. Aborting the fetch
+  // causes retrainModels' catch block to resolve immediately (instead of
+  // waiting for the ML API to finish), so the UI can close right away.
+  const cancelRetrain = useCallback(() => {
+    retrainAbortRef.current?.abort();
+  }, []);
 
   return {
     futurePredictions,
@@ -87,6 +110,7 @@ export const usePredictions = () => {
     isRetraining,
     error,
     retrainModels,
+    cancelRetrain,
     refetch: fetchPredictions,
   };
 };

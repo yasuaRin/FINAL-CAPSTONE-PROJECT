@@ -42,6 +42,123 @@ const formatCompactCurrency = (value) => {
   return formatCurrency(value);
 };
 
+// ── Rerun-model toast (mirrors the export-PDF toast in utils/exportPDF.js) ──
+// Self-contained: appends its own keyframe style tag once, builds a
+// backdrop + centered toast with spinner, optional Stop button, and
+// theme-aware colors based on the `.dark` class on <html>.
+const isDarkModeActive = () => document.documentElement.classList.contains('dark');
+
+let _rerunAborted = false;
+const resetRerunAbort = () => { _rerunAborted = false; };
+const abortRerun       = () => { _rerunAborted = true; };
+const isRerunAborted   = () => _rerunAborted;
+
+const createRerunToast = (message, showStop = false, onStop) => {
+  const existing = document.getElementById('rerun-model-toast');
+  if (existing) existing.remove();
+  const existingBackdrop = document.getElementById('rerun-model-backdrop');
+  if (existingBackdrop) existingBackdrop.remove();
+
+  if (!document.getElementById('rerun-toast-spin-style')) {
+    const style = document.createElement('style');
+    style.id = 'rerun-toast-spin-style';
+    style.textContent = `@keyframes _rerun_toast_spin { to { transform: rotate(360deg); } }`;
+    document.head.appendChild(style);
+  }
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'rerun-model-backdrop';
+  backdrop.style.cssText = `
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(2px);
+    z-index: 999998;
+  `;
+
+  const dark = isDarkModeActive();
+  const toastBg          = dark ? '#111827' : '#ffffff';
+  const toastColor       = dark ? '#ffffff' : '#111827';
+  const spinnerBorder    = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)';
+  const spinnerBorderTop = dark ? '#ffffff' : '#111827';
+  const stopBtnHoverBg   = '#dc2626';
+
+  const toast = document.createElement('div');
+  toast.id = 'rerun-model-toast';
+  toast.style.cssText = `
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: ${toastBg}; color: ${toastColor};
+    font-size: 0.875rem; font-weight: 700;
+    padding: 1.25rem 2rem; border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    z-index: 999999; display: flex; flex-direction: column;
+    align-items: center; gap: 0.875rem;
+    min-width: 260px; text-align: center;
+  `;
+
+  const spinner = document.createElement('span');
+  spinner.id = 'rerun-toast-spinner';
+  spinner.style.cssText = `
+    display: inline-block; width: 1.75rem; height: 1.75rem;
+    border: 3px solid ${spinnerBorder};
+    border-top-color: ${spinnerBorderTop}; border-radius: 9999px;
+    animation: _rerun_toast_spin 0.7s linear infinite; flex-shrink: 0;
+  `;
+
+  const text = document.createElement('span');
+  text.id = 'rerun-toast-text';
+  text.innerText = message;
+  text.style.cssText = `font-size: 0.875rem; font-weight: 700; line-height: 1.4; white-space: pre-line;`;
+
+  toast.appendChild(spinner);
+  toast.appendChild(text);
+
+  if (showStop) {
+    const stopBtn = document.createElement('button');
+    stopBtn.id = 'rerun-stop-btn';
+    stopBtn.innerText = 'Stop';
+    stopBtn.style.cssText = `
+      margin-top: 0.25rem; background: #ef4444; color: #ffffff;
+      border: none; border-radius: 0.5rem; padding: 0.4rem 1.25rem;
+      font-size: 0.75rem; font-weight: 700; cursor: pointer;
+      letter-spacing: 0.03em; transition: background 0.15s;
+    `;
+    stopBtn.onmouseenter = () => { stopBtn.style.background = stopBtnHoverBg; };
+    stopBtn.onmouseleave = () => { stopBtn.style.background = '#ef4444'; };
+    stopBtn.onclick = () => {
+      abortRerun();
+      updateRerunToast('Stopping training...');
+      hideRerunStopButton();
+      onStop?.();
+    };
+    toast.appendChild(stopBtn);
+  }
+
+  document.body.appendChild(backdrop);
+  document.body.appendChild(toast);
+  return toast;
+};
+
+const updateRerunToast = (message) => {
+  const text = document.getElementById('rerun-toast-text');
+  if (text) text.innerText = message;
+};
+
+const hideRerunStopButton = () => {
+  document.getElementById('rerun-stop-btn')?.remove();
+};
+
+const showRerunSpinner = (show) => {
+  const spinner = document.getElementById('rerun-toast-spinner');
+  if (spinner) spinner.style.display = show ? 'inline-block' : 'none';
+};
+
+const removeRerunToast = () => {
+  document.getElementById('rerun-model-toast')?.remove();
+  document.getElementById('rerun-model-backdrop')?.remove();
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 const KpiCard = ({ title, value, icon: Icon, badge, badgeStyle, action, onAction, children }) => {
   const hoverColorValue = '#ef4444';
   return (
@@ -233,7 +350,7 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const [notification, setNotification]     = useState(null);
+  const [notification, setNotification] = useState(null);
   const [isExporting, setIsExporting]       = useState(false);
   const [selectedBrand, setSelectedBrand]   = useState(null);
   const [timedOut, setTimedOut]             = useState(false);
@@ -273,7 +390,7 @@ export const Dashboard = () => {
   const { data: revenue, loading: revenueLoading, brandTotals, yearlyData } = useRevenue();
   const { brands, loading: brandsLoading } = useBrands(brandTotals);
   const { team }                           = useTeam();
-  const { futurePredictions, retrainModels, isRetraining } = usePredictions();
+  const { futurePredictions, retrainModels, isRetraining, cancelRetrain } = usePredictions();
 
   useEffect(() => {
     const checkDarkMode = () => {
@@ -430,15 +547,67 @@ export const Dashboard = () => {
 
   const { registerActions } = useContext(AdminActionContext);
 
-  const notify = useCallback((msg) => {
-    setNotification(msg);
+  // ── Type-based notification system ────────────────────────────────────────────
+  const notify = useCallback((message, type = 'info') => {
+    setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   }, []);
 
+  // ── Rerun Model: uses the same toast/backdrop/spinner/Stop-button pattern ──
+  // as the PDF export flow in utils/exportPDF.js (createToast / updateToast /
+  // hideStopButton / removeToast), adapted here as createRerunToast etc.
   const handleRerunModel = useCallback(async () => {
-    const result = await retrainModels();
-    notify(result.success ? 'ML models retrained successfully' : 'Failed: ' + result.error);
-  }, [retrainModels, notify]);
+    resetRerunAbort();
+
+    createRerunToast('ML training started...', true, cancelRetrain);
+
+    let loadingTimer;
+
+    try {
+      loadingTimer = setTimeout(() => {
+if (!isRerunAborted()) updateRerunToast('Model is currently being trained. \nPlease wait, this may take a while...');      }, 1200);
+
+      const result = await retrainModels();
+
+      clearTimeout(loadingTimer);
+
+      if (isRerunAborted() || result.aborted) {
+        // Stop button was pressed (or the fetch itself was aborted) — leave
+        // the "Stopping training..." message and close shortly after.
+        hideRerunStopButton();
+        showRerunSpinner(false);
+        updateRerunToast('Training stopped.');
+        setTimeout(removeRerunToast, 1200);
+        return;
+      }
+
+      hideRerunStopButton();
+
+      if (result.success) {
+        showRerunSpinner(false);
+        updateRerunToast('ML models retrained successfully');
+      } else {
+        showRerunSpinner(false);
+        updateRerunToast(`Training failed:\n${result.error || 'Unknown error'}`);
+      }
+      setTimeout(removeRerunToast, 3000);
+    } catch (err) {
+      clearTimeout(loadingTimer);
+      if (isRerunAborted()) {
+        hideRerunStopButton();
+        showRerunSpinner(false);
+        updateRerunToast('Training stopped.');
+        setTimeout(removeRerunToast, 1200);
+        return;
+      }
+      hideRerunStopButton();
+      showRerunSpinner(false);
+      updateRerunToast(`Training error:\n${err.message}`);
+      setTimeout(removeRerunToast, 3000);
+    } finally {
+      resetRerunAbort();
+    }
+  }, [retrainModels, cancelRetrain]);
 
   const handleExportReport = useCallback(async () => {
     setIsExporting(true);
@@ -451,7 +620,7 @@ export const Dashboard = () => {
       onAllData: () => {
         setSelectedBrand(null);
         setDateRange({ start: null, end: null, preset: 'allData' });
-        notify('Showing all data');
+        notify('Showing all data', 'info');
       },
       onExportReport: handleExportReport,
     });
@@ -462,7 +631,7 @@ export const Dashboard = () => {
       const isDeselecting = brandId === selectedBrand;
       setSelectedBrand(isDeselecting ? null : brandId);
       const brandName = brands?.find((b) => b.brand_id === brandId)?.brand_name;
-      notify(isDeselecting ? 'Cleared brand filter' : 'Filtering by ' + brandName);
+      notify(isDeselecting ? 'Cleared brand filter' : 'Filtering by ' + brandName, 'info');
     },
     [selectedBrand, brands, notify]
   );
@@ -491,8 +660,16 @@ export const Dashboard = () => {
             exit={{ opacity: 0 }}
             className="fixed top-4 left-1/2 z-[100] bg-[#0a0f1a] border border-white/10 px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3"
           >
-            <CheckCircle2 size={16} className="text-emerald-400" />
-            <span className="text-sm font-semibold text-white">{notification}</span>
+            {notification?.type === 'success' && (
+              <CheckCircle2 size={16} className="text-emerald-400" />
+            )}
+            {notification?.type === 'error' && (
+              <AlertTriangle size={16} className="text-red-400" />
+            )}
+            {notification?.type === 'info' && (
+              <Activity size={16} className="text-blue-400 animate-pulse" />
+            )}
+            <span className="text-sm font-semibold text-white">{notification?.message || notification}</span>
           </Motion.div>
         )}
       </AnimatePresence>
