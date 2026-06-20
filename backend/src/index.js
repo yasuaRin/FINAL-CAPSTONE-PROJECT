@@ -513,8 +513,7 @@ app.use((err, req, res, next) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // START SERVER - RAILWAY COMPATIBLE (FIXED)
 // ─────────────────────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
-
+// PORT is already declared at line 28 - using the existing one
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════════════════════════╗
