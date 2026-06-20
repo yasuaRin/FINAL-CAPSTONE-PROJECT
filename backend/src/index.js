@@ -10,10 +10,29 @@ import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IMPORT ML MODULES (JavaScript versions)
+// IMPORT ML MODULES (JavaScript versions) - WITH ERROR HANDLING
 // ─────────────────────────────────────────────────────────────────────────────
-import { trainAndSelect } from './ml/trainer.js';
-import { predictAndSave } from './ml/predictor.js';
+let trainAndSelect, predictAndSave;
+
+try {
+  // Dynamically import ML modules to prevent crashes if files are missing
+  const trainer = await import('./ml/trainer.js');
+  const predictor = await import('./ml/predictor.js');
+  trainAndSelect = trainer.trainAndSelect;
+  predictAndSave = predictor.predictAndSave;
+  console.log('[ML] ✅ ML modules loaded successfully');
+} catch (error) {
+  console.error('[ML] ❌ Failed to load ML modules:', error.message);
+  // Create placeholder functions to prevent crashes
+  trainAndSelect = async () => ({ 
+    error: 'ML module not available', 
+    message: 'Please ensure all ML files are present in the repository' 
+  });
+  predictAndSave = async () => ({ 
+    error: 'ML module not available', 
+    message: 'Please ensure all ML files are present in the repository' 
+  });
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INITIALIZATION
@@ -87,7 +106,7 @@ app.get('/health', (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ML MODEL ENDPOINTS (Now using JavaScript)
+// ML MODEL ENDPOINTS (Now using JavaScript with error handling)
 // ─────────────────────────────────────────────────────────────────────────────
 
 app.post('/api/ml/train', async (req, res) => {
