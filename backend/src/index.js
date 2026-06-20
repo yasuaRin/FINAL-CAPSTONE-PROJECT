@@ -72,7 +72,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));   // ← handles preflight for ALL routes
+app.options('/{*path}', cors(corsOptions));
 app.use(compression());
 app.use(express.json());
 
