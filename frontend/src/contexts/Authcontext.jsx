@@ -7,6 +7,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [memberData, setMemberData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [timeoutReached, setTimeoutReached] = useState(false);
 
   const fetchMemberData = async (authUser) => {
     if (!authUser) { setMemberData(null); return; }
@@ -30,6 +31,20 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       return;
     }
+
+    // Set timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        console.warn('Auth check timed out - forcing redirect to login');
+        setTimeoutReached(true);
+        setLoading(false);
+        // Clear any stale auth data
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('sb-')) localStorage.removeItem(key);
+        });
+        localStorage.removeItem('token');
+      }
+    }, 5000);
 
     const initSession = async () => {
       try {
@@ -55,6 +70,7 @@ export const AuthProvider = ({ children }) => {
         console.error('Failed to init session:', e);
       } finally {
         setLoading(false);
+        clearTimeout(timeoutId);
       }
     };
 
@@ -73,7 +89,10 @@ export const AuthProvider = ({ children }) => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const logout = async () => {
