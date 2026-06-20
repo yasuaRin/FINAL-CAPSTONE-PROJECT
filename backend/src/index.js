@@ -72,7 +72,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options('/{*path}', cors(corsOptions));
+app.options('/(.*)', cors(corsOptions));
 app.use(compression());
 app.use(express.json());
 
@@ -153,35 +153,38 @@ app.post('/api/ml/predict', async (req, res) => {
   }
 });
 
-app.post('/api/ml/retrain', async (req, res) => {
-  console.log('[ML] Full retrain + predict workflow started...');
-  
-  try {
-    // Step 1: Train
-    const trainResult = await trainAndSelect();
-    console.log('[ML] Training complete');
-    
-    // Step 2: Predict
-    const predictResult = await predictAndSave(null, 14);
-    console.log('[ML] Predictions generated');
-    
-    res.json({ 
-      success: true, 
-      message: 'Models retrained and predictions generated successfully',
-      data: {
-        training: trainResult,
-        prediction: predictResult
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('[ML] Retrain error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Retrain failed',
-      details: error.message 
-    });
+const retrainStatus = { isRunning: false, lastResult: null };
+
+app.post('/api/ml/retrain', (req, res) => {
+  if (retrainStatus.isRunning) {
+    return res.status(409).json({ success: false, message: 'Training already in progress' });
   }
+
+  // Respond immediately so the request doesn't time out
+  res.json({ success: true, message: 'Training started in background', status: 'running' });
+
+  // Run in background
+  retrainStatus.isRunning = true;
+  (async () => {
+    try {
+      console.log('[ML] Full retrain + predict workflow started...');
+      const trainResult = await trainAndSelect();
+      console.log('[ML] Training complete');
+      const predictResult = await predictAndSave(null, 14);
+      console.log('[ML] Predictions generated');
+      retrainStatus.lastResult = { success: true, training: trainResult, prediction: predictResult };
+      console.log('[ML] ✅ Retrain completed successfully');
+    } catch (error) {
+      console.error('[ML] Retrain error:', error);
+      retrainStatus.lastResult = { success: false, error: error.message };
+    } finally {
+      retrainStatus.isRunning = false;
+    }
+  })();
+});
+
+app.get('/api/ml/retrain/status', (req, res) => {
+  res.json({ isRunning: retrainStatus.isRunning, lastResult: retrainStatus.lastResult });
 });
 
 app.get('/api/ml/status', async (req, res) => {
@@ -533,7 +536,6 @@ app.use((err, req, res, next) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // START SERVER - RAILWAY COMPATIBLE (FIXED)
 // ─────────────────────────────────────────────────────────────────────────────
-// PORT is already declared at line 28 - using the existing one
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════════════════════════╗
