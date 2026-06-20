@@ -51,9 +51,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
 );
 
-app.use(cors({
-  origin: function (origin, callback) {
-    const allowedOrigins = [
+const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'https://vidhelp-capstone.vercel.app'
