@@ -9,7 +9,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const MODELS_DIR = path.join(__dirname, 'savedModels');
-if (!fs.existsSync(MODELS_DIR)) fs.mkdirSync(MODELS_DIR, { recursive: true });
+
+
+try {
+  if (!fs.existsSync(MODELS_DIR)) {
+    fs.mkdirSync(MODELS_DIR, { recursive: true });
+    console.log('[ML] Created models directory:', MODELS_DIR);
+  }
+} catch (err) {
+  console.warn('[ML] Could not create models directory:', err.message);
+  // Fallback: use memory only
+}
 
 export let modelCache = {
   bestModel: null,
@@ -84,26 +94,32 @@ export async function trainAndSelect(brandId = null) {
   const bestModel = new bestCand.cls(...bestCand.args);
   bestModel.fit(XScaled, y);
 
-  fs.writeFileSync(
-    path.join(MODELS_DIR, 'best_model.json'),
-    JSON.stringify(bestModel.toJSON())
-  );
-  fs.writeFileSync(
-    path.join(MODELS_DIR, 'scaler.json'),
-    JSON.stringify(scaler.toJSON())
-  );
-  fs.writeFileSync(
-    path.join(MODELS_DIR, 'feature_names.json'),
-    JSON.stringify(FEATURE_KEYS)
-  );
-  fs.writeFileSync(
-    path.join(MODELS_DIR, 'model_type.json'),
-    JSON.stringify({ type: bestCand.cls.name, name: bestName })
-  );
-  fs.writeFileSync(
-    path.join(MODELS_DIR, 'model_comparison.json'),
-    JSON.stringify({ best: bestName, scores: results }, null, 2)
-  );
+  try {
+    fs.writeFileSync(
+      path.join(MODELS_DIR, 'best_model.json'),
+      JSON.stringify(bestModel.toJSON())
+    );
+    fs.writeFileSync(
+      path.join(MODELS_DIR, 'scaler.json'),
+      JSON.stringify(scaler.toJSON())
+    );
+    fs.writeFileSync(
+      path.join(MODELS_DIR, 'feature_names.json'),
+      JSON.stringify(FEATURE_KEYS)
+    );
+    fs.writeFileSync(
+      path.join(MODELS_DIR, 'model_type.json'),
+      JSON.stringify({ type: bestCand.cls.name, name: bestName })
+    );
+    fs.writeFileSync(
+      path.join(MODELS_DIR, 'model_comparison.json'),
+      JSON.stringify({ best: bestName, scores: results }, null, 2)
+    );
+    console.log('[ML] Models saved to filesystem');
+  } catch (err) {
+    console.warn('[ML] Could not save to filesystem (Vercel read-only):', err.message);
+    console.log('[ML] Models saved to memory cache only');
+  }
 
   modelCache = {
     bestModel: bestName,
