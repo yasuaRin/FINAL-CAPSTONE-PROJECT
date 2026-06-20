@@ -171,7 +171,7 @@ export const AdminLayout = () => {
   const SidebarContent = () => (
     <>
       <div className="p-4 sm:p-6 flex items-center justify-between border-b border-sidebar-border">
-        <div className="font-serif font-black text-[#2563eb] text-xl">VH</div>
+        <div className="font-sans font-black text-[#2563eb] text-xl">VH</div>
         <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5" style={{ color: '#7b809a' }}>
           <X size={20} />
         </button>
