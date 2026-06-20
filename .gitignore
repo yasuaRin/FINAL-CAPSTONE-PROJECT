@@ -64,3 +64,6 @@ coverage/
 db/
 db/*.ipynb
 backend/src/ml/savedModels/
+
+.vercel
+dist
