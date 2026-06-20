@@ -116,7 +116,7 @@ app.post('/api/ml/train', async (req, res) => {
     const result = await trainAndSelect();
     res.json({ 
       success: true, 
-      message: 'Models trained successfully',
+      message: '✅ Models trained successfully',
       data: result,
       timestamp: new Date().toISOString()
     });
