@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/index.css';
 import { PartnerProvider } from './contexts/PartnerContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/Authcontext';
 
 console.log('INIT URL:', window.location.href);
 console.log('INIT HASH:', window.location.hash); 
