@@ -510,11 +510,13 @@ app.use((err, req, res, next) => {
   });
 });
 
-const isVercel = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+// ─────────────────────────────────────────────────────────────────────────────
+// START SERVER - RAILWAY COMPATIBLE (FIXED)
+// ─────────────────────────────────────────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
 
-if (!isVercel) {
-  app.listen(PORT, () => {
-    console.log(`
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`
 ╔═══════════════════════════════════════════════════════════════════════════════╗
 ║                              VIDHELP BACKEND SERVER                            ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
@@ -528,8 +530,7 @@ if (!isVercel) {
 ║   Environment:  ${process.env.NODE_ENV || 'development'}                                      ║
 ║   Status:       Operational                                                   ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
-    `);
-  });
-}
+  `);
+});
 
 export default app;
