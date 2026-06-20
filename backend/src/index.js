@@ -71,7 +71,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
-app.options('*', cors());
 app.use(compression());
 app.use(express.json());
 
