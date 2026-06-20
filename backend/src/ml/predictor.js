@@ -1,4 +1,4 @@
-// predictor.js - ES Module version
+// predictor.js - ES Module version (Vercel-compatible - uses memory cache)
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -7,29 +7,61 @@ import dotenv from 'dotenv';
 import { loadDailyRevenue } from './data_loader.js';
 import { engineerFeatures, toMatrix, FEATURE_KEYS } from './features.js';
 import { RobustScaler, RFRegressor, RidgeRegression } from './models.js';
+import { getCachedModel } from './trainer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
-const MODELS_DIR = path.join(__dirname, 'savedModels');
-
+// ✅ Load from memory cache instead of filesystem
 function loadArtifacts() {
-  const modelJson = JSON.parse(fs.readFileSync(path.join(MODELS_DIR, 'best_model.json'), 'utf8'));
-  const scalerJson = JSON.parse(fs.readFileSync(path.join(MODELS_DIR, 'scaler.json'), 'utf8'));
-  const featureKeys = JSON.parse(fs.readFileSync(path.join(MODELS_DIR, 'feature_names.json'), 'utf8'));
-  const modelType = JSON.parse(fs.readFileSync(path.join(MODELS_DIR, 'model_type.json'), 'utf8'));
+  const cache = getCachedModel();
+  
+  if (!cache.modelData) {
+    // Fallback: try to read from filesystem if cache is empty
+    try {
+      const MODELS_DIR = path.join(__dirname, 'savedModels');
+      if (fs.existsSync(path.join(MODELS_DIR, 'best_model.json'))) {
+        console.log('[ML] Cache empty, loading from filesystem...');
+        const modelJson = JSON.parse(fs.readFileSync(path.join(MODELS_DIR, 'best_model.json'), 'utf8'));
+        const scalerJson = JSON.parse(fs.readFileSync(path.join(MODELS_DIR, 'scaler.json'), 'utf8'));
+        const featureKeys = JSON.parse(fs.readFileSync(path.join(MODELS_DIR, 'feature_names.json'), 'utf8'));
+        const modelType = JSON.parse(fs.readFileSync(path.join(MODELS_DIR, 'model_type.json'), 'utf8'));
 
-  const scaler = RobustScaler.fromJSON(scalerJson);
+        const scaler = RobustScaler.fromJSON(scalerJson);
 
-  let model;
-  if (modelType.type === 'RFRegressor') {
-    model = RFRegressor.fromJSON(modelJson);
-  } else {
-    model = RidgeRegression.fromJSON(modelJson);
+        let model;
+        if (modelType.type === 'RFRegressor') {
+          model = RFRegressor.fromJSON(modelJson);
+        } else {
+          model = RidgeRegression.fromJSON(modelJson);
+        }
+
+        console.log('[ML] Loaded model from filesystem');
+        return { model, scaler, featureKeys };
+      }
+    } catch (err) {
+      console.warn('[ML] Could not load from filesystem:', err.message);
+    }
+    
+    throw new Error('No trained model found. Please train the model first.');
   }
 
+  const modelData = cache.modelData;
+  const scalerData = cache.scalerData;
+  const featureKeys = cache.featureKeys || FEATURE_KEYS;
+
+  const scaler = RobustScaler.fromJSON(scalerData);
+
+  let model;
+  if (cache.bestModel && cache.bestModel.includes('Random Forest')) {
+    model = RFRegressor.fromJSON(modelData);
+  } else {
+    model = RidgeRegression.fromJSON(modelData);
+  }
+
+  console.log(`[ML] Loaded model from memory (trained at ${cache.timestamp || 'unknown time'})`);
   return { model, scaler, featureKeys };
 }
 
@@ -82,67 +114,74 @@ export async function predictAndSave(brandId = null, nFuture = 14) {
     process.env.SUPABASE_SERVICE_KEY
   );
 
-  const { model, scaler, featureKeys } = loadArtifacts();
-  const historical = await loadDailyRevenue(brandId);
+  try {
+    const { model, scaler, featureKeys } = loadArtifacts();
+    const historical = await loadDailyRevenue(brandId);
 
-  if (historical.length === 0) {
-    return { error: 'No historical data found' };
-  }
-
-  console.log(`Historical days: ${historical.length}`);
-  console.log(`Days with revenue: ${historical.filter(r => r.revenue > 0).length}`);
-
-  const futureRows = buildFutureRows(historical, nFuture);
-  console.log(`Future days to predict: ${futureRows.length}`);
-
-  for (const fr of futureRows.slice(0, 3)) {
-    console.log(`  Future period ${fr.period_id}: predicted base = Rp ${fr.revenue.toLocaleString()}`);
-  }
-
-  const allRows = [...historical, ...futureRows];
-  const featured = engineerFeatures(allRows);
-  const X = toMatrix(featured, featureKeys);
-  const XScaled = scaler.transform(X);
-
-  const rawPreds = model.predict(XScaled);
-
-  await supabase.table('revenue_predictions').delete().neq('id', 0);
-
-  const records = allRows.map((row, i) => {
-    const isFuture = i >= historical.length;
-    const predictedValue = isFuture ? Math.max(0, Math.round(rawPreds[i])) : row.revenue;
-
-    if (isFuture) {
-      console.log(`  Period ${row.period_id}: ML predicted = Rp ${predictedValue.toLocaleString()}`);
+    if (historical.length === 0) {
+      return { error: 'No historical data found' };
     }
 
+    console.log(`[ML] Historical days: ${historical.length}`);
+    console.log(`[ML] Days with revenue: ${historical.filter(r => r.revenue > 0).length}`);
+
+    const futureRows = buildFutureRows(historical, nFuture);
+    console.log(`[ML] Future days to predict: ${futureRows.length}`);
+
+    for (const fr of futureRows.slice(0, 3)) {
+      console.log(`  Future period ${fr.period_id}: predicted base = Rp ${fr.revenue.toLocaleString()}`);
+    }
+
+    const allRows = [...historical, ...futureRows];
+    const featured = engineerFeatures(allRows);
+    const X = toMatrix(featured, featureKeys);
+    const XScaled = scaler.transform(X);
+
+    const rawPreds = model.predict(XScaled);
+
+    // Clear existing predictions
+    await supabase.table('revenue_predictions').delete().neq('id', 0);
+
+    const records = allRows.map((row, i) => {
+      const isFuture = i >= historical.length;
+      const predictedValue = isFuture ? Math.max(0, Math.round(rawPreds[i])) : row.revenue;
+
+      if (isFuture) {
+        console.log(`  Period ${row.period_id}: ML predicted = Rp ${predictedValue.toLocaleString()}`);
+      }
+
+      return {
+        period_id: row.period_id || 0,
+        period_name: `Period ${row.period_id || 0}`,
+        date: row.date,
+        actual: isFuture ? null : row.revenue,
+        predicted: predictedValue,
+        is_future: isFuture,
+        model_r2: 0.84,
+        model_mae: 5121462,
+        model_slope: null,
+      };
+    });
+
+    // Insert in batches
+    for (let i = 0; i < records.length; i += 500) {
+      const batch = records.slice(i, i + 500);
+      await supabase.table('revenue_predictions').insert(batch);
+    }
+
+    console.log(`\n[ML] Saved ${records.length} predictions to Supabase`);
+    console.log(`   Historical: ${historical.length} days`);
+    console.log(`   Future predictions: ${futureRows.length} days`);
+
     return {
-      period_id: row.period_id || 0,
-      period_name: `Period ${row.period_id || 0}`,
-      date: row.date,
-      actual: isFuture ? null : row.revenue,
-      predicted: predictedValue,
-      is_future: isFuture,
-      model_r2: 0.84,
-      model_mae: 5121462,
-      model_slope: null,
+      saved: records.length,
+      historical: historical.length,
+      future: nFuture,
     };
-  });
-
-  for (let i = 0; i < records.length; i += 500) {
-    const batch = records.slice(i, i + 500);
-    await supabase.table('revenue_predictions').insert(batch);
+  } catch (error) {
+    console.error('[ML] Prediction error:', error);
+    throw error;
   }
-
-  console.log(`\nSaved ${records.length} predictions to Supabase`);
-  console.log(`   Historical: ${historical.length} days`);
-  console.log(`   Future predictions: ${futureRows.length} days`);
-
-  return {
-    saved: records.length,
-    historical: historical.length,
-    future: nFuture,
-  };
 }
 
 // Run if executed directly

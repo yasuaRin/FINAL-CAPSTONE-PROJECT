@@ -106,3 +106,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(JSON.stringify(result, null, 2));
   });
 }
+export function getCachedModel() {
+  return modelCache;
+}
