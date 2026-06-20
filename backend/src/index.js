@@ -76,8 +76,6 @@ app.use(cors({
   credentials: true
 }));
 
-app.options('*', cors());
-
 app.use(compression());
 app.use(express.json());
 
