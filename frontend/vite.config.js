@@ -26,7 +26,7 @@ export default defineConfig({
   },
   proxy: {
     '/api': {
-      target: 'http://localhost:3001',
+      target: 'https://vidhelp-backend.up.railway.app',
       changeOrigin: true
     }
   }
