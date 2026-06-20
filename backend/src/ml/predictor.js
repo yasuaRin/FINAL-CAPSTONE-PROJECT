@@ -14,7 +14,6 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
-// ✅ Load from memory cache instead of filesystem
 function loadArtifacts() {
   const cache = getCachedModel();
   

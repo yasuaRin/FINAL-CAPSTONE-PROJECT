@@ -1,4 +1,3 @@
-// trainer.js - ES Module version
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -11,6 +10,16 @@ const __dirname = path.dirname(__filename);
 
 const MODELS_DIR = path.join(__dirname, 'savedModels');
 if (!fs.existsSync(MODELS_DIR)) fs.mkdirSync(MODELS_DIR, { recursive: true });
+
+export let modelCache = {
+  bestModel: null,
+  scores: null,
+  nSamples: 0,
+  modelData: null,
+  scalerData: null,
+  featureKeys: null,
+  timestamp: null
+};
 
 function loocv(ModelClass, modelArgs, X, y) {
   const n = X.length;
@@ -96,16 +105,27 @@ export async function trainAndSelect(brandId = null) {
     JSON.stringify({ best: bestName, scores: results }, null, 2)
   );
 
+  modelCache = {
+    bestModel: bestName,
+    scores: results,
+    nSamples: daily.length,
+    modelData: bestModel.toJSON(),
+    scalerData: scaler.toJSON(),
+    featureKeys: FEATURE_KEYS,
+    timestamp: new Date().toISOString()
+  };
+
   return { bestModel: bestName, scores: results, nSamples: daily.length };
 }
 
-// Run if executed directly
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   trainAndSelect().then(result => {
     console.log('\nTraining completed!');
     console.log(JSON.stringify(result, null, 2));
   });
 }
+
 export function getCachedModel() {
   return modelCache;
 }
