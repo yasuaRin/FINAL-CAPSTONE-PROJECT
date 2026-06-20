@@ -1,7 +1,5 @@
 ﻿import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
 import compression from 'compression';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -15,7 +13,6 @@ import fs from 'fs';
 let trainAndSelect, predictAndSave;
 
 try {
-  // Dynamically import ML modules to prevent crashes if files are missing
   const trainer = await import('./ml/trainer.js');
   const predictor = await import('./ml/predictor.js');
   trainAndSelect = trainer.trainAndSelect;
@@ -23,7 +20,6 @@ try {
   console.log('[ML] ✅ ML modules loaded successfully');
 } catch (error) {
   console.error('[ML] ❌ Failed to load ML modules:', error.message);
-  // Create placeholder functions to prevent crashes
   trainAndSelect = async () => ({ 
     error: 'ML module not available', 
     message: 'Please ensure all ML files are present in the repository' 
@@ -73,7 +69,6 @@ app.use(cors({
 
 app.use(compression());
 app.use(express.json());
-app.use(morgan('dev'));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROOT ENDPOINT
