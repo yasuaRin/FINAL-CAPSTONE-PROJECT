@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon --ignore src/ml/ --ignore '*.pkl' --ignore '*.json' src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "ml:train": "node src/ml/trainer.js",
+    "ml:predict": "node src/ml/predictor.js"
   },
   "keywords": [],
   "author": "",
@@ -33,7 +35,7 @@
     "morgan": "^1.10.1",
     "multer": "^2.1.1",
     "react-router-dom": "^7.15.0",
-    "simple-statistics": "^7.8.9",
+    "simple-statistics": "^7.9.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
