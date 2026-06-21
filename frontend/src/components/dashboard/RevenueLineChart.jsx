@@ -179,9 +179,6 @@ export const RevenueLineChart = ({
               </span>
             )}
           </div>
-          <p style={{ fontSize: '11px', color: 'var(--muted-foreground, #9ca3af)', marginTop: '4px' }}>
-            Historical performance vs. AI-generated future projections
-          </p>
         </div>
         <button onClick={onRerunModel} disabled={isRetraining} style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',

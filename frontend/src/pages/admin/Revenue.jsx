@@ -1096,51 +1096,52 @@ const Revenue = () => {
 
       <AnimatePresence>
         {showStaffDetailModal && selectedStaffForDetail && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowStaffDetailModal(false)} />
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-card w-full max-w-sm rounded-2xl border border-border shadow-2xl overflow-hidden"
+              className="relative z-10 bg-card w-full max-w-md rounded-2xl border border-border shadow-2xl overflow-hidden"
             >
               <div className="px-4 py-3 border-b border-border bg-[#2563eb]/10">
-                <h3 className="text-base font-bold text-foreground">{selectedStaffForDetail.staffName}</h3>
-                <p className="text-[9px] text-muted-foreground mt-0.5">Performance Details</p>
+                <h3 className="text-xl font-bold text-foreground">{selectedStaffForDetail.staffName}</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">Performance Details</p>
               </div>
 
               <div className="p-4 space-y-3">
                 <div className="flex items-center justify-between pb-2 border-b border-border/40">
                   <div>
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Sessions</p>
-                    <p className="text-lg font-bold text-foreground">{selectedStaffForDetail.sessionCount.toLocaleString()}</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sessions</p>
+                    <p className="text-2xl font-bold text-foreground">{selectedStaffForDetail.sessionCount.toLocaleString()}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Score</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Score</p>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-lg font-bold text-[#2563eb]">{selectedStaffForDetail.finalScore}</span>
-                      <span className="text-[8px] text-muted-foreground">/100</span>
+                      <span className="text-2xl font-bold text-[#2563eb]">{selectedStaffForDetail.finalScore}</span>
+                      <span className="text-sm text-muted-foreground">/100</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="bg-muted/30 rounded-lg p-2">
-                    <p className="text-[8px] text-muted-foreground">Revenue</p>
-                    <p className="text-[10px] font-bold text-foreground truncate">{formatCurrency(Math.round(selectedStaffForDetail.totalRevenue / 1000000))}M</p>
+                    <p className="text-xs text-muted-foreground">Revenue</p>
+                    <p className="text-sm font-bold text-foreground truncate">{formatCurrency(Math.round(selectedStaffForDetail.totalRevenue / 1000000))}M</p>
                   </div>
                   <div className="bg-muted/30 rounded-lg p-2">
-                    <p className="text-[8px] text-muted-foreground">Viewers</p>
-                    <p className="text-[10px] font-bold text-foreground">{(selectedStaffForDetail.totalViewers / 1000).toFixed(0)}K</p>
+                    <p className="text-xs text-muted-foreground">Viewers</p>
+                    <p className="text-sm font-bold text-foreground">{(selectedStaffForDetail.totalViewers / 1000).toFixed(0)}K</p>
                   </div>
                   <div className="bg-muted/30 rounded-lg p-2">
-                    <p className="text-[8px] text-muted-foreground">Likes</p>
-                    <p className="text-[10px] font-bold text-foreground">{(selectedStaffForDetail.totalLikes / 1000).toFixed(0)}K</p>
+                    <p className="text-xs text-muted-foreground">Likes</p>
+                    <p className="text-sm font-bold text-foreground">{(selectedStaffForDetail.totalLikes / 1000).toFixed(0)}K</p>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
-                  <span className="text-[8px] font-bold text-muted-foreground">Revenue/Viewer</span>
-                  <span className="text-[10px] font-bold text-foreground">{formatCurrency(Math.round(selectedStaffForDetail.revenuePerViewer))}</span>
+                  <span className="text-sm font-bold text-muted-foreground">Revenue/Viewer</span>
+                 <span className="text-base font-bold text-foreground">{formatCurrency(Math.round(selectedStaffForDetail.revenuePerViewer))}</span>
                 </div>
 
                 <div className="space-y-2 pt-1">
@@ -1150,7 +1151,7 @@ const Revenue = () => {
                     { label: 'Likes',   score: selectedStaffForDetail.likesScore,  color: 'bg-red-500' },
                   ].map(({ label, score, color }) => (
                     <div key={label}>
-                      <div className="flex justify-between text-[7px] mb-0.5">
+                      <div className="flex justify-between text-xs mb-1.5">
                         <span>{label}</span><span>{score}%</span>
                       </div>
                       <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
@@ -1164,7 +1165,7 @@ const Revenue = () => {
               <div className="p-3 bg-muted/20 border-t border-border">
                 <button
                   onClick={() => setShowStaffDetailModal(false)}
-                  className="w-full py-2 rounded-xl text-[9px] font-bold uppercase bg-[#2563eb] text-white hover:bg-[#1d4ed8] transition-all"
+                  className="w-full py-3 rounded-xl text-sm font-bold uppercase bg-[#2563eb] text-white hover:bg-[#1d4ed8] transition-all"
                 >
                   Close
                 </button>

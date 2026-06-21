@@ -681,7 +681,6 @@ if (!isRerunAborted()) updateRerunToast('Model is currently being trained. \nPle
             <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Overview</span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1 font-light text-xs">Real-time performance metrics and risk monitoring across all brands.</p>
         </div>
       </div>
 
