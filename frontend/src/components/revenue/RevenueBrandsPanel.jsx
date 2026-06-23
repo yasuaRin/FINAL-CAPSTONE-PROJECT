@@ -56,12 +56,20 @@ const RevenueBrandsPanel = ({
               onMouseLeave={() => setHoveredItem(null)}
             >
               <div className="relative z-10">
-                
-
                 {insight.hasSessions ? (
                   <>
+                   <div 
+                      className="text-base font-bold transition-colors"
+                      style={{ 
+                        color: isHovered ? "#ef4444" : "var(--foreground)",
+                        transition: "color 0.15s ease"
+                      }}
+                    >
+                       {insight.name}
+                    </div>
+
                     <div 
-                      className="text-lg font-bold transition-colors"
+                      className="text-sm font-bold transition-colors"
                       style={{ 
                         color: isHovered ? "#ef4444" : "var(--foreground)",
                         transition: "color 0.15s ease"
