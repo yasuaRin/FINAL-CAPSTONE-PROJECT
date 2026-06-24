@@ -24,8 +24,9 @@ function getPageList(currentPage, totalPages) {
   return [1, '…', currentPage - 1, currentPage, currentPage + 1, '…', totalPages];
 }
 
-// Grid template with wider columns for better readability
-const GRID_COLS = "50px 110px 80px 1.8fr 100px 100px 90px 120px 90px";
+// Grid template with Host column added after Time
+const GRID_COLS = "50px 110px 80px 1.2fr 1.2fr 100px 100px 90px 120px 90px";
+//                                   ^^^^^^ ^^^^^^ Brand and Host columns
 
 const RevenueSessionsTable = ({
   visibleSessions = [],
@@ -197,7 +198,7 @@ const RevenueSessionsTable = ({
 
         {/* Table - styled to match Brands page (grid rows, blue header, rounded cards) */}
         <div className="flex-1 overflow-auto px-2 sm:px-3 py-2">
-          <div style={{ minWidth: 900 }}>
+          <div style={{ minWidth: 950 }}>
             {/* Header bar - matches Brands blue header */}
             <div
               style={{
@@ -208,7 +209,7 @@ const RevenueSessionsTable = ({
                 padding: '0 4px',
               }}
             >
-              {['No', 'Date', 'Time', 'Brand', 'Period', 'Platform', 'Viewers', 'Revenue', 'Actions'].map((h, i) => (
+              {['No', 'Date', 'Time', 'Brand', 'Host', 'Period', 'Platform', 'Viewers', 'Revenue', 'Actions'].map((h, i) => (
                 <div
                   key={h}
                   style={{
@@ -219,7 +220,7 @@ const RevenueSessionsTable = ({
                     letterSpacing: '0.08em',
                     color: '#fff',
                     textAlign: h === 'Actions' || h === 'Revenue' || h === 'Viewers' ? 'right' : 
-                              h === 'Brand' ? 'center' : 'left',
+                              h === 'Brand' || h === 'Host' ? 'center' : 'left',
                     whiteSpace: 'nowrap',
                     minWidth: 0,
                     overflow: 'hidden',
@@ -269,10 +270,12 @@ const RevenueSessionsTable = ({
                       e.currentTarget.style.boxShadow = '0 12px 32px rgba(219,26,26,0.15), 0 4px 12px rgba(0,0,0,0.08)';
                       e.currentTarget.style.borderColor = 'rgba(219,26,26,0.3)';
                       e.currentTarget.style.background = 'rgba(219,26,26,0.02)';
-                      const name = e.currentTarget.querySelector('.session-brand-name');
+                      const brandName = e.currentTarget.querySelector('.session-brand-name');
+                      const hostName = e.currentTarget.querySelector('.session-host-name');
                       const num = e.currentTarget.querySelector('.row-number');
                       const actions = e.currentTarget.querySelector('.row-actions');
-                      if (name) name.style.color = '#DB1A1A';
+                      if (brandName) brandName.style.color = '#DB1A1A';
+                      if (hostName) hostName.style.color = '#DB1A1A';
                       if (num) { num.style.background = '#DB1A1A'; num.style.color = '#fff'; }
                       if (actions) actions.style.opacity = '1';
                     }}
@@ -281,10 +284,12 @@ const RevenueSessionsTable = ({
                       e.currentTarget.style.boxShadow = 'none';
                       e.currentTarget.style.borderColor = 'var(--border)';
                       e.currentTarget.style.background = 'var(--card)';
-                      const name = e.currentTarget.querySelector('.session-brand-name');
+                      const brandName = e.currentTarget.querySelector('.session-brand-name');
+                      const hostName = e.currentTarget.querySelector('.session-host-name');
                       const num = e.currentTarget.querySelector('.row-number');
                       const actions = e.currentTarget.querySelector('.row-actions');
-                      if (name) name.style.color = 'var(--foreground)';
+                      if (brandName) brandName.style.color = 'var(--foreground)';
+                      if (hostName) hostName.style.color = 'var(--foreground)';
                       if (num) { num.style.background = 'var(--muted)'; num.style.color = '#2563eb'; }
                       if (actions) actions.style.opacity = '0';
                     }}
@@ -329,6 +334,13 @@ const RevenueSessionsTable = ({
                     <div style={{ padding: '14px 8px', textAlign: 'center', minWidth: 0, overflow: 'hidden' }}>
                       <span className="session-brand-name" style={{ fontSize: 12, fontWeight: 600, color: 'var(--foreground)', whiteSpace: 'nowrap', transition: 'color 0.15s ease' }}>
                         {log.brandName}
+                      </span>
+                    </div>
+
+                    {/* Host - NEW COLUMN */}
+                    <div style={{ padding: '14px 8px', textAlign: 'center', minWidth: 0, overflow: 'hidden' }}>
+                      <span className="session-host-name" style={{ fontSize: 12, fontWeight: 500, color: 'var(--foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', transition: 'color 0.15s ease' }}>
+                        {log.staffName || '—'}
                       </span>
                     </div>
 
