@@ -62,6 +62,9 @@ const Revenue = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // FIX 2: track the current user's role so we can block delete for admins
+  const [currentUserRole, setCurrentUserRole] = useState(null);
+
   const [sessionFormData, setSessionFormData] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
     time: format(new Date(), 'HH:mm'),
@@ -96,6 +99,40 @@ const Revenue = () => {
   const { data: revenueData, loading, refetch: refetchRevenue, brandTotals } = useRevenue();
   const { brands } = useBrands(brandTotals);
   const { team } = useTeam();
+
+  // FIX 2: fetch the logged-in user's role from team_members table
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user?.id) {
+          setCurrentUserRole(null);
+          return;
+        }
+        
+        const { data, error } = await supabase
+          .from('team_members')
+          .select('role')
+          .eq('auth_user_id', user.id)
+          .single();
+          
+        if (error) {
+          console.error('Error fetching user role:', error);
+          setCurrentUserRole(null);
+          return;
+        }
+        
+        setCurrentUserRole(data?.role || null);
+      } catch (err) {
+        console.error('Error in role fetch:', err);
+        setCurrentUserRole(null);
+      }
+    };
+    fetchUserRole();
+  }, []);
+
+  // FIX 2: derive a boolean — only non-admin roles (e.g. 'super_admin', 'owner') can delete
+  const canDelete = currentUserRole !== 'admin';
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -639,7 +676,12 @@ const Revenue = () => {
     }
   };
 
+  // FIX 2: guard delete — admins cannot delete
   const handleDeleteSession = (session) => {
+    if (!canDelete) {
+      notify('You do not have permission to delete sessions.');
+      return;
+    }
     const originalSession = revenueData?.find(item => String(item.id) === String(session.id));
     setSessionToDelete({ ...session, _rawId: originalSession?.id ?? session.id });
   };
@@ -683,6 +725,18 @@ const Revenue = () => {
     const brand = brandsList.find(b => b.id === brandId);
     const brandName = brand?.name || 'Brand';
     notify(`Showing ${brandName} sessions${period && period !== 'All' ? ` for ${period}` : ''}`);
+  };
+
+  // FIX 1: wrap setTableFilter so that clearing the brand filter also resets insightBrandId
+  const handleSetTableFilter = (updater) => {
+    setTableFilter(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      // If the brand filter is being reset to 'All', also reset the brand panel
+      if (next.brandId === 'All' && prev.brandId !== 'All') {
+        setInsightBrandId('All');
+      }
+      return next;
+    });
   };
 
   const dropdownTriggerCls = (isOpen) =>
@@ -740,7 +794,7 @@ const Revenue = () => {
             exit={{ opacity: 0, y: -20, x: '-50%' }}
             className="fixed top-4 left-1/2 z-[100] bg-[#0a0f1a] border border-white/10 px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3"
           >
-            <div className={`rounded-full p-1 ${notification.includes('Failed') || notification.includes('error') ? 'bg-red-500' : 'bg-emerald-500'}`}>
+            <div className={`rounded-full p-1 ${notification.includes('Failed') || notification.includes('error') || notification.includes('permission') ? 'bg-red-500' : 'bg-emerald-500'}`}>
               <CheckCircle2 size={16} className="text-white" />
             </div>
             <span className="text-sm font-bold tracking-tight text-white">{notification}</span>
@@ -835,13 +889,16 @@ const Revenue = () => {
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           tableFilter={tableFilter}
-          setTableFilter={setTableFilter}
+          // FIX 1: use the wrapped setter so clearing brand also resets the panel
+          setTableFilter={handleSetTableFilter}
           sortCol={sortCol}
           sortDir={sortDir}
           rowLimit={rowLimit}
           setRowLimit={setRowLimit}
           openEditModal={openEditModal}
+          // FIX 2: pass canDelete so the table can hide the button for admins
           handleDeleteSession={handleDeleteSession}
+          canDelete={canDelete}
           formatCurrency={formatCurrency}
           parseISO={parseISO}
           format={format}

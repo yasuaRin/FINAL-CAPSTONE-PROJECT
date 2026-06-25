@@ -41,6 +41,8 @@ const RevenueSessionsTable = ({
   setRowLimit,
   openEditModal = () => {},
   handleDeleteSession = () => {},
+  // FIX 2: new prop — if false, the delete button is hidden
+  canDelete = true,
   formatCurrency,
   parseISO,
   format,
@@ -418,33 +420,36 @@ const RevenueSessionsTable = ({
                           <Edit2 size={13} />
                         </button>
 
-                        <button
-                          onClick={() => handleDeleteSession(log)}
-                          title="Delete"
-                          style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: '50%',
-                            border: 'none',
-                            background: 'rgba(219,26,26,0.08)',
-                            cursor: 'pointer',
-                            color: '#DB1A1A',
-                            transition: 'all 0.15s',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(219,26,26,0.2)';
-                            e.currentTarget.style.transform = 'scale(1.12)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(219,26,26,0.08)';
-                            e.currentTarget.style.transform = 'scale(1)';
-                          }}
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        {/* FIX 2: only render delete button if canDelete is true */}
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDeleteSession(log)}
+                            title="Delete"
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: '50%',
+                              border: 'none',
+                              background: 'rgba(219,26,26,0.08)',
+                              cursor: 'pointer',
+                              color: '#DB1A1A',
+                              transition: 'all 0.15s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'rgba(219,26,26,0.2)';
+                              e.currentTarget.style.transform = 'scale(1.12)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'rgba(219,26,26,0.08)';
+                              e.currentTarget.style.transform = 'scale(1)';
+                            }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
