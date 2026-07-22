@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Activity, Brain, RefreshCw, TrendingUp } from 'lucide-react';
+import { Activity, Brain, RefreshCw, TrendingUp, X } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, ComposedChart, Area,
@@ -111,6 +111,46 @@ const ForecastDot = (props) => {
   );
 };
 
+// ── Filter Chip Component ────────────────────────────────────────────────────
+const FilterChip = ({ brand, onRemove }) => (
+  <span style={{
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '4px 10px',
+    background: 'rgba(59, 130, 246, 0.1)',
+    border: '1px solid rgba(59, 130, 246, 0.2)',
+    borderRadius: '999px',
+    fontSize: '11px',
+    fontWeight: 500,
+    color: '#2563eb',
+  }}>
+    <span>{brand}</span>
+    <button
+      onClick={onRemove}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '0',
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        color: '#2563eb',
+        opacity: 0.6,
+        transition: 'opacity 0.15s',
+        borderRadius: '50%',
+        width: '16px',
+        height: '16px',
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+      onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+    >
+      <X size={14} />
+    </button>
+  </span>
+);
+
 // ── Main component ────────────────────────────────────────────────────────────
 export const RevenueLineChart = ({
   chartData = [],
@@ -121,6 +161,7 @@ export const RevenueLineChart = ({
   formatCompactCurrency,
   formatCurrency,
   selectedBrand = null,
+  onClearBrandFilter, // ✅ Callback to clear filter
 }) => {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -142,6 +183,16 @@ export const RevenueLineChart = ({
     forecast: d.forecast > 0 ? d.forecast : null,
   }));
 
+  // ✅ Handle clear filter with console log for debugging
+  const handleClearFilter = () => {
+    console.log('🗑️ Clearing brand filter...');
+    if (onClearBrandFilter) {
+      onClearBrandFilter();
+    } else {
+      console.warn('⚠️ onClearBrandFilter prop is not provided!');
+    }
+  };
+
   return (
     <div style={{
       gridColumn: 'span 2',
@@ -162,21 +213,20 @@ export const RevenueLineChart = ({
         justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px',
       }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <h3 style={{
               fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em',
               textTransform: 'uppercase', color: 'var(--foreground, #111827)', margin: 0,
             }}>
               Revenue Forecast & Trend Analysis
             </h3>
+            
+            {/* ✅ Filter Chip - shows X button when brand is selected */}
             {selectedBrand && (
-              <span style={{
-                fontSize: '10px', fontWeight: 400, color: 'var(--muted-foreground, #6b7280)',
-                background: 'var(--muted, #f3f4f6)', padding: '2px 8px',
-                borderRadius: '999px', border: '1px solid var(--border, #e5e7eb)',
-              }}>
-                {selectedBrand}
-              </span>
+              <FilterChip 
+                brand={selectedBrand} 
+                onRemove={handleClearFilter}
+              />
             )}
           </div>
         </div>

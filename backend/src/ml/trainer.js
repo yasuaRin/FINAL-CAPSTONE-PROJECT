@@ -1,9 +1,11 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { loadDailyRevenue } from './data_loader.js';
 import { engineerFeatures, toMatrix, FEATURE_KEYS } from './features.js';
 import { RobustScaler, RidgeRegression, RFRegressor, mae, r2, mape } from './models.js';
+import { supabaseAdmin } from '../utils/supabase.js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -51,6 +53,66 @@ function loocv(ModelClass, modelArgs, X, y) {
   };
 }
 
+// K-fold CV: same idea as LOOCV (out-of-fold predictions -> mae/r2/mape),
+// but only refits the model `k` times instead of `n` times. This is what
+// keeps Random Forest (100 trees x refit) usable once n gets into the
+// hundreds -- LOOCV at n=755 means 755 separate 100-tree forests (75,500
+// trees) built one at a time on the main thread, which is why training
+// was stalling/crashing after the Ridge candidates.
+function kfoldcv(ModelClass, modelArgs, X, y, k = 5) {
+  const n = X.length;
+  const preds = new Array(n).fill(0);
+
+  // Shuffle indices so folds aren't just contiguous date chunks
+  const indices = Array.from({ length: n }, (_, i) => i);
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+
+  const foldSize = Math.ceil(n / k);
+
+  for (let f = 0; f < k; f++) {
+    const testIdx = new Set(indices.slice(f * foldSize, (f + 1) * foldSize));
+    if (testIdx.size === 0) continue;
+
+    const XTrain = [], yTrain = [], XTest = [], testPositions = [];
+    for (let i = 0; i < n; i++) {
+      if (testIdx.has(i)) {
+        XTest.push(X[i]);
+        testPositions.push(i);
+      } else {
+        XTrain.push(X[i]);
+        yTrain.push(y[i]);
+      }
+    }
+
+    const model = new ModelClass(...modelArgs);
+    model.fit(XTrain, yTrain);
+    const foldPreds = model.predict(XTest);
+    testPositions.forEach((origIdx, pos) => {
+      preds[origIdx] = foldPreds[pos];
+    });
+  }
+
+  return {
+    mae: mae(y, preds),
+    r2: r2(y, preds),
+    mape: mape(y, preds),
+  };
+}
+
+// LOOCV for small datasets (cheap and most accurate there), k-fold once
+// LOOCV would get too slow -- especially for Random Forest, where each
+// LOOCV iteration refits a full 100-tree forest.
+function crossValidate(ModelClass, modelArgs, X, y) {
+  const n = X.length;
+  if (n <= 100) {
+    return loocv(ModelClass, modelArgs, X, y);
+  }
+  return kfoldcv(ModelClass, modelArgs, X, y, 5);
+}
+
 export async function trainAndSelect(brandId = null) {
   console.log('Loading daily revenue data...');
   const daily = await loadDailyRevenue(brandId);
@@ -75,11 +137,13 @@ export async function trainAndSelect(brandId = null) {
     { name: 'Random Forest',  cls: RFRegressor,     args: [{ nEstimators: 100 }] },
   ];
 
-  console.log('\nRunning LOOCV...');
+  const cvMethod = daily.length <= 100 ? 'LOOCV' : 'k-fold CV (k=5)';
+  console.log(`\nRunning ${cvMethod}...`);
   const results = {};
 
   for (const cand of candidates) {
-    const scores = loocv(cand.cls, cand.args, XScaled, y);
+    console.log(`   Evaluating ${cand.name}...`);
+    const scores = crossValidate(cand.cls, cand.args, XScaled, y);
     results[cand.name] = scores;
     console.log(`   ${cand.name}: MAE=${scores.mae.toFixed(0)} | R2=${scores.r2.toFixed(4)} | MAPE=${scores.mape.toFixed(1)}%`);
   }
@@ -116,6 +180,32 @@ export async function trainAndSelect(brandId = null) {
       JSON.stringify({ best: bestName, scores: results }, null, 2)
     );
     console.log('[ML] Models saved to filesystem');
+    // Upload model files to Supabase Storage
+    const files = [
+      'best_model.json',
+      'scaler.json',
+      'feature_names.json',
+      'model_type.json',
+      'model_comparison.json'
+    ];
+
+    for (const file of files) {
+      const filePath = path.join(MODELS_DIR, file);
+
+      const { error } = await supabaseAdmin.storage
+        .from('ml-models')
+        .upload(file, fs.readFileSync(filePath), {
+          upsert: true,
+          contentType: 'application/json'
+        });
+
+      if (error) {
+        console.error(`[ML] Failed to upload ${file}:`, error.message);
+      } else {
+        console.log(`[ML] Uploaded ${file} to Supabase Storage`);
+      }
+    }
+
   } catch (err) {
     console.warn('[ML] Could not save to filesystem (Vercel read-only):', err.message);
     console.log('[ML] Models saved to memory cache only');
@@ -135,11 +225,16 @@ export async function trainAndSelect(brandId = null) {
 }
 
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  trainAndSelect().then(result => {
-    console.log('\nTraining completed!');
-    console.log(JSON.stringify(result, null, 2));
-  });
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  trainAndSelect()
+    .then(result => {
+      console.log('\nTraining completed!');
+      console.log(JSON.stringify(result, null, 2));
+    })
+    .catch(err => {
+      console.error('\n[ML] Training FAILED:', err);
+      process.exitCode = 1;
+    });
 }
 
 export function getCachedModel() {

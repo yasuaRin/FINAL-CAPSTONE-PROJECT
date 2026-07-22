@@ -1,9 +1,8 @@
 // predictor.js - ES Module version (Vercel-compatible - uses memory cache)
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { supabaseAdmin } from '../utils/supabase.js';
 import { loadDailyRevenue } from './data_loader.js';
 import { engineerFeatures, toMatrix, FEATURE_KEYS } from './features.js';
 import { RobustScaler, RFRegressor, RidgeRegression } from './models.js';
@@ -12,9 +11,17 @@ import { getCachedModel } from './trainer.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+async function downloadJSON(filename) {
+  const { data, error } = await supabaseAdmin.storage
+    .from('ml-models')
+    .download(filename);
 
-function loadArtifacts() {
+  if (error) throw error;
+
+  return JSON.parse(await data.text());
+}
+
+async function loadArtifacts() {
   const cache = getCachedModel();
   
   if (!cache.modelData) {
@@ -44,7 +51,28 @@ function loadArtifacts() {
       console.warn('[ML] Could not load from filesystem:', err.message);
     }
     
-    throw new Error('No trained model found. Please train the model first.');
+    console.log('[ML] Downloading model from Supabase Storage...');
+
+    const modelJson = await downloadJSON('best_model.json');
+    const scalerJson = await downloadJSON('scaler.json');
+    const featureKeys = await downloadJSON('feature_names.json');
+    const modelType = await downloadJSON('model_type.json');
+
+    const scaler = RobustScaler.fromJSON(scalerJson);
+
+    let model;
+
+    if (modelType.type === 'RFRegressor') {
+        model = RFRegressor.fromJSON(modelJson);
+    } else {
+        model = RidgeRegression.fromJSON(modelJson);
+    }
+
+    return {
+        model,
+        scaler,
+        featureKeys
+    };
   }
 
   const modelData = cache.modelData;
@@ -108,13 +136,8 @@ function buildFutureRows(daily, nFuture = 14) {
 }
 
 export async function predictAndSave(brandId = null, nFuture = 14) {
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY
-  );
-
   try {
-    const { model, scaler, featureKeys } = loadArtifacts();
+    const { model, scaler, featureKeys } = await loadArtifacts();
     const historical = await loadDailyRevenue(brandId);
 
     if (historical.length === 0) {
@@ -139,7 +162,10 @@ export async function predictAndSave(brandId = null, nFuture = 14) {
     const rawPreds = model.predict(XScaled);
 
     // Clear existing predictions
-    await supabase.table('revenue_predictions').delete().neq('id', 0);
+    await supabaseAdmin
+      .from('revenue_predictions')
+      .delete()
+      .neq('id', 0);
 
     const records = allRows.map((row, i) => {
       const isFuture = i >= historical.length;
@@ -165,7 +191,9 @@ export async function predictAndSave(brandId = null, nFuture = 14) {
     // Insert in batches
     for (let i = 0; i < records.length; i += 500) {
       const batch = records.slice(i, i + 500);
-      await supabase.table('revenue_predictions').insert(batch);
+      await supabaseAdmin
+        .from('revenue_predictions')
+        .insert(batch);
     }
 
     console.log(`\n[ML] Saved ${records.length} predictions to Supabase`);
@@ -184,6 +212,11 @@ export async function predictAndSave(brandId = null, nFuture = 14) {
 }
 
 // Run if executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  predictAndSave().then(result => console.log(JSON.stringify(result, null, 2)));
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  predictAndSave()
+    .then(result => console.log(JSON.stringify(result, null, 2)))
+    .catch(err => {
+      console.error('[ML] Prediction FAILED:', err);
+      process.exitCode = 1;
+    });
 }

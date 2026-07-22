@@ -34,6 +34,7 @@ app.post('/api/ml/retrain', (req, res) => {
 
   async function runPipeline() {
     retrainStatus.isRunning = true;
+    retrainStatus.lastResult = null;
     try {
       console.log('\n' + '='.repeat(60));
       console.log('STARTING ML TRAINING...');
@@ -71,8 +72,26 @@ app.post('/api/ml/retrain', (req, res) => {
     }
   }
 
-  runPipeline();
-  res.json({ message: 'Training started', status: 'running' });
+  // FIX: wait for the pipeline to actually finish before responding,
+  // instead of firing-and-forgetting and reporting success immediately.
+  runPipeline()
+    .then(() => {
+      if (retrainStatus.lastResult && retrainStatus.lastResult.error) {
+        return res.status(500).json({
+          message: 'Training failed',
+          status: 'error',
+          result: retrainStatus.lastResult,
+        });
+      }
+      res.json({
+        message: 'Training completed',
+        status: 'done',
+        result: retrainStatus.lastResult,
+      });
+    })
+    .catch((e) => {
+      res.status(500).json({ message: 'Training failed', status: 'error', error: e.message });
+    });
 });
 
 app.get('/api/ml/retrain/status', (req, res) => {

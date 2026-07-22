@@ -636,6 +636,14 @@ if (!isRerunAborted()) updateRerunToast('Model is currently being trained. \nPle
     [selectedBrand, brands, notify]
   );
 
+  // ✅ NEW: Handle clearing brand filter from the chart's X button
+  const handleClearBrandFilter = useCallback(() => {
+    console.log('✅ Clearing brand filter from Dashboard');
+    setSelectedBrand(null);
+    setDateRange({ start: null, end: null, preset: 'allData' });
+    notify('Showing all data', 'info');
+  }, [notify]);
+
   const showLoading =
     (revenueLoading || brandsLoading) && !timedOut && !forceShow &&
     revenue?.length === 0 && yearlyData?.length === 0;
@@ -734,6 +742,7 @@ if (!isRerunAborted()) updateRerunToast('Model is currently being trained. \nPle
         formatCompactCurrency={formatCompactCurrency}
         formatCurrency={formatCurrency}
         selectedBrand={selectedBrandName}
+        onClearBrandFilter={handleClearBrandFilter} // ✅ ADDED THIS
         forecastDrop={forecastDrop}
       />
 
