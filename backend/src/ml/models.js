@@ -186,14 +186,48 @@ export class RFRegressor {
     const sqrtFeatures = Math.max(1, Math.round(Math.sqrt(nFeatures)));
     const featureIdxs = this._sample(nFeatures, sqrtFeatures, rng);
 
+    // Precompute totals once per node instead of per threshold candidate.
+    const n = y.length;
+    const sumAll = y.reduce((a, b) => a + b, 0);
+    const sumSqAll = y.reduce((s, v) => s + v * v, 0);
+    const varAll = sumSqAll / n - (sumAll / n) ** 2;
+
     let bestFeature = -1, bestThreshold = 0, bestGain = -Infinity;
 
     for (const fi of featureIdxs) {
-      const values = [...new Set(X.map(row => row[fi]))].sort((a, b) => a - b);
-      for (let vi = 0; vi < values.length - 1; vi++) {
-        const threshold = (values[vi] + values[vi + 1]) / 2;
-        const gain = this._varianceReduction(X, y, fi, threshold);
-        if (gain > bestGain) { bestGain = gain; bestFeature = fi; bestThreshold = threshold; }
+      // Sort (value, y) pairs by feature value once, then sweep thresholds
+      // left-to-right using running sums instead of re-filtering the full
+      // array for every candidate threshold. Same variance-reduction
+      // criterion as before (population variance), just O(n log n) per
+      // feature instead of O(n^2) -- this is what was making Random Forest
+      // hang on larger datasets, especially inside k-fold/LOOCV where the
+      // whole forest gets refit multiple times.
+      const paired = X.map((row, i) => [row[fi], y[i]]).sort((a, b) => a[0] - b[0]);
+
+      let sumLeft = 0, sumSqLeft = 0;
+      for (let vi = 0; vi < paired.length - 1; vi++) {
+        const val = paired[vi][1];
+        sumLeft += val;
+        sumSqLeft += val * val;
+
+        // Skip thresholds between equal consecutive values (no valid split there)
+        if (paired[vi][0] === paired[vi + 1][0]) continue;
+
+        const nLeft = vi + 1;
+        const nRight = n - nLeft;
+        const sumRight = sumAll - sumLeft;
+        const sumSqRight = sumSqAll - sumSqLeft;
+
+        const varLeft = sumSqLeft / nLeft - (sumLeft / nLeft) ** 2;
+        const varRight = sumSqRight / nRight - (sumRight / nRight) ** 2;
+
+        const gain = varAll - (nLeft / n) * varLeft - (nRight / n) * varRight;
+
+        if (gain > bestGain) {
+          bestGain = gain;
+          bestFeature = fi;
+          bestThreshold = (paired[vi][0] + paired[vi + 1][0]) / 2;
+        }
       }
     }
 
@@ -215,16 +249,6 @@ export class RFRegressor {
       left: this._buildTree(leftIdx.map(i => X[i]), leftIdx.map(i => y[i]), rng, depth + 1, maxDepth, minSamples),
       right: this._buildTree(rightIdx.map(i => X[i]), rightIdx.map(i => y[i]), rng, depth + 1, maxDepth, minSamples),
     };
-  }
-
-  _varianceReduction(X, y, fi, threshold) {
-    const leftY = y.filter((_, i) => X[i][fi] <= threshold);
-    const rightY = y.filter((_, i) => X[i][fi] > threshold);
-    if (leftY.length === 0 || rightY.length === 0) return -Infinity;
-    const varAll = this._variance(y);
-    const varLeft = this._variance(leftY);
-    const varRight = this._variance(rightY);
-    return varAll - (leftY.length / y.length) * varLeft - (rightY.length / y.length) * varRight;
   }
 
   _variance(arr) {

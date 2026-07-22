@@ -54,7 +54,7 @@ const supabase = createClient(
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
-  'https://vidhelp-capstone.vercel.app'
+  'https://vidhelp-frontend.vercel.app'
 ];
 
 const corsOptions = {
