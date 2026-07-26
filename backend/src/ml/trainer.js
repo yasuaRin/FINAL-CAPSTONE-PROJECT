@@ -113,7 +113,7 @@ function crossValidate(ModelClass, modelArgs, X, y) {
   return kfoldcv(ModelClass, modelArgs, X, y, 5);
 }
 
-export async function trainAndSelect(brandId = null) {
+export async function trainAndSelect(brandId = null, shouldCancel = () => false) {
   console.log('Loading daily revenue data...');
   const daily = await loadDailyRevenue(brandId);
 
@@ -142,18 +142,28 @@ export async function trainAndSelect(brandId = null) {
   const results = {};
 
   for (const cand of candidates) {
+      if (shouldCancel()) {
+      console.log('[ML] Cancellation requested — stopping before', cand.name);
+      return { cancelled: true };
+    }
+    await new Promise((resolve) => setImmediate(resolve));
+
     console.log(`   Evaluating ${cand.name}...`);
     const scores = crossValidate(cand.cls, cand.args, XScaled, y);
     results[cand.name] = scores;
     console.log(`   ${cand.name}: MAE=${scores.mae.toFixed(0)} | R2=${scores.r2.toFixed(4)} | MAPE=${scores.mape.toFixed(1)}%`);
   }
 
-  const bestName = Object.entries(results).reduce((best, [name, s]) =>
+   if (shouldCancel()) {
+    console.log('[ML] Cancellation requested — stopping before saving model');
+    return { cancelled: true };
+  }
+
+const bestName = Object.entries(results).reduce((best, [name, s]) =>
     s.mae < results[best].mae ? name : best
   , Object.keys(results)[0]);
 
   const bestCand = candidates.find(c => c.name === bestName);
-  console.log(`\nBest: ${bestName}`);
 
   const bestModel = new bestCand.cls(...bestCand.args);
   bestModel.fit(XScaled, y);

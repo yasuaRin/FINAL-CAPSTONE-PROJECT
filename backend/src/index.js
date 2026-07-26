@@ -155,8 +155,7 @@ app.post('/api/ml/predict', async (req, res) => {
   }
 });
 
-const retrainStatus = { isRunning: false, lastResult: null };
-
+const retrainStatus = { isRunning: false, lastResult: null, cancelRequested: false };
 app.post('/api/ml/retrain', (req, res) => {
   if (retrainStatus.isRunning) {
     return res.status(409).json({ success: false, message: 'Training already in progress' });
@@ -167,10 +166,18 @@ app.post('/api/ml/retrain', (req, res) => {
 
   // Run in background
   retrainStatus.isRunning = true;
-  (async () => {
+  retrainStatus.cancelRequested = false;
+(async () => {
     try {
       console.log('[ML] Full retrain + predict workflow started...');
-      const trainResult = await trainAndSelect();
+      const trainResult = await trainAndSelect(null, () => retrainStatus.cancelRequested);
+
+      if (trainResult?.cancelled) {
+        console.log('[ML] Training was cancelled by user');
+        retrainStatus.lastResult = { success: false, cancelled: true };
+        return;
+      }
+
       console.log('[ML] Training complete');
       const predictResult = await predictAndSave(null, 14);
       console.log('[ML] Predictions generated');
@@ -181,8 +188,18 @@ app.post('/api/ml/retrain', (req, res) => {
       retrainStatus.lastResult = { success: false, error: error.message };
     } finally {
       retrainStatus.isRunning = false;
+      retrainStatus.cancelRequested = false;
     }
   })();
+});
+
+app.post('/api/ml/retrain/cancel', (req, res) => {
+  if (!retrainStatus.isRunning) {
+    return res.json({ success: true, message: 'No training in progress' });
+  }
+  retrainStatus.cancelRequested = true;
+  console.log('[ML] Cancellation requested by client');
+  res.json({ success: true, message: 'Cancellation requested' });
 });
 
 app.get('/api/ml/retrain/status', (req, res) => {

@@ -99,9 +99,14 @@ export const usePredictions = () => {
   // Cancels the in-flight retrain request, if any. Aborting the fetch
   // causes retrainModels' catch block to resolve immediately (instead of
   // waiting for the ML API to finish), so the UI can close right away.
-  const cancelRetrain = useCallback(() => {
-    retrainAbortRef.current?.abort();
-  }, []);
+const cancelRetrain = useCallback(async () => {
+  retrainAbortRef.current?.abort();
+  try {
+    await fetch(`${ML_API_URL}/api/ml/retrain/cancel`, { method: 'POST' });
+  } catch (err) {
+    console.warn('[ML] Failed to send cancel request:', err.message);
+  }
+}, []);
 
   return {
     futurePredictions,
