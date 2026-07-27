@@ -167,7 +167,7 @@ const Chatbot = () => {
                       <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 overflow-hidden ${m.role === 'user' ? 'bg-slate-200' : 'bg-transparent'}`}>
                         {m.role === 'user'
                           ? <User size={12} />
-                          : <img src="public/VH.png" alt="VH Bot" className="w-full h-full object-cover" />
+                          : <img src="/VH.png" alt="VH Bot" className="w-full h-full object-cover" />
                         }
                       </div>
                       <div className={`py-2 px-3 rounded-xl text-xs leading-relaxed ${m.role === 'user' ? 'bg-[#002147] text-white rounded-tr-none' : 'bg-white text-slate-700 rounded-tl-none shadow-[0_1px_3px_rgba(0,0,0,0.06)]'}`}>
