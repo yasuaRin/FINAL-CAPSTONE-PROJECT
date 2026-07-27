@@ -1,25 +1,37 @@
-import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
-import fs from 'fs';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
+// use SERVICE_KEY secret to safely bypass RLS on the backend server
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-const knowledgeBase = fs.readFileSync('./src/data/vidhelp_knowledge_base.md', 'utf-8');
-
 function chunkText(text) {
+  // chunking markdown document based on clustering by headings (##) and filter out small segments
   const chunks = text.split(/\n(?=##\s)/);
   return chunks
     .map(chunk => chunk.trim())
     .filter(chunk => chunk.length > 50);
 }
 
-async function getEmbedding(text) {
+function getEmbeddingApiKey(currentApiKey, provider) {
+  // A Groq key is not valid for Google's embedding API.
+  if (provider === 'groq') return GEMINI_API_KEY || '';
+  return currentApiKey || GEMINI_API_KEY || '';
+}
+
+async function requestGeminiEmbedding(text, apiKey) {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -31,67 +43,79 @@ async function getEmbedding(text) {
   );
 
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(`Gemini error ${response.status}: ${JSON.stringify(err)}`);
+    const err = await response.json().catch(() => ({}));
+    throw new Error(`Gemini Embedding Error: ${JSON.stringify(err)}`);
   }
 
   const data = await response.json();
   return data.embedding.values;
 }
 
-async function ingest() {
-  const chunks = chunkText(knowledgeBase);
-  console.log(`\nFound ${chunks.length} chunks to embed...\n`);
+async function getEmbedding(text, currentApiKey, provider) {
+  const primaryKey = getEmbeddingApiKey(currentApiKey, provider);
+  if (!primaryKey) throw new Error('Gemini embedding API key is not configured.');
+
+  try {
+    return await requestGeminiEmbedding(text, primaryKey);
+  } catch (error) {
+    if (GEMINI_API_KEY && GEMINI_API_KEY !== primaryKey) {
+      console.error('[Ingest] Primary Gemini embedding key failed; retrying with GEMINI_API_KEY:', error.message);
+      return requestGeminiEmbedding(text, GEMINI_API_KEY);
+    }
+    throw error;
+  }
+}
+
+// ─── EXPORT PIPELINE FUNCTION ───────────────────────────────────────────────────────────────
+export async function runAutoIngest(markdownContent, currentApiKey, provider = 'gemini') {
+  const chunks = chunkText(markdownContent);
+  if (chunks.length === 0) throw new Error('No valid structural segments found in the markdown file.');
 
   const { error: deleteError } = await supabase
     .from('vidhelp_knowledge')
     .delete()
     .neq('id', 0);
 
-  if (deleteError) {
-    console.warn('Could not clear old data:', deleteError.message);
-  } else {
-    console.log('Cleared old data ✓\n');
-  }
+  if (deleteError) throw new Error(`Failed to purge legacy vector records: ${deleteError.message}`);
 
   let successCount = 0;
 
+  // 2. Generate embeddings for each chunk and insert into Supabase pgvector table
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
-    const preview = chunk.substring(0, 60).replace(/\n/g, ' ');
-    console.log(`[${i + 1}/${chunks.length}] Embedding: "${preview}..."`);
-
     try {
-      const embedding = await getEmbedding(chunk);
+      const embedding = await getEmbedding(chunk, currentApiKey, provider);
+      console.log(`[Ingest] Generated embedding for chunk ${i}.`, { dimensions: embedding.length });
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('vidhelp_knowledge')
         .insert({
           content: chunk,
           embedding,
           metadata: { source: 'company_profile', chunk_index: i }
-        });
+        })
+        .select('id, metadata');
 
+      console.log(`[Ingest] Supabase insert response for chunk ${i}:`, { data, error });
       if (error) {
-        console.error(`  ✗ Insert failed: ${error.message}`);
-      } else {
-        successCount++;
-        console.log(`  ✓ Inserted (${embedding.length} dimensions)`);
+        throw new Error(`Supabase insert failed for chunk ${i}: ${error.message}`);
       }
+      if (!data || data.length !== 1) {
+        throw new Error(`Supabase insert returned no created row for chunk ${i}.`);
+      }
+
+      successCount++;
     } catch (err) {
-      console.error(`  ✗ Failed: ${err.message}`);
+      console.error(`[Ingest] Failed at chunk ${i}:`, err);
+      throw err;
     }
-
-    await new Promise(r => setTimeout(r, 500));
+    // Delay between inserts to avoid overwhelming the Supabase service with rapid requests
+    await new Promise(r => setTimeout(r, 250));
   }
 
-  console.log(`\n${'─'.repeat(50)}`);
-  if (successCount === chunks.length) {
-    console.log(`Ingestion complete! All ${successCount}/${chunks.length} chunks inserted.`);
-  } else {
-    console.log(`Ingestion done with issues: ${successCount}/${chunks.length} chunks inserted.`);
+  if (successCount !== chunks.length) {
+    throw new Error(`Ingestion incomplete: inserted ${successCount} of ${chunks.length} chunks.`);
   }
-  console.log(`${'─'.repeat(50)}\n`);
+
+  return { totalChunks: chunks.length, insertedChunks: successCount };
 }
-
-ingest();

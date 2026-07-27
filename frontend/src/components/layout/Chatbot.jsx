@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, X, Send, User, Loader2, Sparkles } from 'lucide-react';
-import { askVidHelp } from '../../utils/rag.js';
+import { MessageSquare, X, Send, User, Loader2 } from 'lucide-react';
 
 // CONFIG
 const MAX_USER_MESSAGES = 6;
-
+const API_URL = import.meta.env.VITE_API_URL;
 const FAREWELL_MESSAGE =
   "What a nice conversation to have with you! Lets discuss more on consultation? See you soon and lets talk business!";
 
@@ -67,7 +66,7 @@ const Chatbot = () => {
     return () => window.removeEventListener('open-chatbot', handleOpenChatbot);
   }, []);
 
-  // ─── FUNGSI UTAMA PENGIRIMAN PESAN (DIREFAKTOR AGAR BISA DIPAKAI TOMBOL) ───
+  // ─── FUNGSI UTAMA PENGIRIMAN PESAN: MENEMBAK SECURE BACKEND EXPRESS RAILWAY ───
   const executeSendMessage = async (textToSend) => {
     if (isLimitReached) {
       setMessages(prev => [
@@ -78,18 +77,35 @@ const Chatbot = () => {
       return;
     }
 
-    // Sembunyikan rekomendasi pertanyaan setelah pengguna berinteraksi pertama kali
     setShowSuggestions(false);
     
+    // Simpan pesan user ke dalam state lokal UI
     setMessages(prev => [...prev, { role: 'user', text: textToSend }]);
     const newCount = userMessageCount + 1;
     setUserMessageCount(newCount);
     setIsLoading(true);
 
     try {
-      // Mengirim teks ke fungsi RAG utama
-      const botText = await askVidHelp(textToSend, messages);
-      setMessages(prev => [...prev, { role: 'bot', text: botText }]);
+      // Menembak endpoint secure chat backend Express di server Railway
+      const response = await fetch(`${API_URL}/api/ai/chat`, {
+          method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          question: textToSend,
+          chatHistory: messages // Mengirim history pesan agar LLM mengingat konteks obrolan sebelumnya
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'AI Server Gateway latency timeout.');
+      }
+
+      // Masukkan jawaban pintar dari server ke dalam chat bubble screen
+      setMessages(prev => [...prev, { role: 'bot', text: data.answer }]);
 
       if (newCount >= MAX_USER_MESSAGES) {
         setTimeout(() => {
@@ -97,10 +113,10 @@ const Chatbot = () => {
         }, 800);
       }
     } catch (error) {
-      console.error('Chat error:', error);
+      console.error('Chatbot connection error:', error);
       setMessages(prev => [
         ...prev,
-        { role: 'bot', text: "Systems are currently busy. Please contact us directly at +62 89530702882." },
+        { role: 'bot', text: "Systems are currently busy handling traffic. Please contact us directly for personal consultation at +62 89530702882." },
       ]);
     } finally {
       setIsLoading(false);
@@ -151,7 +167,7 @@ const Chatbot = () => {
                       <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 overflow-hidden ${m.role === 'user' ? 'bg-slate-200' : 'bg-transparent'}`}>
                         {m.role === 'user'
                           ? <User size={12} />
-                          : <img src="/VH.png" alt="VH Bot" className="w-full h-full object-cover" />
+                          : <img src="public/VH.png" alt="VH Bot" className="w-full h-full object-cover" />
                         }
                       </div>
                       <div className={`py-2 px-3 rounded-xl text-xs leading-relaxed ${m.role === 'user' ? 'bg-[#002147] text-white rounded-tr-none' : 'bg-white text-slate-700 rounded-tl-none shadow-[0_1px_3px_rgba(0,0,0,0.06)]'}`}>
@@ -161,7 +177,7 @@ const Chatbot = () => {
                   </div>
                 ))}
 
-                {/* ─── FITUR BARU: TOMBOL GUIDED SUGGESTION QUESTIONS ─── */}
+                {/* TOMBOL GUIDED SUGGESTION QUESTIONS */}
                 {showSuggestions && !isLoading && (
                   <motion.div 
                     initial={{ opacity: 0, y: 4 }}

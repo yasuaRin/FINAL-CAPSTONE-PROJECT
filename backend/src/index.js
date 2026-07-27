@@ -1,12 +1,14 @@
 ﻿import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
+import helmet from 'helmet';
+import morgan from 'morgan';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
-
+import aiRoutes from './routes/aiRoutes.js';
 // ─────────────────────────────────────────────────────────────────────────────
 // IMPORT ML MODULES (JavaScript versions) - WITH ERROR HANDLING
 // ─────────────────────────────────────────────────────────────────────────────
@@ -77,6 +79,13 @@ app.use(cors(corsOptions));
 app.options('/*splat', cors(corsOptions));
 app.use(compression());
 app.use(express.json());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+app.use(morgan("dev"));
+app.use('/api/ai', aiRoutes);
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROOT ENDPOINT
@@ -91,7 +100,10 @@ app.get('/', (req, res) => {
       train: '/api/ml/train',
       predict: '/api/ml/predict',
       retrain: '/api/ml/retrain',
-      status: '/api/ml/status'
+      cancel: '/api/ml/retrain/cancel', 
+      status: '/api/ml/status',
+      aiChat: '/api/ai/chat',
+      uploadKnowledge: '/api/ai/upload-knowledge'
     }
   });
 });
@@ -107,7 +119,6 @@ app.get('/health', (req, res) => {
     environment: process.env.NODE_ENV || 'development'
   });
 });
-
 // ─────────────────────────────────────────────────────────────────────────────
 // ML MODEL ENDPOINTS (Now using JavaScript with error handling)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -558,17 +569,20 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════════════════════════╗
-║                              VIDHELP BACKEND SERVER                            ║
+║                              VIDHELP BACKEND SERVER                          ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║   Server:       http://localhost:${PORT}                                      ║
+║   Server:       http://localhost:${PORT}                                     ║
 ║   Health:       http://localhost:${PORT}/health                              ║
 ║   ML Train:     POST http://localhost:${PORT}/api/ml/train                   ║
 ║   ML Predict:   POST http://localhost:${PORT}/api/ml/predict                 ║
 ║   ML Retrain:   POST http://localhost:${PORT}/api/ml/retrain                 ║
+║   ML Cancel:    POST http://localhost:${PORT}/api/ml/retrain/cancel          ║
 ║   ML Status:    GET  http://localhost:${PORT}/api/ml/status                  ║
+║   AI Chat:      POST http://localhost:${PORT}/api/ai/chat                    ║
+║   AI Upload:    POST http://localhost:${PORT}/api/ai/upload-knowledge        ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
-║   Environment:  ${process.env.NODE_ENV || 'development'}                                      ║
-║   Status:       Operational                                                   ║
+║   Environment:  ${process.env.NODE_ENV || 'development'}                     ║
+║   Status:       Operational                                                  ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
   `);
 });
