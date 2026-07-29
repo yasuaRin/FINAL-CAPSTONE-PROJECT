@@ -16,6 +16,12 @@ const BASE_STYLE = `
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
 `;
 
+// CHANGE #1: same cache key useBrands.js uses for its sessionStorage cache.
+// Adding a brand here doesn't go through useBrands, so without clearing this
+// key the Revenue page's Brand dropdown can keep serving a stale cached list
+// (up to 5 minutes old) that's missing the brand you just created.
+const BRANDS_CACHE_KEY = 'brands_data';
+
 const inputStyle = {
   width: "100%",
   padding: "9px 12px",
@@ -145,9 +151,9 @@ export default function Brands() {
       setIsLoading(true);
 
       const { data: brandsData, error: brandsErr } = await supabase
-        .from('brands')
-        .select('brand_id, brand_name, brand_category, brand_status')
-        .order('brand_name', { ascending: true });
+      .from('brands')
+      .select('brand_id, brand_name, brand_category, brand_status, brand_created_at')
+      .order('brand_created_at', { ascending: false });
       if (brandsErr) throw brandsErr;
 
       const { data: sessionsData, error: sessionsErr } = await supabase
@@ -268,6 +274,10 @@ export default function Brands() {
       } else {
         const { error } = await supabase.from('brands').insert([brandData]);
         if (error) throw error;
+        // CHANGE #1: invalidate useBrands.js's sessionStorage cache so the
+        // Revenue page's Brand dropdown picks up the new brand immediately
+        // instead of serving a stale cached list for up to 5 minutes.
+        sessionStorage.removeItem(BRANDS_CACHE_KEY);
         notify('Brand created successfully');
       }
       closeForm();

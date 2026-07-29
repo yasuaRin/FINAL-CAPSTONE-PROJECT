@@ -61,8 +61,7 @@ const Revenue = () => {
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // FIX 2: track the current user's role so we can block delete for admins
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState(null);
 
   const [sessionFormData, setSessionFormData] = useState({
@@ -73,6 +72,8 @@ const Revenue = () => {
     viewers: 0,
     revenue: 0,
     period_id: '',
+    period_start_date: '',
+    period_end_date: '',
     host_team_member_id: '',
   });
 
@@ -100,7 +101,7 @@ const Revenue = () => {
   const { brands } = useBrands(brandTotals);
   const { team } = useTeam();
 
-  // FIX 2: fetch the logged-in user's role from team_members table
+  // Fetch user role
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
@@ -131,7 +132,6 @@ const Revenue = () => {
     fetchUserRole();
   }, []);
 
-  // FIX 2: derive a boolean — only non-admin roles (e.g. 'super_admin', 'owner') can delete
   const canDelete = currentUserRole !== 'admin';
 
   // Prevent body scroll when modal is open
@@ -168,28 +168,66 @@ const Revenue = () => {
   }, [showSessionModal]);
 
   useEffect(() => {
-    const fetchPeriods = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('periods')
-          .select('period_id, period_name, period_start_date, period_end_date')
-          .order('period_id');
-        if (!error && data) {
-          const uniquePeriodsMap = new Map();
-          data.forEach(p => {
-            const normalizedId = normalizePeriodId(p.period_id);
-            if (!uniquePeriodsMap.has(normalizedId)) {
-              uniquePeriodsMap.set(normalizedId, p);
-            }
-          });
-          setPeriodsData(Array.from(uniquePeriodsMap.values()));
-        }
-      } catch {
-        // silently handle
-      }
-    };
     fetchPeriods();
   }, []);
+
+  const fetchPeriods = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('periods')
+        .select('period_id, period_name, period_start_date, period_end_date, brand_id')
+        .order('period_id');
+      if (!error && data) {
+        const uniquePeriodsMap = new Map();
+        data.forEach(p => {
+          const key = `${p.period_id}-${p.brand_id}`;
+          if (!uniquePeriodsMap.has(key)) {
+            uniquePeriodsMap.set(key, p);
+          }
+        });
+        setPeriodsData(Array.from(uniquePeriodsMap.values()));
+      }
+    } catch {
+      // silently handle
+    }
+  };
+
+  // ===== NEW: saves/updates the period date range whenever a session is
+  // created or edited. Previously period_start_date / period_end_date were
+  // captured in the form but never persisted anywhere, so the range never
+  // showed up in the Live Session table.
+  //
+  // Uses a single upsert() keyed on the real composite primary key
+  // (period_id, brand_id) instead of a select-then-insert/update, and
+  // surfaces failures via notify() instead of a swallowed console.warn —
+  // so a DB error (e.g. a permissions/RLS rule blocking writes to
+  // `periods`) is no longer silent. Both dates are required before
+  // attempting the save since period_start_date / period_end_date are
+  // NOT NULL columns in the periods table. =====
+  const upsertPeriod = async (periodId, brandId, startDate, endDate) => {
+    if (!periodId || !brandId) return;
+    if (!startDate || !endDate) return; // DB requires both dates, skip if either is missing
+
+    try {
+      const { error } = await supabase
+        .from('periods')
+        .upsert(
+          {
+            period_id: periodId,
+            brand_id: brandId,
+            period_name: `Period ${periodId}`,
+            period_start_date: startDate,
+            period_end_date: endDate,
+          },
+          { onConflict: 'period_id,brand_id' }
+        );
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Could not save period date range:', err);
+      notify(`Session saved, but the period date range failed to save: ${err.message || 'Unknown error'}`, true);
+    }
+  };
 
   useEffect(() => {
     const fetchTopPerformers = async () => {
@@ -234,8 +272,11 @@ const Revenue = () => {
     const map = {};
     periodsData.forEach(p => {
       const normalizedId = normalizePeriodId(p.period_id);
-      map[normalizedId] = {
+      const brandId = sid(p.brand_id);
+      const key = `${normalizedId}-${brandId}`;
+      map[key] = {
         id: normalizedId,
+        brandId: brandId,
         name: p.period_name || `Period ${normalizedId}`,
         startDate: p.period_start_date,
         endDate: p.period_end_date,
@@ -334,39 +375,62 @@ const Revenue = () => {
       if (log.revenue > b.peakRevenue) b.peakRevenue = log.revenue;
     });
     Object.values(map).forEach(b => {
-      if (b.overallStartDate && b.overallEndDate)
-        b.overallRange = `${format(b.overallStartDate, 'dd MMM yyyy')} - ${format(b.overallEndDate, 'dd MMM yyyy')}`;
+     const allPeriods = Object.values(periodMap).filter(
+  p =>
+    p.brandId === b.id && p.startDate && p.endDate
+);
+
+if (allPeriods.length > 0) {
+  const starts = allPeriods
+    .map(p => parseISO(p.startDate))
+    .sort((a, b) => a - b);
+
+  const ends = allPeriods
+    .map(p => parseISO(p.endDate))
+    .sort((a, b) => b - a);
+
+  b.overallRange =
+    `${format(starts[0], 'dd MMM yyyy')} - ${format(ends[0], 'dd MMM yyyy')}`;
+}
       if (b.hasSessions && Object.keys(b.periodRevenue).length > 0) {
         let best = null, bestRev = 0;
         Object.values(b.periodRevenue).forEach(p => { if (p.revenue > bestRev) { bestRev = p.revenue; best = p; } });
         if (best) {
           b.peakPeriodId = best.periodId; b.peakPeriod = `Period ${best.periodId}`; b.bestPeriodRevenue = bestRev;
-          const pi = periodMap[best.periodId];
+          const key = `${best.periodId}-${b.id}`;
+          const pi = periodMap[key];
           if (pi?.startDate && pi?.endDate) {
             b.peakRange = `${format(parseISO(pi.startDate), 'dd MMM yyyy')} - ${format(parseISO(pi.endDate), 'dd MMM yyyy')}`;
-          } else {
-            const dates = best.sessions.map(s => parseLocalDateStr(s.date)).filter(Boolean).sort((a, b) => a - b);
-            if (dates.length > 0) {
-              b.peakRange = `${format(dates[0], 'dd MMM yyyy')} - ${format(dates[dates.length - 1], 'dd MMM yyyy')}`;
-            }
-          }
+          }if (pi?.startDate && pi?.endDate) {
+    b.peakRange =
+      `${format(parseISO(pi.startDate),'dd MMM yyyy')} - ${format(parseISO(pi.endDate),'dd MMM yyyy')}`;
+}
         }
       }
     });
     let results = Object.values(map);
-    if (insightBrandId !== 'All') results = results.filter(b => b.id === insightBrandId);
-    return results.sort((a, b) => b.totalRevenue - a.totalRevenue);
+   if (insightBrandId !== 'All') results = results.filter(b => b.id === insightBrandId);
+    return results.sort((a, b) => {
+      if (a.hasSessions !== b.hasSessions) return a.hasSessions ? 1 : -1;
+      return b.totalRevenue - a.totalRevenue;
+    });
   }, [dateFilteredLogs, brandsList, insightBrandId, periodMap]);
 
   const sessionIntelligence = useMemo(() => {
     let rows = dateFilteredLogs.map(log => {
       const periodId = log.period_id;
       const periodDisplay = (periodId !== null && periodId !== undefined) ? `Period ${periodId}` : 'No Period';
+      const key = `${periodId}-${log.brandId}`;
+      const periodInfo = periodId !== null && periodId !== undefined ? periodMap[key] : null;
+      const periodRange = periodInfo?.startDate && periodInfo?.endDate
+        ? `${format(parseISO(periodInfo.startDate), 'dd MMM')} – ${format(parseISO(periodInfo.endDate), 'dd MMM yyyy')}`
+        : '';
       return {
         ...log,
         brandName: brandMap[log.brandId] || 'Unknown Brand',
         staffName: teamMap[log.hostId] || '—',
         period: periodDisplay,
+        periodRange,
         time: log.time || '',
       };
     });
@@ -395,7 +459,7 @@ const Revenue = () => {
     });
     
     return rows;
-  }, [dateFilteredLogs, brandMap, teamMap, searchTerm, tableFilter.brandId, tableFilter.period, sortCol, sortDir]);
+  }, [dateFilteredLogs, brandMap, teamMap, periodMap, searchTerm, tableFilter.brandId, tableFilter.period, sortCol, sortDir]);
 
   const visibleSessions = useMemo(
     () => rowLimit === null ? sessionIntelligence : sessionIntelligence.slice(0, rowLimit),
@@ -416,22 +480,6 @@ const Revenue = () => {
       return numA - numB;
     });
   }, [dateFilteredLogs]);
-
-  const uniquePeriodsForDropdown = useMemo(() => {
-    const uniqueMap = new Map();
-    periodsData.forEach(p => {
-      const normalizedId = normalizePeriodId(p.period_id);
-      if (!uniqueMap.has(normalizedId)) {
-        uniqueMap.set(normalizedId, p);
-      }
-    });
-    return Array.from(uniqueMap.values())
-      .sort((a, b) => normalizePeriodId(a.period_id) - normalizePeriodId(b.period_id))
-      .map(p => ({
-        id: normalizePeriodId(p.period_id),
-        name: p.period_name || `Period ${normalizePeriodId(p.period_id)}`
-      }));
-  }, [periodsData]);
 
   const handleGlobalBrand = (brandId) => {
     setInsightBrandId(brandId);
@@ -481,7 +529,9 @@ const Revenue = () => {
       platform: 'TikTok',
       viewers: 0,
       revenue: 0,
-      period_id: uniquePeriodsForDropdown[0]?.id ? String(uniquePeriodsForDropdown[0].id) : '',
+      period_id: '',
+      period_start_date: '',
+      period_end_date: '',
       host_team_member_id: team?.[0] ? sid(team[0].id) : '',
     });
   };
@@ -490,6 +540,7 @@ const Revenue = () => {
     for (let i = 0; i < retries; i++) {
       try {
         await refetchRevenue();
+        await fetchPeriods();
         return true;
       } catch (err) {
         console.warn(`Refresh attempt ${i + 1} failed:`, err);
@@ -510,7 +561,7 @@ const Revenue = () => {
   const handleCreateSession = async () => {
     if (isSubmitting) return;
     if (!sessionFormData.brandId) { notify('Please select a brand'); return; }
-    if (!sessionFormData.period_id) { notify('Please select a period'); return; }
+    if (!sessionFormData.period_id) { notify('Please enter a period number'); return; }
     
     setIsSubmitting(true);
     try {
@@ -528,9 +579,22 @@ const Revenue = () => {
 
       const isShopee = ['Shopee', 'Multi'].includes(sessionFormData.platform);
       const isTikTok = ['TikTok', 'Multi'].includes(sessionFormData.platform);
-      const normalizedPeriodId = normalizePeriodId(sessionFormData.period_id);
+      
+      // Ensure period_id is a valid integer
+      const periodId = parseInt(sessionFormData.period_id, 10);
+      if (isNaN(periodId) || periodId < 1) {
+        notify('Please enter a valid period number (1, 2, 3, etc.)');
+        return;
+      }
 
-      if (!normalizedPeriodId) { notify('Invalid period selected'); return; }
+      // NEW: persist the period's date range (if the user filled it in) so it
+      // shows up in the Live Session table / brand insights.
+      await upsertPeriod(
+        periodId,
+        sessionFormData.brandId,
+        sessionFormData.period_start_date,
+        sessionFormData.period_end_date
+      );
 
       const { error } = await supabase.from('live_sessions').insert([{
         date: sessionFormData.date,
@@ -541,7 +605,7 @@ const Revenue = () => {
         viewers_tiktok: isTikTok ? Number(sessionFormData.viewers) : 0,
         likes_shopee: 0,
         likes_tiktok: 0,
-        period_id: normalizedPeriodId,
+        period_id: periodId,
         host_team_member_id: sessionFormData.host_team_member_id || null,
         brand_id: sessionFormData.brandId,
         platform_id: platformId,
@@ -551,8 +615,9 @@ const Revenue = () => {
 
       setShowSessionModal(false);
       resetForm();
-      
+      setIsRefreshing(true);   
       const refreshed = await refreshDataWithRetry();
+      setIsRefreshing(false);  
       if (refreshed) {
         notify('Session created successfully');
       } else {
@@ -578,7 +643,7 @@ const Revenue = () => {
     }
     
     if (!sessionFormData.brandId) { notify('Please select a brand'); return; }
-    if (!sessionFormData.period_id) { notify('Please select a period'); return; }
+    if (!sessionFormData.period_id) { notify('Please enter a period number'); return; }
     
     setIsSubmitting(true);
     try {
@@ -601,6 +666,22 @@ const Revenue = () => {
         throw new Error('Session ID not found');
       }
 
+      // Ensure period_id is a valid integer
+      const periodId = parseInt(sessionFormData.period_id, 10);
+      if (isNaN(periodId) || periodId < 1) {
+        notify('Please enter a valid period number (1, 2, 3, etc.)');
+        return;
+      }
+
+      // NEW: persist the period's date range (if the user filled it in) so it
+      // shows up in the Live Session table / brand insights.
+      await upsertPeriod(
+        periodId,
+        sessionFormData.brandId,
+        sessionFormData.period_start_date,
+        sessionFormData.period_end_date
+      );
+
       const { data, error } = await supabase
         .from('live_sessions')
         .update({
@@ -613,7 +694,7 @@ const Revenue = () => {
           likes_shopee: 0,
           likes_tiktok: 0,
           brand_id: sessionFormData.brandId,
-          period_id: normalizePeriodId(sessionFormData.period_id),
+          period_id: periodId,
           host_team_member_id: sessionFormData.host_team_member_id || null,
           platform_id: platformId,
         })
@@ -626,16 +707,17 @@ const Revenue = () => {
         throw new Error('No rows updated. The session may have been deleted or you lack permission.');
       }
 
+      setShowSessionModal(false);
+      setEditingSession(null);
+      resetForm();
+      setIsRefreshing(true);
       const refreshed = await refreshDataWithRetry();
+      setIsRefreshing(false);     
       if (refreshed) {
         notify('Session updated successfully');
       } else {
         notify('Session updated but data refresh may be delayed. Please refresh the page manually.', true);
       }
-      
-      setShowSessionModal(false);
-      setEditingSession(null);
-      resetForm();
     } catch (err) {
       console.error('UPDATE ERROR:', err);
       notify(`Update failed: ${err.message || 'Unknown error'}`, true);
@@ -659,15 +741,15 @@ const Revenue = () => {
         .eq('id', matchId);
 
       if (error) throw error;
-
+      setSessionToDelete(null);
+      setIsRefreshing(true);
       const refreshed = await refreshDataWithRetry();
+      setIsRefreshing(false);
       if (refreshed) {
         notify('Session deleted successfully');
       } else {
         notify('Session deleted but data refresh may be delayed. Please refresh the page manually.', true);
       }
-      
-      setSessionToDelete(null);
     } catch (err) {
       console.error('DELETE ERROR:', err);
       notify(err.message, true);
@@ -676,7 +758,6 @@ const Revenue = () => {
     }
   };
 
-  // FIX 2: guard delete — admins cannot delete
   const handleDeleteSession = (session) => {
     if (!canDelete) {
       notify('You do not have permission to delete sessions.');
@@ -686,11 +767,32 @@ const Revenue = () => {
     setSessionToDelete({ ...session, _rawId: originalSession?.id ?? session.id });
   };
 
-  const openEditModal = (session) => {
+  const openEditModal = async (session) => {
     const originalSession = revenueData?.find((item) => String(item.id) === String(session.id));
     if (!originalSession) { 
       notify('Error: Could not find original session data', true); 
       return; 
+    }
+    
+    // Fetch period data for this session
+    let periodStartDate = '';
+    let periodEndDate = '';
+    if (session.period_id) {
+      try {
+        const { data, error } = await supabase
+          .from('periods')
+          .select('period_start_date, period_end_date')
+          .eq('period_id', parseInt(session.period_id, 10))
+          .eq('brand_id', session.brandId)
+          .maybeSingle();
+        
+        if (!error && data) {
+          periodStartDate = data.period_start_date || '';
+          periodEndDate = data.period_end_date || '';
+        }
+      } catch (err) {
+        console.warn('Could not fetch period dates:', err);
+      }
     }
     
     setEditingSession({ 
@@ -707,6 +809,8 @@ const Revenue = () => {
       viewers: session.viewers,
       revenue: session.revenue,
       period_id: session.period_id != null ? String(session.period_id) : '',
+      period_start_date: periodStartDate,
+      period_end_date: periodEndDate,
       host_team_member_id: session.hostId || '',
     });
     
@@ -727,11 +831,9 @@ const Revenue = () => {
     notify(`Showing ${brandName} sessions${period && period !== 'All' ? ` for ${period}` : ''}`);
   };
 
-  // FIX 1: wrap setTableFilter so that clearing the brand filter also resets insightBrandId
   const handleSetTableFilter = (updater) => {
     setTableFilter(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      // If the brand filter is being reset to 'All', also reset the brand panel
       if (next.brandId === 'All' && prev.brandId !== 'All') {
         setInsightBrandId('All');
       }
@@ -751,7 +853,7 @@ const Revenue = () => {
         : 'hover:bg-muted/50 text-foreground'
     }`;
 
-  if (loading) {
+  if (loading || isRefreshing) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center space-y-4">
@@ -762,7 +864,7 @@ const Revenue = () => {
     );
   }
 
-  // Key Metric Card component matching Dashboard exactly (hover: border/shadow turn red, background stays white/card)
+  // Key Metric Card component
   const KeyMetricCardItem = ({ title, value, children, isHovered, onHover }) => (
     <div 
       className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0 transition-all cursor-pointer"
@@ -802,7 +904,7 @@ const Revenue = () => {
         )}
       </AnimatePresence>
 
-      {/* Page Title - Matches Dashboard exactly */}
+      {/* Page Title */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -813,7 +915,7 @@ const Revenue = () => {
         </div>
       </div>
 
-      {/* Key Metrics Row - Matches Dashboard exactly */}
+      {/* Key Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KeyMetricCardItem 
           title="Revenue (range)" 
@@ -874,7 +976,7 @@ const Revenue = () => {
         </KeyMetricCardItem>
       </div>
 
-      {/* Rest of the content - unchanged */}
+      {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12 min-w-0">
         <RevenueBrandsPanel
           brandsList={brandsList}
@@ -889,14 +991,12 @@ const Revenue = () => {
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           tableFilter={tableFilter}
-          // FIX 1: use the wrapped setter so clearing brand also resets the panel
           setTableFilter={handleSetTableFilter}
           sortCol={sortCol}
           sortDir={sortDir}
           rowLimit={rowLimit}
           setRowLimit={setRowLimit}
           openEditModal={openEditModal}
-          // FIX 2: pass canDelete so the table can hide the button for admins
           handleDeleteSession={handleDeleteSession}
           canDelete={canDelete}
           formatCurrency={formatCurrency}
@@ -909,6 +1009,7 @@ const Revenue = () => {
         />
       </div>
 
+      {/* Session Modal */}
       <AnimatePresence>
         {showSessionModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
@@ -946,7 +1047,10 @@ const Revenue = () => {
                     <input
                       type="date"
                       value={sessionFormData.date}
-                      onChange={e => setSessionFormData(p => ({ ...p, date: e.target.value }))}
+                      onChange={e => setSessionFormData(p => ({
+                        ...p,
+                        date: e.target.value,
+                      }))}
                       disabled={isSubmitting}
                       className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                     />
@@ -981,7 +1085,10 @@ const Revenue = () => {
                       {openDropdown === 'brand' && !isSubmitting && (
                         <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[200px]">
                           {brandsList.map(b => (
-                            <button key={b.id} type="button" onClick={() => { setSessionFormData(p => ({ ...p, brandId: b.id })); setOpenDropdown(null); }} className={dropdownOptionCls(sessionFormData.brandId === b.id)}>
+                            <button key={b.id} type="button" onClick={() => { 
+                              setSessionFormData(p => ({ ...p, brandId: b.id })); 
+                              setOpenDropdown(null); 
+                            }} className={dropdownOptionCls(sessionFormData.brandId === b.id)}>
                               <span className="truncate">{b.name}</span>
                             </button>
                           ))}
@@ -1015,33 +1122,62 @@ const Revenue = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Period <span className="text-[#2563eb]">*</span></label>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => !isSubmitting && setOpenDropdown(prev => prev === 'period' ? null : 'period')}
+                {/* Period with date range fields */}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1.5 sm:col-span-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
+                        Period <span className="text-[#2563eb]">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        placeholder="Period #"
+                        value={sessionFormData.period_id}
+                        onChange={e => {
+                          const value = e.target.value;
+                          setSessionFormData(p => ({ 
+                            ...p, 
+                            period_id: value 
+                          }));
+                        }}
                         disabled={isSubmitting}
-                        className={dropdownTriggerCls(openDropdown === 'period')}
-                      >
-                        <span className={sessionFormData.period_id ? 'text-foreground' : 'text-muted-foreground truncate'}>
-                          {sessionFormData.period_id ? (uniquePeriodsForDropdown.find(p => String(p.id) === String(sessionFormData.period_id))?.name || `Period ${sessionFormData.period_id}`) : 'Select Period'}
-                        </span>
-                        <ChevronDown size={14} className={`text-muted-foreground transition-transform flex-shrink-0 ml-2 ${openDropdown === 'period' ? 'rotate-180' : ''}`} />
-                      </button>
-                      {openDropdown === 'period' && !isSubmitting && (
-                        <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[200px]">
-                          {uniquePeriodsForDropdown.map(period => (
-                            <button key={`modal-period-${period.id}`} type="button" onClick={() => { setSessionFormData(p => ({ ...p, period_id: String(period.id) })); setOpenDropdown(null); }} className={dropdownOptionCls(String(sessionFormData.period_id) === String(period.id))}>
-                              <span className="truncate">{period.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Period Start</label>
+                      <input
+                        type="date"
+                        value={sessionFormData.period_start_date}
+                        onChange={e => setSessionFormData(p => ({ 
+                          ...p, 
+                          period_start_date: e.target.value,
+                          period_end_date: p.period_end_date && p.period_end_date < e.target.value ? e.target.value : p.period_end_date
+                        }))}
+                        disabled={isSubmitting}
+                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Period End</label>
+                      <input
+                        type="date"
+                        min={sessionFormData.period_start_date || undefined}
+                        value={sessionFormData.period_end_date}
+                        onChange={e => setSessionFormData(p => ({ ...p, period_end_date: e.target.value }))}
+                        disabled={isSubmitting}
+                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+                      />
                     </div>
                   </div>
+                  <p className="text-[9px] text-muted-foreground">
+                    Enter period number and its date range. The date range will be stored in the periods table.
+                  </p>
+                </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Host</label>
                     <div className="relative">
@@ -1068,9 +1204,7 @@ const Revenue = () => {
                       )}
                     </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Viewers</label>
                     <input
@@ -1081,16 +1215,17 @@ const Revenue = () => {
                       className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Revenue (Rp)</label>
-                    <input
-                      type="number" min="0"
-                      value={sessionFormData.revenue}
-                      onChange={e => setSessionFormData(p => ({ ...p, revenue: parseInt(e.target.value) || 0 }))}
-                      disabled={isSubmitting}
-                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
-                    />
-                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Revenue (Rp)</label>
+                  <input
+                    type="number" min="0"
+                    value={sessionFormData.revenue}
+                    onChange={e => setSessionFormData(p => ({ ...p, revenue: parseInt(e.target.value) || 0 }))}
+                    disabled={isSubmitting}
+                    className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+                  />
                 </div>
               </div>
 
@@ -1118,6 +1253,7 @@ const Revenue = () => {
         )}
       </AnimatePresence>
 
+      {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {sessionToDelete && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -1153,6 +1289,7 @@ const Revenue = () => {
         )}
       </AnimatePresence>
 
+      {/* Staff Detail Modal */}
       <AnimatePresence>
         {showStaffDetailModal && selectedStaffForDetail && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">

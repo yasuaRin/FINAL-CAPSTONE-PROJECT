@@ -351,6 +351,11 @@ const RevenueSessionsTable = ({
                       <span style={{ fontSize: 11, color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
                         {log.period}
                       </span>
+                      {log.periodRange && (
+                        <span style={{ fontSize: 9, color: 'var(--muted-foreground)', opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+                          {log.periodRange}
+                        </span>
+                      )}
                     </div>
 
                     {/* Platform */}
