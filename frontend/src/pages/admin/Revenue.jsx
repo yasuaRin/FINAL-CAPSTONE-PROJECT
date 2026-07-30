@@ -236,6 +236,7 @@ const Revenue = () => {
         const { data, error } = await supabase
           .from('team_performance_view')
           .select('team_name, session_count, total_revenue, total_viewers, total_likes, revenue_score, viewer_score, likes_score, final_score')
+          .order("final_score", { ascending: false })
           .limit(5);
 
         if (error) throw error;
