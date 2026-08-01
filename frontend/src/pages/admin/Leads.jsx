@@ -28,7 +28,16 @@ function estimatePotentialScore(place) {
   if (place.websiteUri) score += 8;
   if (place.nationalPhoneNumber) score += 5;
   if (place.regularOpeningHours?.openNow) score += 5;
-  return Math.min(99, Math.max(30, Math.round(score)));
+
+  const finalScore = Math.min(99, Math.max(30, Math.round(score)));
+
+  // Kalau ga ada nomor HP DAN ga ada website, langsung P-3 (paling rendah)
+  const hasContact = !!place.websiteUri || !!place.nationalPhoneNumber;
+  if (!hasContact) {
+    return Math.min(finalScore, 69); // cap di bawah threshold P-2 (70), jadi otomatis P-3
+  }
+
+  return finalScore;
 }
 
 function estimateProductFitScore(place, industry) {
@@ -248,6 +257,7 @@ function LeadsInner() {
       id: `place-${place.id}`,
       name: place.displayName?.text || "Unknown Business",
       industry: resolvedIndustry,
+      province: locationName || "Indonesia",
       location: (() => {
         const addr = place.formattedAddress || "";
         const kotaMatch = addr.match(/(?:Kota|Kabupaten)\s[\w\s]+?(?=,|$)/);
@@ -330,7 +340,7 @@ function LeadsInner() {
     () =>
       leadsFound.filter((lead) => {
         const matchesIndustry = industryFilter === "All" || lead.industry === industryFilter;
-        const matchesLocation = !locationFilter || lead.location === locationFilter;
+        const matchesLocation = !locationFilter || lead.province === locationFilter;
         const matchesPotential =
           potentialFilter === "All" ||
           (potentialFilter === "High" && lead.potentialScore >= 85) ||
@@ -874,16 +884,33 @@ Be direct. No fluff. No percentages.`;
               setLeadsFound([]);
               setSelectedLead(null);
               lastScanPos.current = null;
-              if (locationFilter && PROVINCE_COORDINATES[locationFilter]) {
-                const coords = { latitude: PROVINCE_COORDINATES[locationFilter].lat, longitude: PROVINCE_COORDINATES[locationFilter].lng };
-                setUserPos(coords);
-                setMapCenter([coords.latitude, coords.longitude]);
-                handleAIScan(coords, locationFilter);
+
+              setIndustryFilter("All");
+              setLocationFilter("");
+              setPotentialFilter("All");
+
+              if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                  (pos) => {
+                    const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+                    initialPos.current = coords;
+                    setUserPos(coords);
+                    setMapCenter([coords.latitude, coords.longitude]);
+                    handleAIScan(coords, undefined, "All");
+                  },
+                  () => {
+                    const coords = initialPos.current;
+                    setUserPos(coords);
+                    setMapCenter([coords.latitude, coords.longitude]);
+                    handleAIScan(coords, undefined, "All");
+                  },
+                  { timeout: 5000 },
+                );
               } else {
                 const coords = initialPos.current;
                 setUserPos(coords);
                 setMapCenter([coords.latitude, coords.longitude]);
-                handleAIScan(coords);
+                handleAIScan(coords, undefined, "All");
               }
             }}
             disabled={isScanning}
