@@ -33,11 +33,14 @@ export let modelCache = {
   timestamp: null
 };
 
-function loocv(ModelClass, modelArgs, X, y) {
+async function loocv(ModelClass, modelArgs, X, y, shouldCancel) {
   const n = X.length;
   const preds = new Array(n).fill(0);
 
   for (let i = 0; i < n; i++) {
+    if (shouldCancel()) return { cancelled: true };
+    await new Promise((resolve) => setImmediate(resolve));
+
     const XTrain = X.filter((_, j) => j !== i);
     const yTrain = y.filter((_, j) => j !== i);
 
@@ -53,13 +56,7 @@ function loocv(ModelClass, modelArgs, X, y) {
   };
 }
 
-// K-fold CV: same idea as LOOCV (out-of-fold predictions -> mae/r2/mape),
-// but only refits the model `k` times instead of `n` times. This is what
-// keeps Random Forest (100 trees x refit) usable once n gets into the
-// hundreds -- LOOCV at n=755 means 755 separate 100-tree forests (75,500
-// trees) built one at a time on the main thread, which is why training
-// was stalling/crashing after the Ridge candidates.
-function kfoldcv(ModelClass, modelArgs, X, y, k = 5) {
+async function kfoldcv(ModelClass, modelArgs, X, y, k = 5, shouldCancel = () => false) {
   const n = X.length;
   const preds = new Array(n).fill(0);
 
@@ -73,6 +70,9 @@ function kfoldcv(ModelClass, modelArgs, X, y, k = 5) {
   const foldSize = Math.ceil(n / k);
 
   for (let f = 0; f < k; f++) {
+    if (shouldCancel()) return { cancelled: true };
+    await new Promise((resolve) => setImmediate(resolve));
+
     const testIdx = new Set(indices.slice(f * foldSize, (f + 1) * foldSize));
     if (testIdx.size === 0) continue;
 
@@ -102,15 +102,12 @@ function kfoldcv(ModelClass, modelArgs, X, y, k = 5) {
   };
 }
 
-// LOOCV for small datasets (cheap and most accurate there), k-fold once
-// LOOCV would get too slow -- especially for Random Forest, where each
-// LOOCV iteration refits a full 100-tree forest.
-function crossValidate(ModelClass, modelArgs, X, y) {
+function crossValidate(ModelClass, modelArgs, X, y, shouldCancel) {
   const n = X.length;
   if (n <= 100) {
-    return loocv(ModelClass, modelArgs, X, y);
+    return loocv(ModelClass, modelArgs, X, y, shouldCancel);
   }
-  return kfoldcv(ModelClass, modelArgs, X, y, 5);
+  return kfoldcv(ModelClass, modelArgs, X, y, 5, shouldCancel);
 }
 
 export async function trainAndSelect(brandId = null, shouldCancel = () => false) {
@@ -149,7 +146,11 @@ export async function trainAndSelect(brandId = null, shouldCancel = () => false)
     await new Promise((resolve) => setImmediate(resolve));
 
     console.log(`   Evaluating ${cand.name}...`);
-    const scores = crossValidate(cand.cls, cand.args, XScaled, y);
+    const scores = await crossValidate(cand.cls, cand.args, XScaled, y, shouldCancel);
+    if (scores.cancelled) {
+            console.log('[ML] Cancellation requested — stopping mid', cand.name);
+      return { cancelled: true };
+    }
     results[cand.name] = scores;
     console.log(`   ${cand.name}: MAE=${scores.mae.toFixed(0)} | R2=${scores.r2.toFixed(4)} | MAPE=${scores.mape.toFixed(1)}%`);
   }

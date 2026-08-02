@@ -7,8 +7,8 @@ const execPromise = util.promisify(exec);
 const router = express.Router();
 
 // Paths to Python scripts
-const TRAIN_SCRIPT = path.join(__dirname, '../ml/trainer.py');
-const PREDICT_SCRIPT = path.join(__dirname, '../ml/predictor.py');
+const TRAIN_SCRIPT = path.join(__dirname, '../ml/trainer.js');
+const PREDICT_SCRIPT = path.join(__dirname, '../ml/predictor.js');
 
 let isRunning = false;
 let lastResult = null;
@@ -26,7 +26,7 @@ router.post('/retrain', async (req, res) => {
     console.log('Starting ML training...');
     
     // Step 1: Train model
-    const trainCmd = `python "${TRAIN_SCRIPT}" ${brand_id || ''}`;
+    const trainCmd = `node "${TRAIN_SCRIPT}" ${brand_id || ''}`;
     const { stdout: trainOut, stderr: trainErr } = await execPromise(trainCmd);
     
     if (trainErr) {
@@ -35,7 +35,7 @@ router.post('/retrain', async (req, res) => {
     console.log('Training complete:', trainOut.slice(-200));
     
     // Step 2: Generate predictions
-    const predictCmd = `python "${PREDICT_SCRIPT}" ${n_future}`;
+    const predictCmd = `node "${PREDICT_SCRIPT}" ${n_future}`;
     const { stdout: predOut, stderr: predErr } = await execPromise(predictCmd);
     
     if (predErr) {
@@ -67,7 +67,7 @@ router.get('/status', (req, res) => {
 router.post('/predict', async (req, res) => {
   try {
     const { n_future = 4 } = req.body;
-    const predictCmd = `python "${PREDICT_SCRIPT}" ${n_future}`;
+   const predictCmd = `node "${PREDICT_SCRIPT}" ${n_future}`;
     const { stdout, stderr } = await execPromise(predictCmd);
     
     if (stderr) {
