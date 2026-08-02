@@ -334,17 +334,17 @@ export default function Team() {
       const { data: { session } } = await supabase.auth.getSession();
       const headers = { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
       if (editingMember) {
-        const _res = await fetch(`${import.meta.env.VITE_API_URL}/api/team/update-member`, { method: "POST", headers, body: JSON.stringify({ id: editingMember._id, table: "team_members", name, phone: phone || null, status, avatar_url: formAvatarRef.current, roleDescription }) });
+        const _res = await fetch(`${import.meta.env.VITE_API_URL}/team/update-member`, { method: "POST", headers, body: JSON.stringify({ id: editingMember._id, table: "team_members", name, phone: phone || null, status, avatar_url: formAvatarRef.current, roleDescription }) });
         const _result = await _res.json();
         if (!_res.ok) throw new Error(_result.message);
       } else {
         if (role === "staff") {
-          const _res = await fetch(`${import.meta.env.VITE_API_URL}/api/team/create-staff`, { method: "POST", headers, body: JSON.stringify({ name, email, phone: phone || null, role: roleDescription, status, avatar_url: formAvatar || null }) });
+          const _res = await fetch(`${import.meta.env.VITE_API_URL}/team/create-staff`, { method: "POST", headers, body: JSON.stringify({ name, email, phone: phone || null, role: roleDescription, status, avatar_url: formAvatar || null }) });
           const _result = await _res.json();
           if (!_res.ok) throw new Error(_result.message || "Failed to create staff member.");
         } else {
           if (!password) { setFormError("Password is required for Admin / Super Admin accounts."); setSubmitting(false); return; }
-          const _res = await fetch(`${import.meta.env.VITE_API_URL}/api/team/create-admin`, { method: "POST", headers, body: JSON.stringify({ email, password, name, phone, role, avatar_url: formAvatar || null }) });
+          const _res = await fetch(`${import.meta.env.VITE_API_URL}/team/create-admin`, { method: "POST", headers, body: JSON.stringify({ email, password, name, phone, role, avatar_url: formAvatar || null }) });
           const _result = await _res.json();
           if (!_res.ok) throw new Error(_result.message);
         }
@@ -364,7 +364,7 @@ export default function Team() {
     if (!deleteTarget) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const _res = await fetch(`${import.meta.env.VITE_API_URL}/api/team/delete-member`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` }, body: JSON.stringify({ id: deleteTarget._id, table: "team_members" }) });
+      const _res = await fetch(`${import.meta.env.VITE_API_URL}/team/delete-member`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` }, body: JSON.stringify({ id: deleteTarget._id, table: "team_members" }) });
       const _result = await _res.json();
       if (!_res.ok) throw new Error(_result.message);
       await fetchMembers();
