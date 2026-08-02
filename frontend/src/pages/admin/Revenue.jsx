@@ -55,6 +55,7 @@ const Revenue = () => {
 
   const [insightBrandId, setInsightBrandId] = useState('All');
   const [notification, setNotification] = useState(null);
+  const [notificationIsError, setNotificationIsError] = useState(false);
   const [tableFilter, setTableFilter] = useState({ brandId: 'All', period: 'All' });
   const [editingSession, setEditingSession] = useState(null);
   const [sessionToDelete, setSessionToDelete] = useState(null);
@@ -516,6 +517,7 @@ if (allPeriods.length > 0) {
       clearTimeout(notificationTimeoutRef.current);
     }
     setNotification(msg);
+    setNotificationIsError(isError);
     notificationTimeoutRef.current = setTimeout(() => {
       setNotification(null);
       notificationTimeoutRef.current = null;
@@ -535,6 +537,25 @@ if (allPeriods.length > 0) {
       period_end_date: '',
       host_team_member_id: team?.[0] ? sid(team[0].id) : '',
     });
+  };
+
+  // ===== NEW: validates every field in the add/edit session form is filled
+  // in before we touch the network. Called synchronously the moment the
+  // user clicks "Create Session" / "Update Session" so any warning shows
+  // immediately (and the modal stays open) instead of surfacing later,
+  // after other async work has run and the modal has already closed. =====
+  const validateSessionForm = () => {
+    if (!sessionFormData.date) return 'Please select a date';
+    if (!sessionFormData.time) return 'Please select a time';
+    if (!sessionFormData.brandId) return 'Please select a brand';
+    if (!sessionFormData.platform) return 'Please select a channel';
+    if (!sessionFormData.period_id) return 'Please enter a period number';
+    if (!sessionFormData.period_start_date) return 'Please enter the period start date';
+    if (!sessionFormData.period_end_date) return 'Please enter the period end date';
+    if (!sessionFormData.host_team_member_id) return 'Please select a host';
+    if (sessionFormData.viewers === '' || sessionFormData.viewers == null) return 'Please enter viewers';
+    if (sessionFormData.revenue === '' || sessionFormData.revenue == null) return 'Please enter revenue';
+    return null;
   };
 
   const refreshDataWithRetry = async (retries = 3, delay = 1000) => {
@@ -561,9 +582,10 @@ if (allPeriods.length > 0) {
 
   const handleCreateSession = async () => {
     if (isSubmitting) return;
-    if (!sessionFormData.brandId) { notify('Please select a brand'); return; }
-    if (!sessionFormData.period_id) { notify('Please enter a period number'); return; }
-    
+
+    const validationError = validateSessionForm();
+    if (validationError) { notify(validationError, true); return; }
+
     setIsSubmitting(true);
     try {
       let platformId = null;
@@ -584,7 +606,8 @@ if (allPeriods.length > 0) {
       // Ensure period_id is a valid integer
       const periodId = parseInt(sessionFormData.period_id, 10);
       if (isNaN(periodId) || periodId < 1) {
-        notify('Please enter a valid period number (1, 2, 3, etc.)');
+        notify('Please enter a valid period number (1, 2, 3, etc.)', true);
+        setIsSubmitting(false);
         return;
       }
 
@@ -642,9 +665,9 @@ if (allPeriods.length > 0) {
       notify('Error: No session selected for editing', true);
       return;
     }
-    
-    if (!sessionFormData.brandId) { notify('Please select a brand'); return; }
-    if (!sessionFormData.period_id) { notify('Please enter a period number'); return; }
+
+    const validationError = validateSessionForm();
+    if (validationError) { notify(validationError, true); return; }
     
     setIsSubmitting(true);
     try {
@@ -670,7 +693,8 @@ if (allPeriods.length > 0) {
       // Ensure period_id is a valid integer
       const periodId = parseInt(sessionFormData.period_id, 10);
       if (isNaN(periodId) || periodId < 1) {
-        notify('Please enter a valid period number (1, 2, 3, etc.)');
+        notify('Please enter a valid period number (1, 2, 3, etc.)', true);
+        setIsSubmitting(false);
         return;
       }
 
@@ -761,7 +785,7 @@ if (allPeriods.length > 0) {
 
   const handleDeleteSession = (session) => {
     if (!canDelete) {
-      notify('You do not have permission to delete sessions.');
+      notify('You do not have permission to delete sessions.', true);
       return;
     }
     const originalSession = revenueData?.find(item => String(item.id) === String(session.id));
@@ -895,10 +919,14 @@ if (allPeriods.length > 0) {
             initial={{ opacity: 0, y: -20, x: '-50%' }}
             animate={{ opacity: 1, y: 20, x: '-50%' }}
             exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className="fixed top-4 left-1/2 z-[100] bg-[#0a0f1a] border border-white/10 px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3"
+            className="fixed top-4 left-1/2 z-[300] bg-[#0a0f1a] border border-white/10 px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3"
           >
-            <div className={`rounded-full p-1 ${notification.includes('Failed') || notification.includes('error') || notification.includes('permission') ? 'bg-red-500' : 'bg-emerald-500'}`}>
-              <CheckCircle2 size={16} className="text-white" />
+            <div className={`rounded-full p-1 ${notificationIsError ? 'bg-red-500' : 'bg-emerald-500'}`}>
+              {notificationIsError ? (
+                <X size={16} className="text-white" />
+              ) : (
+                <CheckCircle2 size={16} className="text-white" />
+              )}
             </div>
             <span className="text-sm font-bold tracking-tight text-white">{notification}</span>
           </motion.div>
@@ -1044,7 +1072,7 @@ if (allPeriods.length > 0) {
               <div className="overflow-y-auto max-h-[calc(90vh-140px)] px-5 py-5 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Date</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Date <span className="text-[#2563eb]">*</span></label>
                     <input
                       type="date"
                       value={sessionFormData.date}
@@ -1053,16 +1081,18 @@ if (allPeriods.length > 0) {
                         date: e.target.value,
                       }))}
                       disabled={isSubmitting}
+                      required
                       className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Time</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Time <span className="text-[#2563eb]">*</span></label>
                     <input
                       type="time"
                       value={sessionFormData.time}
                       onChange={e => setSessionFormData(p => ({ ...p, time: e.target.value }))}
                       disabled={isSubmitting}
+                      required
                       className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                     />
                   </div>
@@ -1099,7 +1129,7 @@ if (allPeriods.length > 0) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Channel</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Channel <span className="text-[#2563eb]">*</span></label>
                     <div className="relative">
                       <button
                         type="button"
@@ -1140,12 +1170,12 @@ if (allPeriods.length > 0) {
                           setSessionFormData(p => ({ ...p, period_id: digitsOnly }));
                         }}
                         disabled={isSubmitting}
-                        disabled={isSubmitting}
+                        required
                         className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                       />
                     </div>
                     <div className="space-y-1.5 sm:col-span-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Period Start</label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Period Start <span className="text-[#2563eb]">*</span></label>
                       <input
                         type="date"
                         value={sessionFormData.period_start_date}
@@ -1155,17 +1185,19 @@ if (allPeriods.length > 0) {
                           period_end_date: p.period_end_date && p.period_end_date < e.target.value ? e.target.value : p.period_end_date
                         }))}
                         disabled={isSubmitting}
+                        required
                         className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                       />
                     </div>
                     <div className="space-y-1.5 sm:col-span-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Period End</label>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Period End <span className="text-[#2563eb]">*</span></label>
                       <input
                         type="date"
                         min={sessionFormData.period_start_date || undefined}
                         value={sessionFormData.period_end_date}
                         onChange={e => setSessionFormData(p => ({ ...p, period_end_date: e.target.value }))}
                         disabled={isSubmitting}
+                        required
                         className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                       />
                     </div>
@@ -1177,7 +1209,7 @@ if (allPeriods.length > 0) {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Host</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Host <span className="text-[#2563eb]">*</span></label>
                     <div className="relative">
                       <button
                         type="button"
@@ -1186,13 +1218,12 @@ if (allPeriods.length > 0) {
                         className={dropdownTriggerCls(openDropdown === 'host')}
                       >
                         <span className={sessionFormData.host_team_member_id ? 'text-foreground' : 'text-muted-foreground truncate'}>
-                          {sessionFormData.host_team_member_id ? ((team || []).find(t => sid(t.id) === sessionFormData.host_team_member_id)?.name || 'Unknown') : 'No host'}
+                          {sessionFormData.host_team_member_id ? ((team || []).find(t => sid(t.id) === sessionFormData.host_team_member_id)?.name || 'Unknown') : 'Select Host'}
                         </span>
                         <ChevronDown size={14} className={`text-muted-foreground transition-transform flex-shrink-0 ml-2 ${openDropdown === 'host' ? 'rotate-180' : ''}`} />
                       </button>
                       {openDropdown === 'host' && !isSubmitting && (
                         <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-xl shadow-xl overflow-y-auto max-h-[200px]">
-                          <button type="button" onClick={() => { setSessionFormData(p => ({ ...p, host_team_member_id: '' })); setOpenDropdown(null); }} className={dropdownOptionCls(sessionFormData.host_team_member_id === '')}>No host</button>
                           {(team || []).map(t => (
                             <button key={sid(t.id)} type="button" onClick={() => { setSessionFormData(p => ({ ...p, host_team_member_id: sid(t.id) })); setOpenDropdown(null); }} className={dropdownOptionCls(sessionFormData.host_team_member_id === sid(t.id))}>
                               <span className="truncate">{t.name}</span>
@@ -1204,7 +1235,7 @@ if (allPeriods.length > 0) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Viewers</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Viewers <span className="text-[#2563eb]">*</span></label>
                     <input
                       type="text" 
                       inputMode="numeric"
@@ -1215,13 +1246,14 @@ if (allPeriods.length > 0) {
                       setSessionFormData(p => ({ ...p, viewers: digitsOnly }));
                     }}
                       disabled={isSubmitting}
+                      required
                       className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Revenue (Rp)</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Revenue (Rp) <span className="text-[#2563eb]">*</span></label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1232,6 +1264,7 @@ if (allPeriods.length > 0) {
                     setSessionFormData(p => ({ ...p, revenue: digitsOnly }));
                   }}
                     disabled={isSubmitting}
+                    required
                     className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                   />
                 </div>
