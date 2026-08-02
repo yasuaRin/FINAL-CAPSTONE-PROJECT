@@ -69,8 +69,8 @@ const Revenue = () => {
     time: format(new Date(), 'HH:mm'),
     brandId: '',
     platform: 'TikTok',
-    viewers: 0,
-    revenue: 0,
+    viewers: '',
+    revenue: '',
     period_id: '',
     period_start_date: '',
     period_end_date: '',
@@ -528,8 +528,8 @@ if (allPeriods.length > 0) {
       time: format(new Date(), 'HH:mm'),
       brandId: brandsList[0]?.id || '',
       platform: 'TikTok',
-      viewers: 0,
-      revenue: 0,
+      viewers: '',
+      revenue: '',
       period_id: '',
       period_start_date: '',
       period_end_date: '',
@@ -1131,18 +1131,15 @@ if (allPeriods.length > 0) {
                         Period <span className="text-[#2563eb]">*</span>
                       </label>
                       <input
-                        type="number"
-                        min="1"
-                        step="1"
+                        type="text"
+                        inputMode="numeric"
                         placeholder="Period #"
                         value={sessionFormData.period_id}
-                        onChange={e => {
-                          const value = e.target.value;
-                          setSessionFormData(p => ({ 
-                            ...p, 
-                            period_id: value 
-                          }));
+                         onChange={e => {
+                          const digitsOnly = e.target.value.replace(/[^0-9]/g, '');
+                          setSessionFormData(p => ({ ...p, period_id: digitsOnly }));
                         }}
+                        disabled={isSubmitting}
                         disabled={isSubmitting}
                         className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                       />
@@ -1209,9 +1206,14 @@ if (allPeriods.length > 0) {
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Viewers</label>
                     <input
-                      type="number" min="0"
+                      type="text" 
+                      inputMode="numeric"
+                      placeholder="0"
                       value={sessionFormData.viewers}
-                      onChange={e => setSessionFormData(p => ({ ...p, viewers: parseInt(e.target.value) || 0 }))}
+                    onChange={e => {
+                      const digitsOnly = e.target.value.replace(/[^0-9]/g, '');
+                      setSessionFormData(p => ({ ...p, viewers: digitsOnly }));
+                    }}
                       disabled={isSubmitting}
                       className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                     />
@@ -1221,9 +1223,14 @@ if (allPeriods.length > 0) {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Revenue (Rp)</label>
                   <input
-                    type="number" min="0"
+                    type="text"
+                    inputMode="numeric"
+                    placeHolder="0"
                     value={sessionFormData.revenue}
-                    onChange={e => setSessionFormData(p => ({ ...p, revenue: parseInt(e.target.value) || 0 }))}
+                    onChange={e => {
+                    const digitsOnly = e.target.value.replace(/[^0-9]/g, '');
+                    setSessionFormData(p => ({ ...p, revenue: digitsOnly }));
+                  }}
                     disabled={isSubmitting}
                     className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                   />
