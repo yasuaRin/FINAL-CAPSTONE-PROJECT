@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import aiRoutes from './routes/aiRoutes.js';
+import revenueRoutes from './routes/revenueRoutes.js';
 // ─────────────────────────────────────────────────────────────────────────────
 // IMPORT ML MODULES (JavaScript versions) - WITH ERROR HANDLING
 // ─────────────────────────────────────────────────────────────────────────────
@@ -83,9 +84,9 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-app.use(morgan("dev"));
+app.use(morgan('dev'));
+app.use('/api/revenue', revenueRoutes);
 app.use('/api/ai', aiRoutes);
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROOT ENDPOINT
@@ -578,8 +579,17 @@ app.listen(PORT, '0.0.0.0', () => {
 ║   ML Retrain:   POST http://localhost:${PORT}/api/ml/retrain                 ║
 ║   ML Cancel:    POST http://localhost:${PORT}/api/ml/retrain/cancel          ║
 ║   ML Status:    GET  http://localhost:${PORT}/api/ml/status                  ║
+║   ML Metrics:   GET  http://localhost:${PORT}/api/ml/metrics                 ║
 ║   AI Chat:      POST http://localhost:${PORT}/api/ai/chat                    ║
-║   AI Upload:    POST http://localhost:${PORT}/api/ai/upload-knowledge        ║
+║   AI Ingest:    POST http://localhost:${PORT}/api/ai/upload-knowledge        ║
+║   Revenue Pred: GET  http://localhost:${PORT}/api/revenue/predictions        ║
+║   Brands:       GET  http://localhost:${PORT}/api/brands                     ║
+║   Team:         GET  http://localhost:${PORT}/api/team                       ║
+║   Create Staff: POST http://localhost:${PORT}/api/team/create-staff          ║
+║   Create Admin: POST http://localhost:${PORT}/api/team/create-admin          ║
+║   Create SAdmin:POST http://localhost:${PORT}/api/team/create-super-admin    ║
+║   Update Member:POST http://localhost:${PORT}/api/team/update-member         ║
+║   Delete Member:POST http://localhost:${PORT}/api/team/delete-member         ║
 ╠═══════════════════════════════════════════════════════════════════════════════╣
 ║   Environment:  ${process.env.NODE_ENV || 'development'}                     ║
 ║   Status:       Operational                                                  ║

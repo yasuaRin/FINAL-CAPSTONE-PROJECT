@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, User, Loader2 } from 'lucide-react';
 
 // CONFIG
@@ -87,7 +87,7 @@ const Chatbot = () => {
 
     try {
       // Menembak endpoint secure chat backend Express di server Railway
-      const response = await fetch(`${API_URL}/api/ai/chat`, {
+      const response = await fetch('http://localhost:3001/api/ai/chat', {
           method: 'POST',
         headers: {
           'Content-Type': 'application/json'

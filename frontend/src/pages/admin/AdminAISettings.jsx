@@ -2,36 +2,37 @@ import React, { useState, useEffect } from 'react';
 import { Database, Cpu, Save, Upload, Trash2, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../../services/supabase';
 
+const CHAT_MODEL = 'gemini-1.5-flash';
+
 const AdminAISettings = () => {
   const [activeTab, setActiveTab] = useState('provider');
-  const [provider, setProvider] = useState('gemini');
+  const provider = 'gemini';
   const [apiKey, setApiKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
 
   // ─── NEW STATE FOR SIMULATION MANAGEMENT MD FILE──
-  const [fileName, setFileName] = useState('vidhelp_knowledge_base.md');
+  const [fileName, setFileName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
-  const providerDetails = {
-    gemini: {
-      label: 'Gemini Server Token',
-      placeholder: 'AIzaSy...'
-    },
-    groq: {
-      label: 'Groq Acceleration Key',
-      placeholder: 'gsk_...'
-    }
-  };
-
   useEffect(() => {
-    if (provider === 'gemini') {
-      setApiKey(import.meta.env.VITE_GEMINI_API_KEY || '');
-    } else {
-      setApiKey('');
-    }
+    setApiKey(import.meta.env.VITE_GEMINI_API_KEY || '');
     setStatusMsg({ type: '', text: '' });
-  }, [provider]);
+
+    const loadSettings = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/ai/settings');
+        if (!response.ok) throw new Error(`Settings request failed (${response.status}).`);
+
+        const data = await response.json();
+        setFileName(data.settings?.active_filename || '');
+      } catch (error) {
+        console.error('Unable to load active knowledge filename:', error);
+      }
+    };
+
+    loadSettings();
+  }, []);
 
   useEffect(() => {
     setStatusMsg({ type: '', text: '' });
@@ -46,9 +47,9 @@ const AdminAISettings = () => {
         .from('ai_settings')
         .upsert({
           id: 1,
-          provider: provider,
+          provider: 'gemini',
           api_key: apiKey,
-          model_chat: provider === 'gemini' ? 'gemini-2.5-flash' : 'llama-3.1-8b-instant',
+          model_chat: CHAT_MODEL,
           is_active: true
         });
 
@@ -57,7 +58,7 @@ const AdminAISettings = () => {
       setIsLoading(false);
       setStatusMsg({ 
         type: 'success', 
-        text: `AI Cluster updated successfully using ${provider === 'gemini' ? 'Gemini' : 'Groq'} Gateway!` 
+        text: 'AI Cluster updated successfully using Gemini.'
       });
     } catch (err) {
       setIsLoading(false);
@@ -89,7 +90,7 @@ const handleFileChange = async (e) => {
         throw new Error(data.error || 'Server ingestion integration failure.');
       }
 
-      setFileName(file.name);
+      setFileName(data.active_filename || file.name);
       setStatusMsg({
         type: 'success',
         text: `Success! ${data.message} (${data.details.insertedChunks}/${data.details.totalChunks} document segments successfully synchronized).`
@@ -167,25 +168,20 @@ const handleFileChange = async (e) => {
             <div className="bg-white dark:bg-card border border-border/50 rounded-2xl p-6 shadow-md w-full">
               <div className="mb-6">
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Active LLM Gateway</label>
-                <select 
-                  value={provider} 
-                  onChange={(e) => setProvider(e.target.value)}
-                  className="w-full p-3 border border-border bg-background rounded-xl text-sm focus:outline-none focus:border-primary transition-colors text-foreground"
-                >
-                  <option value="gemini">Google Gemini (Default RAG Engine)</option>
-                  <option value="groq">Groq High-Speed Cloud SDK</option>
-                </select>
+                <div className="w-full p-3 border border-border bg-muted/40 rounded-xl text-sm text-foreground">
+                  Google Gemini (Default RAG Engine)
+                </div>
               </div>
 
               <div className="mb-8">
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
-                  {providerDetails[provider].label}
+                  Gemini Server Token
                 </label>
                 <input 
                   type="password" 
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={providerDetails[provider].placeholder}
+                  placeholder="AIzaSy..."
                   className="w-full p-3 border border-border bg-background rounded-xl text-sm focus:outline-none focus:border-primary transition-colors text-foreground tracking-widest"
                 />
               </div>

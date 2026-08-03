@@ -137,7 +137,7 @@ const Footer = ({ variant = 'public' }) => {
                     </div>
                     <div>
                       <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">Email Support</p>
-                      <p className="text-sm font-black text-foreground tracking-tight">vidhelp.admin@gmail.com</p>
+                      <p className="text-sm font-black text-foreground tracking-tight">vidhelp.id@gmail.com</p>
                     </div>
                   </a>
                 </li>

@@ -23,9 +23,7 @@ function chunkText(text) {
     .filter(chunk => chunk.length > 50);
 }
 
-function getEmbeddingApiKey(currentApiKey, provider) {
-  // A Groq key is not valid for Google's embedding API.
-  if (provider === 'groq') return GEMINI_API_KEY || '';
+function getEmbeddingApiKey(currentApiKey) {
   return currentApiKey || GEMINI_API_KEY || '';
 }
 
@@ -51,8 +49,8 @@ async function requestGeminiEmbedding(text, apiKey) {
   return data.embedding.values;
 }
 
-async function getEmbedding(text, currentApiKey, provider) {
-  const primaryKey = getEmbeddingApiKey(currentApiKey, provider);
+async function getEmbedding(text, currentApiKey) {
+  const primaryKey = getEmbeddingApiKey(currentApiKey);
   if (!primaryKey) throw new Error('Gemini embedding API key is not configured.');
 
   try {
@@ -67,7 +65,7 @@ async function getEmbedding(text, currentApiKey, provider) {
 }
 
 // ─── EXPORT PIPELINE FUNCTION ───────────────────────────────────────────────────────────────
-export async function runAutoIngest(markdownContent, currentApiKey, provider = 'gemini') {
+export async function runAutoIngest(markdownContent, currentApiKey) {
   const chunks = chunkText(markdownContent);
   if (chunks.length === 0) throw new Error('No valid structural segments found in the markdown file.');
 
@@ -84,7 +82,7 @@ export async function runAutoIngest(markdownContent, currentApiKey, provider = '
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
     try {
-      const embedding = await getEmbedding(chunk, currentApiKey, provider);
+      const embedding = await getEmbedding(chunk, currentApiKey);
       console.log(`[Ingest] Generated embedding for chunk ${i}.`, { dimensions: embedding.length });
 
       const { data, error } = await supabase

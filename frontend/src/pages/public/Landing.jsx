@@ -453,7 +453,7 @@ const Landing = () => {
             <p className="text-black/60 text-base mb-8 leading-relaxed font-medium">
               VidHelp adalah agency yang berdedikasi untuk membantu UMKM dan perusahaan dalam mengelola livestream penjualan. Kami menyediakan layanan lengkap mulai dari perencanaan hingga eksekusi livestream yang profesional dan menarik.
             </p>
-            <button onClick={() => window.open('https://wa.me/6285121057706?text=Hi%20Admin!%20Mau%20Konsultasi%20Brand%20aku%20dong!', '_blank')} className="bg-primary text-white px-8 py-4 rounded-lg font-black text-base hover:bg-black transition-all flex items-center gap-3 group">
+            <button onClick={() => window.open('https://wa.me/6289530702882?text=Hi%20Admin!%20Mau%20Konsultasi%20Brand%20aku%20dong!', '_blank')} className="bg-primary text-white px-8 py-4 rounded-lg font-black text-base hover:bg-black transition-all flex items-center gap-3 group">
               Konsultasi <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />
             </button>
           </motion.div>

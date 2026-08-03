@@ -29,7 +29,7 @@ const Header = ({ scrollToSection }) => {
           <a href="/#news" onClick={(e) => handleNavClick(e, 'news')} className="hover:text-primary transition-colors">News</a>
         </div>
         <div className="flex items-center gap-6">
-          <button onClick={() => window.open('https://wa.me/6285121057706?text=Hi%20Admin!%20Mau%20Konsultasi%20Brand%20aku%20dong!', '_blank')} className="bg-primary text-white px-8 py-3 font-black hover:bg-black transition-all text-[10px] tracking-[0.2em] uppercase rounded-full">
+          <button onClick={() => window.open('https://wa.me/6289530702882?text=Hi%20Admin!%20Mau%20Konsultasi%20Brand%20aku%20dong!', '_blank')} className="bg-primary text-white px-8 py-3 font-black hover:bg-black transition-all text-[10px] tracking-[0.2em] uppercase rounded-full">
             Konsultasi
           </button>
         </div>

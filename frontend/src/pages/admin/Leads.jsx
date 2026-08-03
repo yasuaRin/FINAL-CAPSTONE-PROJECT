@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+﻿﻿import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Target, X, Mail, Navigation, Filter, Loader2, Zap, Radar, Globe, LocateFixed, Shield, Activity, Layers, MapPin, Info, ExternalLink, Check, Edit3, Trash2, Star, Phone, Clock, Send, CheckCircle2 } from "lucide-react";
 import { INDONESIAN_PROVINCES, PROVINCE_COORDINATES } from "../../constants";
