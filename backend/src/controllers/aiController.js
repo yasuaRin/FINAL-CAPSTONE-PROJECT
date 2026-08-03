@@ -26,13 +26,50 @@ export const handleKnowledgeIngest = async (req, res) => {
     // 3. Run pipeline auto-ingest
     const logs = await runAutoIngest(markdownText, currentApiKey, currentProvider);
 
+    // Record the source name only after ingestion succeeds, so refreshes show
+    // the knowledge base that is actually active.
+    const { data: savedSettings, error: settingsError } = await supabaseAdmin
+      .from('ai_settings')
+      .upsert(
+        {
+          id: 1,
+          provider: 'gemini',
+          active_filename: req.file.originalname,
+        },
+        { onConflict: 'id' }
+      )
+      .select('active_filename')
+      .single();
+
+    if (settingsError) {
+      throw new Error(`Failed to save active knowledge filename: ${settingsError.message}`);
+    }
+
     return res.json({
       message: 'Knowledge base cluster updated and vectorized successfully!',
-      details: logs
+      details: logs,
+      active_filename: savedSettings.active_filename,
     });
 
   } catch (error) {
     console.error('Controller Ingest Error:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const handleAISettings = async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('ai_settings')
+      .select('active_filename')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return res.json({ settings: data || { active_filename: null } });
+  } catch (error) {
+    console.error('Controller AI Settings Error:', error.message);
     return res.status(500).json({ error: error.message });
   }
 };

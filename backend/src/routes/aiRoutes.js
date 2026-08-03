@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { handleKnowledgeIngest, handleSecureChat } from '../controllers/aiController.js';
+import { handleAISettings, handleKnowledgeIngest, handleSecureChat } from '../controllers/aiController.js';
 
 const router = express.Router();
 
@@ -22,5 +22,8 @@ router.post('/upload-knowledge', upload.single('file'), handleKnowledgeIngest);
 
 // Endpoint 2: Secure Chat Bot Route (Moving RAG Brain to Backend)
 router.post('/chat', handleSecureChat);
+
+// Endpoint 3: Active knowledge-base metadata for the admin settings UI.
+router.get('/settings', handleAISettings);
 
 export default router;
