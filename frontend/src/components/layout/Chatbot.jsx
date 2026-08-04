@@ -85,16 +85,17 @@ const Chatbot = () => {
     setUserMessageCount(newCount);
     setIsLoading(true);
 
-    try {
-      // Menembak endpoint secure chat backend Express di server Railway
-      const response = await fetch('http://localhost:3001/api/ai/chat', {
-          method: 'POST',
+try {
+      // 1. Gunakan API_URL dinamis dari .env (dengan fallback ke localhost jika lokal)
+const baseUrl = API_URL || 'http://localhost:3001/api'; 
+const response = await fetch(`${baseUrl}/ai/chat`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           question: textToSend,
-          chatHistory: messages // Mengirim history pesan agar LLM mengingat konteks obrolan sebelumnya
+          chatHistory: messages
         })
       });
 
@@ -104,8 +105,11 @@ const Chatbot = () => {
         throw new Error(data.error || 'AI Server Gateway latency timeout.');
       }
 
+      // 2. Baca data.reply (atau fallback ke data.answer)
+      const botResponseText = data.reply || data.answer || "Maaf, tidak dapat memproses jawaban.";
+
       // Masukkan jawaban pintar dari server ke dalam chat bubble screen
-      setMessages(prev => [...prev, { role: 'bot', text: data.answer }]);
+      setMessages(prev => [...prev, { role: 'bot', text: botResponseText }]);
 
       if (newCount >= MAX_USER_MESSAGES) {
         setTimeout(() => {
@@ -121,8 +125,7 @@ const Chatbot = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
+  }
   const handleSend = () => {
     if (!input.trim() || isLoading) return;
     const text = input.trim();
