@@ -3,6 +3,7 @@ import { Database, Cpu, Save, Upload, Trash2, CheckCircle, AlertCircle, Loader2 
 import { supabase } from '../../services/supabase';
 
 const CHAT_MODEL = 'gemini-1.5-flash';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const AdminAISettings = () => {
   const [activeTab, setActiveTab] = useState('provider');
@@ -79,7 +80,10 @@ const handleFileChange = async (e) => {
 
     try {
       // Send the file to the backend for ingestion and vectorization
-      const response = await fetch('http://localhost:3001/api/ai/upload-knowledge', {
+      const baseUrl = API_URL || 'http://localhost:3001';
+      const endpoint = baseUrl.endsWith('/api') ? `${baseUrl}/ai/upload-knowledge` : `${baseUrl}/api/ai/upload-knowledge`;
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,
       });
