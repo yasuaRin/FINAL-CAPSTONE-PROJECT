@@ -10,7 +10,7 @@ const FAREWELL_MESSAGE =
 
 const WA_LINK = "https://wa.me/6285121057706?text=Hi%20Admin!%20Mau%20Konsultasi%20Brand%20aku%20dong!";
 
-// ─── DAFTAR PERTANYAAN DISESUAIKAN DENGAN KNOWLEDGE BASE VIDHELP ───
+// ─── DAFTAR PERTANYAAN ───
 const SUGGESTED_QUESTIONS = [
   "Apa VidHelp bisa live 24 jam?",
   "Apa beda paket OBS vs Non-OBS?",
@@ -66,7 +66,7 @@ const Chatbot = () => {
     return () => window.removeEventListener('open-chatbot', handleOpenChatbot);
   }, []);
 
-  // ─── FUNGSI UTAMA PENGIRIMAN PESAN: MENEMBAK SECURE BACKEND EXPRESS RAILWAY ───
+  // ─── FUNGSI UTAMA PENGIRIMAN PESAN: MENEMBAK SECURE BACKEND ───
   const executeSendMessage = async (textToSend) => {
     if (isLimitReached) {
       setMessages(prev => [
@@ -86,8 +86,9 @@ const Chatbot = () => {
     setIsLoading(true);
 
 try {
-      // 1. Gunakan API_URL dinamis dari .env (dengan fallback ke localhost jika lokal)
-const baseUrl = API_URL || 'http://localhost:3001/api'; 
+      // 1. API_URL dari .env (fallback ke localhost kalau lokal)
+const rawUrl = (API_URL || 'http://localhost:3001').replace(/\/$/, '');
+const baseUrl = rawUrl.endsWith('/api') ? rawUrl : `${rawUrl}/api`;
 const response = await fetch(`${baseUrl}/ai/chat`, {
         method: 'POST',
         headers: {
@@ -108,7 +109,7 @@ const response = await fetch(`${baseUrl}/ai/chat`, {
       // 2. Baca data.reply (atau fallback ke data.answer)
       const botResponseText = data.reply || data.answer || "Maaf, tidak dapat memproses jawaban.";
 
-      // Masukkan jawaban pintar dari server ke dalam chat bubble screen
+      // input jawaban dari server ke dalam chat bubble screen
       setMessages(prev => [...prev, { role: 'bot', text: botResponseText }]);
 
       if (newCount >= MAX_USER_MESSAGES) {
