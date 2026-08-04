@@ -4,7 +4,7 @@ import { supabase } from "../../services/supabase";
 import { useAuth } from "../../hooks/useAuth";
 import { UserPlus, Search, Mail, Phone, Edit3, Trash2, AlertTriangle, X, Upload, Activity, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Eye, EyeOff } from "lucide-react";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://vidhelp-backend.vercel.app/api";
+const API_URL = `${import.meta.env.VITE_API_URL || "https://vidhelp-backend.vercel.app"}/api`;
 
 const BASE_STYLE = `
   @keyframes spin  { to { transform: rotate(360deg); } }
