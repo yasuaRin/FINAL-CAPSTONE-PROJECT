@@ -46,55 +46,7 @@ export const usePredictions = () => {
   }, [fetchPredictions]);
 
   const retrainModels = useCallback(async () => {
-    setIsRetraining(true);
-    setError(null);
 
-    // Create a fresh AbortController for this retrain run and keep a ref to
-    // it so cancelRetrain() can abort the underlying fetch on demand.
-    const controller = new AbortController();
-    retrainAbortRef.current = controller;
-    
-    try {
-      // Step 1: Call ML API to retrain
-      // console.log('🔄 Starting ML retraining...');
-      
-      const response = await fetch(`${ML_API_URL}/api/ml/retrain`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          n_future: 12  // Predict next 12 periods
-        }),
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Retraining failed');
-      }
-
-      // eslint-disable-next-line no-unused-vars
-      const result = await response.json();
-     // console.log('✅ ML retraining completed:', result);
-
-      // Step 2: Fetch updated predictions
-      await fetchPredictions();
-      
-      return { success: true, message: 'Models retrained successfully' };
-      
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        // Cancelled by the user — not a real error, just report it as such
-        // so callers can distinguish a manual stop from a genuine failure.
-        return { success: false, aborted: true, error: 'Training stopped by user' };
-      }
-     // console.error('❌ Retrain error:', err);
-      setError(err.message);
-      return { success: false, error: err.message };
-    } finally {
-      setIsRetraining(false);
-      retrainAbortRef.current = null;
-    }
-  }, [fetchPredictions]);
 
   // Cancels the in-flight retrain request, if any. Aborting the fetch
   // causes retrainModels' catch block to resolve immediately (instead of
