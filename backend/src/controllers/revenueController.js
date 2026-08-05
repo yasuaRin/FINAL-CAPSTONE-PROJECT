@@ -100,12 +100,12 @@ export const deleteRevenue = async (req, res) => {
   }
 };
 
-// POST /api/revenue/upload (placeholder)
-export const uploadRevenue = async (req, res) => {
-  res.json({ success: true, message: 'Upload endpoint ready' });
-};
+// // POST /api/revenue/upload (placeholder)
+// export const uploadRevenue = async (req, res) => {
+//   res.json({ success: true, message: 'Upload endpoint ready' });
+// };
 
-// GET /api/revenue/ingestion-logs (placeholder)
-export const getIngestionLogs = async (req, res) => {
-  res.json({ success: true, data: [] });
-};
+// // GET /api/revenue/ingestion-logs (placeholder)
+// export const getIngestionLogs = async (req, res) => {
+//   res.json({ success: true, data: [] });
+// };

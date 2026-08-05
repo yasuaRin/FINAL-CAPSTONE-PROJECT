@@ -291,23 +291,51 @@ export default function Brands() {
   };
 
   const handleDelete = async () => {
-    if (!deleteId || isDeleting) return;
-    setIsDeleting(true);
-    try {
-      await supabase.from('live_sessions').delete().eq('brand_id', deleteId);
-      await supabase.from('risk_monitor').delete().eq('brand_id', deleteId);
-      const { error } = await supabase.from('brands').delete().eq('brand_id', deleteId);
-      if (error) throw error;
-      notify('Brand deleted successfully');
-      setDeleteId(null);
-      await fetchData();
-    } catch (err) {
-      console.error('Delete error:', err);
-      notify('Failed to delete brand', true);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
+  if (!deleteId || isDeleting) return;
+
+  setIsDeleting(true);
+
+  try {
+    let { error } = await supabase
+      .from("live_sessions")
+      .delete()
+      .eq("brand_id", deleteId);
+    if (error) throw error;
+
+    ({ error } = await supabase
+      .from("team_performance")
+      .delete()
+      .eq("brand_id", deleteId));
+    if (error) throw error;
+
+    ({ error } = await supabase
+      .from("risk_monitor")
+      .delete()
+      .eq("brand_id", deleteId));
+    if (error) throw error;
+
+    ({ error } = await supabase
+      .from("periods")
+      .delete()
+      .eq("brand_id", deleteId));
+    if (error) throw error;
+
+    ({ error } = await supabase
+      .from("brands")
+      .delete()
+      .eq("brand_id", deleteId));
+    if (error) throw error;
+
+    notify("Brand deleted successfully");
+    setDeleteId(null);
+    await fetchData();
+  } catch (err) {
+    console.error("Delete error:", err);
+    notify("Failed to delete brand", true);
+  } finally {
+    setIsDeleting(false);
+  }
+};
 
   if (isLoading || isRoleLoading || revenueLoading) {
     return (
