@@ -46,7 +46,63 @@ export const usePredictions = () => {
   }, [fetchPredictions]);
 
   const retrainModels = useCallback(async () => {
+  setIsRetraining(true);
+  setError(null);
 
+  const controller = new AbortController();
+  retrainAbortRef.current = controller;
+
+  try {
+    // Step 1: Kick off training (server responds immediately, job runs in background)
+    const startRes = await fetch(`${ML_API_URL}/api/ml/retrain`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ n_future: 12 }),
+      signal: controller.signal,
+    });
+
+    if (!startRes.ok) {
+      const errorData = await startRes.json();
+      throw new Error(errorData.message || errorData.error || 'Retraining failed to start');
+    }
+
+    // Step 2: Poll status until the background job actually finishes
+    let status;
+    do {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      if (controller.signal.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
+      const statusRes = await fetch(`${ML_API_URL}/api/ml/retrain/status`, {
+        signal: controller.signal,
+      });
+      status = await statusRes.json();
+    } while (status.isRunning);
+
+    // Step 3: Check the REAL result, not just "the request was accepted"
+    if (!status.lastResult || status.lastResult.success !== true) {
+      throw new Error(status.lastResult?.error || 'Training failed');
+    }
+    if (status.lastResult.cancelled) {
+      return { success: false, aborted: true, error: 'Training stopped by user' };
+    }
+
+    // Step 4: Now it's safe to refetch — the DB write has actually completed
+    await fetchPredictions();
+
+    return { success: true, message: 'Models retrained successfully' };
+
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      return { success: false, aborted: true, error: 'Training stopped by user' };
+    }
+    setError(err.message);
+    return { success: false, error: err.message };
+  } finally {
+    setIsRetraining(false);
+    retrainAbortRef.current = null;
+  }
+}, [fetchPredictions]);
 
   // Cancels the in-flight retrain request, if any. Aborting the fetch
   // causes retrainModels' catch block to resolve immediately (instead of
