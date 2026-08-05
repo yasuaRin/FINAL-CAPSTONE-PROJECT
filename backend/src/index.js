@@ -57,6 +57,7 @@ const supabase = createClient(
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
+  'http://172.20.10.2:5173',
   'https://vidhelp-frontend.vercel.app'
 ];
 

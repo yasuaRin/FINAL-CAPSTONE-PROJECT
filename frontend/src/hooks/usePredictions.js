@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../services/supabase';
 
-const ML_API_URL = import.meta.env.VITE_ML_API_URL;
+const ML_API_URL = 'http://localhost:3000';
 
 export const usePredictions = () => {
   const [futurePredictions, setFuturePredictions] = useState([]);
@@ -74,8 +74,9 @@ export const usePredictions = () => {
         throw new DOMException('Aborted', 'AbortError');
       }
       const statusRes = await fetch(`${ML_API_URL}/api/ml/retrain/status`, {
-        signal: controller.signal,
-      });
+      signal: controller.signal,
+      cache: 'no-store',
+    });
       status = await statusRes.json();
     } while (status.isRunning);
 
