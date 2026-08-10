@@ -57,16 +57,14 @@ export function useBrands(brandTotals = new Map()) {
           .order("brand_created_at", { ascending: true }),
         supabase
           .from("risk_monitor")
-          .select("brand_id, risk_level, risk_score, reasons"),
+ .select("brand_id, risk_level_id, risk_levels(name), risk_score, reasons"),
       ]);
 
       if (brandsErr) throw new Error(brandsErr.message);
 
       const riskMap = new Map((riskData || []).map((r) => [r.brand_id, r]));
 
-      // ── Enrich brands — revenue comes from brandTotals (useRevenue) ──────
-      const enrichedBrands = (brandsData || []).map((brand) => {
-        // Use the Map passed from useRevenue — same integers, same fetch
+     const enrichedBrands = (brandsData || []).map((brand) => {
         const totalRevenue = totalsMap.get(brand.brand_id) || 0;
         const risk         = riskMap.get(brand.brand_id);
         return {
@@ -77,7 +75,7 @@ export function useBrands(brandTotals = new Map()) {
           sessionCount:      0,
           platformBreakdown: {},
           dominantPlatform:  "—",
-          risk_level:        risk?.risk_level ?? null,
+          risk_level:        risk?.risk_levels?.name ?? null,
           risk_score:        risk?.risk_score ?? null,
           risk_reasons:      risk?.reasons    ?? [],
         };

@@ -129,6 +129,7 @@ const createRerunToast = (message, showStop = false, onStop) => {
       abortRerun();
       updateRerunToast('Stopping training...');
       hideRerunStopButton();
+      showRerunSpinner(false);
       onStop?.();
     };
     toast.appendChild(stopBtn);
@@ -220,8 +221,8 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
         const [{ data, error }, { data: brands }] = await Promise.all([
           supabase
             .from('risk_monitor')
-            .select('brand_id, risk_level, reasons')
-            .order('risk_level', { ascending: false }),
+            .select('brand_id, risk_level_id, risk_levels(name), reasons')
+            .order('risk_level_id', { ascending: true }),
           supabase.from('brands').select('brand_id, brand_name'),
         ]);
         if (error) throw error;
@@ -230,7 +231,7 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
           (data || []).map((item) => ({
             id:      item.brand_id,
             name:    brandMap.get(item.brand_id) || 'Unknown',
-            risk:    item.risk_level,
+            risk:    item.risk_levels?.name || 'Unassessed',
             reasons: item.reasons || [],
           }))
         );

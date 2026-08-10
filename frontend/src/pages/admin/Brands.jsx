@@ -164,12 +164,12 @@ export default function Brands() {
 
       const { data: riskMonitorData } = await supabase
         .from('risk_monitor')
-        .select('brand_id, risk_level, risk_score, reasons, revenue_total, sessions_count, status');
+       .select('brand_id, risk_level_id, risk_levels(name), risk_score, reasons, revenue_total, sessions_count, status');
 
       const riskMap = new Map();
       (riskMonitorData || []).forEach(risk => {
         riskMap.set(risk.brand_id, {
-          level: risk.risk_level,
+          level: risk.risk_levels?.name || null,
           score: risk.risk_score,
           reasons: risk.reasons || [],
           totalRevenue: risk.revenue_total,
