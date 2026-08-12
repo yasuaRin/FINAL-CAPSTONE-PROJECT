@@ -274,9 +274,6 @@ export default function Brands() {
       } else {
         const { error } = await supabase.from('brands').insert([brandData]);
         if (error) throw error;
-        // CHANGE #1: invalidate useBrands.js's sessionStorage cache so the
-        // Revenue page's Brand dropdown picks up the new brand immediately
-        // instead of serving a stale cached list for up to 5 minutes.
         sessionStorage.removeItem(BRANDS_CACHE_KEY);
         notify('Brand created successfully');
       }
@@ -291,133 +288,135 @@ export default function Brands() {
   };
 
   const handleDelete = async () => {
-  if (!deleteId || isDeleting) return;
+    if (!deleteId || isDeleting) return;
 
-  setIsDeleting(true);
+    setIsDeleting(true);
 
-  try {
-    let { error } = await supabase
-      .from("live_sessions")
-      .delete()
-      .eq("brand_id", deleteId);
-    if (error) throw error;
+    try {
+      let { error } = await supabase
+        .from("live_sessions")
+        .delete()
+        .eq("brand_id", deleteId);
+      if (error) throw error;
 
-    ({ error } = await supabase
-      .from("team_performance")
-      .delete()
-      .eq("brand_id", deleteId));
-    if (error) throw error;
+      ({ error } = await supabase
+        .from("team_performance")
+        .delete()
+        .eq("brand_id", deleteId));
+      if (error) throw error;
 
-    ({ error } = await supabase
-      .from("risk_monitor")
-      .delete()
-      .eq("brand_id", deleteId));
-    if (error) throw error;
+      ({ error } = await supabase
+        .from("risk_monitor")
+        .delete()
+        .eq("brand_id", deleteId));
+      if (error) throw error;
 
-    ({ error } = await supabase
-      .from("periods")
-      .delete()
-      .eq("brand_id", deleteId));
-    if (error) throw error;
+      ({ error } = await supabase
+        .from("periods")
+        .delete()
+        .eq("brand_id", deleteId));
+      if (error) throw error;
 
-    ({ error } = await supabase
-      .from("brands")
-      .delete()
-      .eq("brand_id", deleteId));
-    if (error) throw error;
+      ({ error } = await supabase
+        .from("brands")
+        .delete()
+        .eq("brand_id", deleteId));
+      if (error) throw error;
 
-    notify("Brand deleted successfully");
-    setDeleteId(null);
-    await fetchData();
-  } catch (err) {
-    console.error("Delete error:", err);
-    notify("Failed to delete brand", true);
-  } finally {
-    setIsDeleting(false);
-  }
-};
+      notify("Brand deleted successfully");
+      setDeleteId(null);
+      await fetchData();
+    } catch (err) {
+      console.error("Delete error:", err);
+      notify("Failed to delete brand", true);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   if (isLoading || isRoleLoading || revenueLoading) {
     return (
-      <div id="brands-report-container" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh", gap: 12, flexDirection: "column" }}>
+      <div id="brands-report-container" className="flex items-center justify-center h-[60vh] gap-3 flex-col">
         <style>{BASE_STYLE}</style>
-        <div style={{ width: 40, height: 40, border: "3px solid var(--border)", borderTopColor: "var(--primary)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-        <p style={{ color: "var(--muted-foreground)", fontSize: 13, fontWeight: 500 }}>Loading brands...</p>
+        <div className="w-10 h-10 border-3 border-border border-t-[#2563eb] rounded-full animate-spin" />
+        <p className="text-muted-foreground text-sm font-medium">Loading brands...</p>
       </div>
     );
   }
 
   return (
     <div id="brands-export-container">
-      <div style={{ paddingTop: 8, paddingBottom: 48 }}>
+      <div className="pt-2 pb-12">
         <style>{BASE_STYLE}</style>
 
         <AnimatePresence>
           {notification && (
             <motion.div
-              initial={{ opacity: 0, y: -20, x: "-50%" }} animate={{ opacity: 1, y: 20, x: "-50%" }} exit={{ opacity: 0, y: -20, x: "-50%" }}
-              style={{ position: "fixed", top: 4, left: "50%", zIndex: 100, background: "var(--card)", color: "var(--foreground)", padding: "12px 24px", borderRadius: 16, boxShadow: "0 8px 40px rgba(0,0,0,0.18)", display: "flex", alignItems: "center", gap: 12, border: "1px solid var(--border)", minWidth: 260 }}
+              initial={{ opacity: 0, y: -20, x: "-50%" }}
+              animate={{ opacity: 1, y: 20, x: "-50%" }}
+              exit={{ opacity: 0, y: -20, x: "-50%" }}
+              className="fixed top-4 left-1/2 z-[100] bg-card text-foreground px-6 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-border min-w-[260px]"
             >
-              <div style={{ borderRadius: "50%", padding: 4, display: "flex", alignItems: "center", justifyContent: "center", background: notification.includes("Failed") ? "#ef4444" : "#22c55e", flexShrink: 0 }}>
+              <div className={`rounded-full p-1 flex items-center justify-center flex-shrink-0 ${notification.includes("Failed") ? "bg-red-500" : "bg-emerald-500"}`}>
                 <CheckCircle2 size={16} color="white" />
               </div>
-              <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em" }}>{notification}</span>
+              <span className="text-sm font-bold tracking-tight">{notification}</span>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Page Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 16 }}>
+        <div className="flex justify-between items-start mb-4 flex-wrap gap-4">
           <div>
-            <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "0 0 4px" }}>Pages / brands</p>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--foreground)", margin: 0, letterSpacing: "-0.5px" }}>Brand Portfolio</h1>
-            <p style={{ color: "var(--muted-foreground)", fontSize: 13, margin: "4px 0 0" }}>Track and manage all your brands in one place.</p>
+            <p className="text-[11px] text-muted-foreground mb-1">Pages / brands</p>
+            <h1 className="text-[22px] font-extrabold text-foreground tracking-tight">Brand Portfolio</h1>
+            <p className="text-muted-foreground text-sm mt-1">Track and manage all your brands in one place.</p>
           </div>
         </div>
 
-        {/* Add Button - Below the description */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", marginBottom: 20 }}>
-          <button onClick={() => openForm()} style={primaryBtn}><Plus size={16} /> Add Brand</button>
+        {/* Add Button */}
+        <div className="flex items-center justify-start mb-5">
+          <button onClick={() => openForm()} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border-none bg-[#2563eb] text-white font-bold text-sm cursor-pointer hover:bg-[#1d4ed8] transition-colors">
+            <Plus size={16} /> Add Brand
+          </button>
         </div>
 
         {/* Main Card */}
-        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, overflow: "hidden", boxShadow: "0 1px 8px rgba(0,0,0,0.06)" }}>
-          <div style={{ overflowX: "auto" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "60px 2fr 1.4fr 1.2fr 1fr 100px", background: "#2563eb", padding: "0 8px" }}>
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <div className="grid grid-cols-[60px_2fr_1.4fr_1.2fr_1fr_100px] bg-[#2563eb] px-2">
               {["No", "Brand", "Revenue", "Risk Level", "Status", "Actions"].map((h) => (
-                <div key={h} style={{ padding: "14px 16px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#fff", textAlign: h === "Actions" ? "right" : "left" }}>
+                <div key={h} className={`py-3.5 px-4 text-[10px] font-bold uppercase tracking-wider text-white ${h === "Actions" ? "text-right" : "text-left"}`}>
                   {h}
                 </div>
               ))}
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "4px 8px" }}>
+            <div className="flex flex-col gap-1 p-2">
               {brandMatrix.length === 0 ? (
-                <div style={{ padding: 48, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>No brands found.</div>
+                <div className="py-12 text-center text-muted-foreground text-sm">No brands found.</div>
               ) : (
                 brandMatrix.map((brand, idx) => (
                   <div
                     key={brand.brand_id}
+                    className="grid grid-cols-[60px_2fr_1.4fr_1.2fr_1fr_100px] items-center rounded-xl border border-border bg-card transition-all duration-300"
                     style={{
-                      display: "grid",
-                      gridTemplateColumns: "60px 2fr 1.4fr 1.2fr 1fr 100px",
-                      alignItems: "center",
-                      borderRadius: 12,
-                      border: "1px solid var(--border)",
-                      background: "var(--card)",
                       transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
                       opacity: brand.isActive ? 1 : 0.5,
                     }}
                     onMouseEnter={(e) => {
                       if (brand.isActive) {
                         e.currentTarget.style.transform = "translateY(-4px)";
-                        e.currentTarget.style.boxShadow = "0 12px 32px rgba(219,26,26,0.15), 0 4px 12px rgba(0,0,0,0.08)";
-                        e.currentTarget.style.borderColor = "rgba(219,26,26,0.3)";
-                        e.currentTarget.style.background = "rgba(219,26,26,0.02)";
+                        e.currentTarget.style.boxShadow = "0 12px 32px rgba(37,99,235,0.15), 0 4px 12px rgba(0,0,0,0.08)";
+                        e.currentTarget.style.borderColor = "rgba(37,99,235,0.3)";
+                        e.currentTarget.style.background = "rgba(37,99,235,0.02)";
                         const name = e.currentTarget.querySelector(".brand-name");
                         const num = e.currentTarget.querySelector(".row-number");
-                        if (name) name.style.color = "#DB1A1A";
-                        if (num) { num.style.background = "#DB1A1A"; num.style.color = "#fff"; }
+                        if (name) name.style.color = "#2563eb";
+                        if (num) { 
+                          num.style.background = "#2563eb"; 
+                          num.style.color = "#fff"; 
+                        }
                       }
                     }}
                     onMouseLeave={(e) => {
@@ -428,32 +427,49 @@ export default function Brands() {
                       const name = e.currentTarget.querySelector(".brand-name");
                       const num = e.currentTarget.querySelector(".row-number");
                       if (name) name.style.color = "var(--foreground)";
-                      if (num) { num.style.background = "var(--muted)"; num.style.color = "#2563eb"; }
+                      if (num) { 
+                        num.style.background = "var(--muted)"; 
+                        num.style.color = "#2563eb"; 
+                      }
                     }}
                   >
-                    <div style={{ padding: "16px 12px", textAlign: "center" }}>
-                      <span className="row-number" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 8, background: "var(--muted)", fontSize: 11, fontWeight: 700, color: "#2563eb", transition: "background 0.18s ease, color 0.18s ease" }}>
+                    <div className="py-4 px-3 text-center">
+                      <span
+                        className="row-number"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 28,
+                          height: 28,
+                          borderRadius: 8,
+                          background: 'var(--muted)',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: '#2563eb',
+                          transition: 'background 0.18s ease, color 0.18s ease',
+                        }}
+                      >
                         {idx + 1}
                       </span>
                     </div>
 
-                    <div style={{ padding: "16px 20px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        {/* Removed the initial letter div */}
+                    <div className="py-4 px-5">
+                      <div className="flex items-center gap-3">
                         <div>
-                          <p className="brand-name" style={{ fontSize: 13, fontWeight: 700, color: brand.isActive ? "var(--foreground)" : "var(--muted-foreground)", margin: 0, transition: "color 0.15s ease", textDecoration: brand.isActive ? "none" : "line-through" }}>
+                          <p className={`brand-name text-sm font-bold transition-colors duration-200 ${brand.isActive ? "text-foreground" : "text-muted-foreground"} ${!brand.isActive ? "line-through" : ""}`}>
                             {brand.brand_name}
                           </p>
-                          <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "3px 0 0" }}>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
                             {brand.brand_category || 'General'}
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    <div style={{ padding: "16px 20px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: brand.isActive ? "var(--foreground)" : "var(--muted-foreground)", textDecoration: brand.isActive ? "none" : "line-through" }}>
+                    <div className="py-4 px-5">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-semibold ${brand.isActive ? "text-foreground" : "text-muted-foreground"} ${!brand.isActive ? "line-through" : ""}`}>
                           {formatRevenue(brand.totalRevenue)}
                         </span>
                         {brand.isActive && (
@@ -463,12 +479,12 @@ export default function Brands() {
                           </div>
                         )}
                       </div>
-                      <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "3px 0 0" }}>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
                         {brand.sessionCount} live sessions
                       </p>
                     </div>
 
-                    <div style={{ padding: "16px 20px" }}>
+                    <div className="py-4 px-5">
                       {brand.riskLevel ? (
                         <span className={`inline-flex px-3 py-1 rounded-xl text-[9px] font-bold uppercase tracking-wider border ${
                           !brand.isActive ? 'bg-gray-500/10 text-gray-500 border-gray-500/20'
@@ -484,60 +500,30 @@ export default function Brands() {
                         </span>
                       )}
                       {brand.riskReasons.length > 0 && (
-                        <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 4, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <div className="text-[10px] text-muted-foreground mt-1 max-w-[200px] truncate">
                           {brand.riskReasons[0]}
                         </div>
                       )}
                     </div>
 
-                    <div style={{ padding: "16px 20px" }}>
+                    <div className="py-4 px-5">
                       <StatusBadge status={brand.isActive ? 'active' : 'inactive'} />
                     </div>
 
-                    <div style={{ padding: "16px 20px", textAlign: "right" }}>
-                      <div style={{ display: "inline-flex", gap: 6 }}>
+                    <div className="py-4 px-5 text-right">
+                      <div className="inline-flex gap-1.5">
                         <button 
                           onClick={() => openForm(brand)} 
-                          style={{ 
-                            width: 32, height: 32, borderRadius: "50%", border: "none", 
-                            background: brand.isActive ? "rgba(37,99,235,0.08)" : "rgba(128,128,128,0.08)", 
-                            cursor: "pointer", 
-                            color: brand.isActive ? "#2563eb" : "#999", 
-                            transition: "all 0.15s", 
-                            display: "flex", 
-                            alignItems: "center", 
-                            justifyContent: "center" 
-                          }}
-                          onMouseEnter={(e) => { 
-                            if (brand.isActive) {
-                              e.currentTarget.style.background = "rgba(37,99,235,0.2)"; 
-                              e.currentTarget.style.transform = "scale(1.12)"; 
-                            }
-                          }}
-                          onMouseLeave={(e) => { 
-                            if (brand.isActive) {
-                              e.currentTarget.style.background = "rgba(37,99,235,0.08)"; 
-                              e.currentTarget.style.transform = "scale(1)"; 
-                            }
-                          }}
+                          className="w-8 h-8 rounded-full border-none bg-[#2563eb]/10 text-[#2563eb] transition-all duration-200 hover:bg-[#2563eb]/20 hover:scale-110 flex items-center justify-center cursor-pointer"
+                          disabled={!brand.isActive}
+                          style={{ opacity: brand.isActive ? 1 : 0.4 }}
                         >
                           <Edit3 size={13} />
                         </button>
                         {isSuperAdmin && (
                           <button 
                             onClick={() => setDeleteId(brand.brand_id)} 
-                            style={{ 
-                              width: 32, height: 32, borderRadius: "50%", border: "none", 
-                              background: "rgba(219,26,26,0.08)", 
-                              cursor: "pointer", 
-                              color: "#DB1A1A", 
-                              transition: "all 0.15s", 
-                              display: "flex", 
-                              alignItems: "center", 
-                              justifyContent: "center" 
-                            }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.2)"; e.currentTarget.style.transform = "scale(1.12)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.08)"; e.currentTarget.style.transform = "scale(1)"; }}
+                            className="w-8 h-8 rounded-full border-none bg-red-500/10 text-[#DB1A1A] transition-all duration-200 hover:bg-red-500/20 hover:scale-110 flex items-center justify-center cursor-pointer"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -553,22 +539,22 @@ export default function Brands() {
 
         {/* Delete Modal */}
         {isSuperAdmin && deleteId && (
-          <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-            <div onClick={() => !isDeleting && setDeleteId(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-            <div style={{ position: "relative", zIndex: 10, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: 32, maxWidth: 420, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center" }}>
-                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(219,26,26,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div onClick={() => !isDeleting && setDeleteId(null)} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <div className="relative z-10 bg-card border border-border rounded-2xl p-8 max-w-[420px] w-full shadow-2xl">
+              <div className="flex flex-col items-center gap-4 text-center">
+                <div className="w-13 h-13 rounded-full bg-red-500/10 flex items-center justify-center">
                   <AlertTriangle size={24} color="#DB1A1A" />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>Delete Brand?</h3>
-                  <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "8px 0 0" }}>
-                    This will permanently remove <strong style={{ color: "var(--foreground)" }}>{brandMatrix.find(b => b.brand_id === deleteId)?.brand_name}</strong> from the system.
+                  <h3 className="text-lg font-bold text-foreground">Delete Brand?</h3>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    This will permanently remove <strong className="text-foreground">{brandMatrix.find(b => b.brand_id === deleteId)?.brand_name}</strong> from the system.
                   </p>
                 </div>
-                <div style={{ display: "flex", gap: 12, width: "100%" }}>
-                  <button onClick={() => !isDeleting && setDeleteId(null)} style={cancelBtn}>Cancel</button>
-                  <button onClick={handleDelete} style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "#DB1A1A", color: "#ffffff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Confirm</button>
+                <div className="flex gap-3 w-full">
+                  <button onClick={() => !isDeleting && setDeleteId(null)} className="flex-1 py-2.5 rounded-lg border border-border bg-card text-foreground font-semibold text-sm cursor-pointer hover:bg-muted transition-colors">Cancel</button>
+                  <button onClick={handleDelete} className="flex-1 py-2.5 rounded-lg border-none bg-[#DB1A1A] text-white font-bold text-sm cursor-pointer hover:bg-red-600 transition-colors">Confirm</button>
                 </div>
               </div>
             </div>
@@ -577,96 +563,56 @@ export default function Brands() {
 
         {/* Add / Edit Modal */}
         {isFormOpen && (
-          <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-            <div onClick={closeForm} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-            <div style={{ position: "relative", zIndex: 10, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, maxWidth: 600, width: "100%", maxHeight: "90vh", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", overflow: "hidden" }}>
-              <div style={{ padding: "16px 24px", background: "#2563eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>{editingBrand ? "Edit Brand" : "Add New Brand"}</h3>
-                <button onClick={closeForm} style={{ padding: 6, borderRadius: 8, border: "none", background: "rgba(255,255,255,0.15)", cursor: "pointer", color: "#fff", display: "flex" }}><X size={16} /></button>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div onClick={closeForm} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <div className="relative z-10 bg-card border border-border rounded-2xl max-w-[600px] w-full max-h-[90vh] shadow-2xl overflow-hidden">
+              <div className="px-6 py-4 bg-[#2563eb] flex justify-between items-center">
+                <h3 className="text-base font-bold text-white">{editingBrand ? "Edit Brand" : "Add New Brand"}</h3>
+                <button onClick={closeForm} className="p-1.5 rounded-lg border-none bg-white/15 cursor-pointer text-white hover:bg-white/25 transition-colors flex">
+                  <X size={16} />
+                </button>
               </div>
-              <div style={{ padding: 28, overflowY: "auto", maxHeight: "calc(90vh - 60px)" }}>
+              <div className="p-7 overflow-y-auto max-h-[calc(90vh-60px)]">
                 <form onSubmit={handleSubmit}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                      <label style={labelStyle}>Brand Name *</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Brand Name *</label>
                       <input
                         name="name"
                         required
                         value={formName}
                         onChange={(e) => setFormName(e.target.value)}
                         placeholder="e.g. Aura Glow"
-                        style={inputStyle}
+                        className="w-full px-3 py-2.5 border border-border rounded-lg text-sm outline-none bg-muted text-foreground focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]/20 transition-all"
                       />
                     </div>
                     <div>
-                      <label style={labelStyle}>Category</label>
-                      <div ref={dropdownRef} style={{ position: "relative" }}>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Category</label>
+                      <div ref={dropdownRef} className="relative">
                         <button
                           type="button"
                           onClick={() => !isSubmitting && setOpenDropdown(prev => prev === 'category' ? null : 'category')}
                           disabled={isSubmitting}
-                          style={{
-                            width: "100%",
-                            padding: "9px 12px",
-                            border: `1px solid ${openDropdown === 'category' ? '#DB1A1A' : 'var(--border)'}`,
-                            borderRadius: 8,
-                            fontSize: 13,
-                            outline: "none",
-                            background: "var(--muted)",
-                            color: "var(--foreground)",
-                            textAlign: "left",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            cursor: "pointer",
-                            transition: "border-color 0.15s ease",
-                          }}
+                          className={`w-full px-3 py-2.5 border rounded-lg text-sm outline-none bg-muted text-foreground text-left flex items-center justify-between cursor-pointer transition-all duration-200 ${openDropdown === 'category' ? 'border-[#2563eb] ring-1 ring-[#2563eb]/20' : 'border-border'}`}
                         >
                           <span>{formCategory}</span>
                           <ChevronDown
                             size={14}
-                            style={{
-                              transition: "transform 0.15s ease",
-                              transform: openDropdown === 'category' ? "rotate(180deg)" : "rotate(0deg)",
-                              color: "var(--muted-foreground)",
-                            }}
+                            className={`text-muted-foreground transition-transform duration-200 ${openDropdown === 'category' ? 'rotate-180' : 'rotate-0'}`}
                           />
                         </button>
                         {openDropdown === 'category' && !isSubmitting && (
-                          <div style={{
-                            position: "absolute",
-                            top: "calc(100% + 4px)",
-                            left: 0,
-                            right: 0,
-                            zIndex: 200,
-                            background: "var(--card)",
-                            border: "1px solid var(--border)",
-                            borderRadius: 8,
-                            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-                            overflow: "hidden",
-                            maxHeight: 200,
-                            overflowY: "auto",
-                          }}>
+                          <div className="absolute top-full left-0 right-0 mt-1 z-[200] bg-card border border-border rounded-lg shadow-lg overflow-hidden max-h-[200px] overflow-y-auto">
                             {CATEGORY_OPTIONS.map(cat => (
                               <button
                                 key={cat}
                                 type="button"
                                 onClick={() => { setFormCategory(cat); setOpenDropdown(null); }}
-                                style={{
-                                  display: "block",
-                                  width: "100%",
-                                  padding: "8px 14px",
-                                  border: "none",
-                                  background: formCategory === cat ? "rgba(219,26,26,0.08)" : "transparent",
-                                  color: formCategory === cat ? "#DB1A1A" : "var(--foreground)",
-                                  fontSize: 13,
-                                  cursor: "pointer",
-                                  textAlign: "left",
-                                  transition: "background 0.12s",
-                                  fontWeight: formCategory === cat ? 600 : 400,
-                                }}
-                                onMouseEnter={e => { if (formCategory !== cat) e.currentTarget.style.background = "var(--muted)"; }}
-                                onMouseLeave={e => { if (formCategory !== cat) e.currentTarget.style.background = "transparent"; }}
+                                className={`w-full px-3.5 py-2 border-none text-left text-sm cursor-pointer transition-all duration-200 ${
+                                  formCategory === cat 
+                                    ? 'bg-[#2563eb]/10 text-[#2563eb] font-semibold' 
+                                    : 'text-foreground hover:bg-muted'
+                                }`}
                               >
                                 {cat}
                               </button>
@@ -677,13 +623,13 @@ export default function Brands() {
                     </div>
                   </div>
 
-                  <div style={{ marginBottom: 16 }}>
-                    <label style={labelStyle}>Status</label>
+                  <div className="mb-4">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Status</label>
                     <select
                       name="status"
                       value={formStatus}
                       onChange={(e) => setFormStatus(e.target.value)}
-                      style={inputStyle}
+                      className="w-full px-3 py-2.5 border border-border rounded-lg text-sm outline-none bg-muted text-foreground focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]/20 transition-all"
                     >
                       {STATUS_OPTIONS.map(s => (
                         <option key={s.value} value={s.value}>{s.label}</option>
@@ -691,23 +637,18 @@ export default function Brands() {
                     </select>
                   </div>
 
-                  <div style={{ display: "flex", gap: 12 }}>
-                    <button type="button" onClick={closeForm} style={cancelBtn}>Cancel</button>
+                  <div className="flex gap-3">
+                    <button 
+                      type="button" 
+                      onClick={closeForm} 
+                      className="flex-1 py-2.5 rounded-lg border border-border bg-card text-foreground font-semibold text-sm cursor-pointer hover:bg-muted transition-colors"
+                    >
+                      Cancel
+                    </button>
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      style={{
-                        flex: 1,
-                        padding: 10,
-                        borderRadius: 8,
-                        border: "none",
-                        background: "#2563eb",
-                        color: "#ffffff",
-                        fontWeight: 700,
-                        fontSize: 13,
-                        cursor: "pointer",
-                        opacity: isSubmitting ? 0.7 : 1,
-                      }}
+                      className="flex-1 py-2.5 rounded-lg border-none bg-[#2563eb] text-white font-bold text-sm cursor-pointer hover:bg-[#1d4ed8] transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? "Saving..." : editingBrand ? "Save Changes" : "Add Brand"}
                     </button>

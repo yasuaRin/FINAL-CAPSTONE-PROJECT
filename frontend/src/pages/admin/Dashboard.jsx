@@ -161,7 +161,8 @@ const removeRerunToast = () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const KpiCard = ({ title, value, icon: Icon, badge, badgeStyle, action, onAction, children }) => {
-  const hoverColorValue = '#ef4444';
+  // Was hardcoded '#ef4444' (red) — now follows the admin theme (blue).
+  const hoverColorValue = 'var(--primary)';
   return (
     <Motion.div
       whileHover={{ y: -4, scale: 1.02 }}
@@ -173,7 +174,7 @@ const KpiCard = ({ title, value, icon: Icon, badge, badgeStyle, action, onAction
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "translateY(-4px) scale(1.02)";
-        e.currentTarget.style.boxShadow = `0 12px 32px ${hoverColorValue}25, 0 4px 12px rgba(0,0,0,0.06)`;
+        e.currentTarget.style.boxShadow = `0 12px 32px color-mix(in srgb, ${hoverColorValue} 25%, transparent), 0 4px 12px rgba(0,0,0,0.06)`;
         e.currentTarget.style.borderColor = hoverColorValue;
       }}
       onMouseLeave={(e) => {
@@ -298,12 +299,14 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
                     background: 'var(--card)',
                   }}
                   onMouseEnter={(e) => {
+                    // Was rgba(219,26,26,...) — the public-site red — now the
+                    // admin brand color (blue) via var(--primary).
                     e.currentTarget.style.transform = "translateY(-4px)";
-                    e.currentTarget.style.boxShadow = "0 12px 32px rgba(219,26,26,0.15), 0 4px 12px rgba(0,0,0,0.08)";
-                    e.currentTarget.style.borderColor = "rgba(219,26,26,0.3)";
-                    e.currentTarget.style.background = "rgba(219,26,26,0.02)";
+                    e.currentTarget.style.boxShadow = "0 12px 32px color-mix(in srgb, var(--primary) 15%, transparent), 0 4px 12px rgba(0,0,0,0.08)";
+                    e.currentTarget.style.borderColor = "color-mix(in srgb, var(--primary) 30%, transparent)";
+                    e.currentTarget.style.background = "color-mix(in srgb, var(--primary) 2%, transparent)";
                     const name = e.currentTarget.querySelector(".brand-name");
-                    if (name) name.style.color = "#ef4444";
+                    if (name) name.style.color = "var(--primary)";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = "translateY(0)";
@@ -831,9 +834,9 @@ if (!isRerunAborted()) updateRerunToast('Model is currently being trained. \nPle
         </div>
 
         {/* Risk Monitor - Takes remaining space */}
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-          <CriticalRiskMonitor onBrandClick={handleBrandClick} />
-        </div>
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden self-start">
+  <CriticalRiskMonitor onBrandClick={handleBrandClick} />
+</div>
       </div>
     </div>
   );

@@ -26,7 +26,6 @@ function getPageList(currentPage, totalPages) {
 
 // Grid template with Host column added after Time
 const GRID_COLS = "50px 110px 80px 1.2fr 1.2fr 100px 100px 90px 120px 90px";
-//                                   ^^^^^^ ^^^^^^ Brand and Host columns
 
 const RevenueSessionsTable = ({
   visibleSessions = [],
@@ -41,7 +40,6 @@ const RevenueSessionsTable = ({
   setRowLimit,
   openEditModal = () => {},
   handleDeleteSession = () => {},
-  // FIX 2: new prop — if false, the delete button is hidden
   canDelete = true,
   formatCurrency,
   parseISO,
@@ -269,16 +267,16 @@ const RevenueSessionsTable = ({
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = 'translateY(-4px)';
-                      e.currentTarget.style.boxShadow = '0 12px 32px rgba(219,26,26,0.15), 0 4px 12px rgba(0,0,0,0.08)';
-                      e.currentTarget.style.borderColor = 'rgba(219,26,26,0.3)';
-                      e.currentTarget.style.background = 'rgba(219,26,26,0.02)';
+                      e.currentTarget.style.boxShadow = '0 12px 32px rgba(37,99,235,0.15), 0 4px 12px rgba(0,0,0,0.08)';
+                      e.currentTarget.style.borderColor = 'rgba(37,99,235,0.3)';
+                      e.currentTarget.style.background = 'rgba(37,99,235,0.02)';
                       const brandName = e.currentTarget.querySelector('.session-brand-name');
                       const hostName = e.currentTarget.querySelector('.session-host-name');
                       const num = e.currentTarget.querySelector('.row-number');
                       const actions = e.currentTarget.querySelector('.row-actions');
-                      if (brandName) brandName.style.color = '#DB1A1A';
-                      if (hostName) hostName.style.color = '#DB1A1A';
-                      if (num) { num.style.background = '#DB1A1A'; num.style.color = '#fff'; }
+                      if (brandName) brandName.style.color = '#2563eb';
+                      if (hostName) hostName.style.color = '#2563eb';
+                      if (num) { num.style.background = '#2563eb'; num.style.color = '#fff'; }
                       if (actions) actions.style.opacity = '1';
                     }}
                     onMouseLeave={(e) => {
@@ -425,7 +423,6 @@ const RevenueSessionsTable = ({
                           <Edit2 size={13} />
                         </button>
 
-                        {/* FIX 2: only render delete button if canDelete is true */}
                         {canDelete && (
                           <button
                             onClick={() => handleDeleteSession(log)}

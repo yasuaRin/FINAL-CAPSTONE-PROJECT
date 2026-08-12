@@ -58,6 +58,14 @@ export const AdminLayout = () => {
   const searchRef      = useRef(null);
   const pageContentRef = useRef(null);
 
+  // ── Admin color theme: apply to <html> so it also reaches portaled
+  //    content (modals/toasts/dropdowns render on document.body, still
+  //    a descendant of <html>, but NOT of this component's own div). ──────
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', 'admin');
+    return () => document.documentElement.removeAttribute('data-theme');
+  }, []);
+
   // ── Theme: follow system preference only ─────────────────────────────────
   useEffect(() => {
     localStorage.removeItem('theme');
@@ -171,8 +179,8 @@ export const AdminLayout = () => {
   const SidebarContent = () => (
     <>
       <div className="p-4 sm:p-6 flex items-center justify-between border-b border-sidebar-border">
-        <div className="font-sans font-black text-[#2563eb] text-xl">VH</div>
-        <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5" style={{ color: '#7b809a' }}>
+        <div className="font-sans font-black text-primary text-xl">VH</div>
+        <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-lg transition-colors text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5">
           <X size={20} />
         </button>
       </div>
@@ -185,10 +193,9 @@ export const AdminLayout = () => {
             end={item.path === '/admin'}
             className={({ isActive }) =>
               `flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 ${
-                isActive ? 'bg-[#2563eb] text-white shadow-md' : 'hover:bg-black/5 dark:hover:bg-white/5'
+                isActive ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5'
               }`
             }
-            style={({ isActive }) => isActive ? {} : { color: '#7b809a' }}
           >
             <span className="text-[10px] uppercase tracking-widest font-sans">{item.label}</span>
           </NavLink>
@@ -198,8 +205,7 @@ export const AdminLayout = () => {
       <div className="p-4 border-t border-sidebar-border space-y-2">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all text-sm hover:bg-red-50 dark:hover:bg-red-950/30"
-          style={{ color: '#DB1A1A' }}
+          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all text-sm text-destructive hover:bg-red-50 dark:hover:bg-red-950/30"
         >
           <LogOut size={18} />
           Sign Out
@@ -211,7 +217,7 @@ export const AdminLayout = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-[#2563eb] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -234,14 +240,14 @@ export const AdminLayout = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsSidebarOpen(true)}
-                className="p-1.5 rounded-lg hover:bg-[#f0f0f0] dark:hover:bg-white/5 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-muted dark:hover:bg-white/5 transition-colors"
               >
-                <Menu size={18} className="text-[#7b809a]" />
+                <Menu size={18} className="text-muted-foreground" />
               </button>
 
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-[#2563eb]">Admin Panel</span>
+                  <span className="text-[11px] font-semibold text-primary">Admin Panel</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] text-muted-foreground">
@@ -256,7 +262,7 @@ export const AdminLayout = () => {
 
               {/* Search */}
               <div ref={searchRef} className="flex-1 sm:flex-none relative">
-                <div className="flex items-center gap-2 bg-[#f5f5f5] dark:bg-muted border border-border rounded-lg px-3 py-1.5 focus-within:border-[#2563eb] focus-within:ring-1 focus-within:ring-[#2563eb]/20 transition-all min-w-[160px] sm:min-w-[200px]">
+                <div className="flex items-center gap-2 bg-muted border border-border rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all min-w-[160px] sm:min-w-[200px]">
                   <Search size={14} className="text-muted-foreground flex-shrink-0" />
                   <input
                     type="text"
@@ -298,7 +304,7 @@ export const AdminLayout = () => {
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={handleExportReport}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-[#2563eb] text-white hover:bg-[#1d4ed8] transition-all whitespace-nowrap"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-all whitespace-nowrap"
                 >
                   <Download size={13} />
                   Export Report
@@ -309,13 +315,13 @@ export const AdminLayout = () => {
               <div
                 onClick={() => navigate('/admin/profile')}
                 title={displayName}
-                className="relative w-7 h-7 rounded-full border-2 border-[#2563eb]/20 overflow-hidden cursor-pointer flex-shrink-0 bg-muted hover:border-[#2563eb] hover:scale-105 transition-all duration-200"
+                className="relative w-7 h-7 rounded-full border-2 border-primary/20 overflow-hidden cursor-pointer flex-shrink-0 bg-muted hover:border-primary hover:scale-105 transition-all duration-200"
               >
                 {avatarUrl ? (
                   <img src={avatarUrl} alt={displayName} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-[#2563eb]/10">
-                    <span className="text-[10px] font-bold text-[#2563eb]">{initials}</span>
+                  <div className="w-full h-full flex items-center justify-center bg-primary/10">
+                    <span className="text-[10px] font-bold text-primary">{initials}</span>
                   </div>
                 )}
               </div>

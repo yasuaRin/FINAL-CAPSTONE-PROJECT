@@ -48,9 +48,9 @@ const RevenueBrandsPanel = ({
               style={{
                 transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
                 transform: isHovered && insight.hasSessions ? "translateY(-4px)" : "translateY(0)",
-                boxShadow: isHovered && insight.hasSessions ? "0 12px 32px rgba(239,68,68,0.15), 0 4px 12px rgba(0,0,0,0.08)" : "none",
-                borderColor: isHovered && insight.hasSessions ? "rgba(239,68,68,0.3)" : "var(--border)",
-                backgroundColor: isHovered && insight.hasSessions ? "rgba(239,68,68,0.02)" : "transparent",
+                boxShadow: isHovered && insight.hasSessions ? "0 12px 32px rgba(37,99,235,0.15), 0 4px 12px rgba(0,0,0,0.08)" : "none",
+                borderColor: isHovered && insight.hasSessions ? "rgba(37,99,235,0.3)" : "var(--border)",
+                backgroundColor: isHovered && insight.hasSessions ? "rgba(37,99,235,0.02)" : "transparent",
               }}
               onMouseEnter={() => insight.hasSessions && setHoveredItem(insight.id)}
               onMouseLeave={() => setHoveredItem(null)}
@@ -61,7 +61,7 @@ const RevenueBrandsPanel = ({
                    <div 
                       className="text-base font-bold transition-colors"
                       style={{ 
-                        color: isHovered ? "#ef4444" : "var(--foreground)",
+                        color: isHovered ? "#2563eb" : "var(--foreground)",
                         transition: "color 0.15s ease"
                       }}
                     >
@@ -71,7 +71,7 @@ const RevenueBrandsPanel = ({
                     <div 
                       className="text-sm font-bold transition-colors"
                       style={{ 
-                        color: isHovered ? "#ef4444" : "var(--foreground)",
+                        color: isHovered ? "#2563eb" : "var(--foreground)",
                         transition: "color 0.15s ease"
                       }}
                     >
@@ -88,7 +88,15 @@ const RevenueBrandsPanel = ({
                       <div className="flex items-center gap-1">
                         <TrendingUp size={8} className="text-primary" />
                         <span>
-                          <strong>Peak {insight.peakPeriod}:</strong> {formatCurrency(insight.bestPeriodRevenue || insight.peakRevenue)}
+                          <strong>Peak {insight.peakPeriod}:</strong>{" "}
+                          {formatCurrency(insight.bestPeriodRevenue || insight.peakRevenue)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar size={8} className="text-primary" />
+                        <span>
+                          <strong>{insight.peakPeriod} Range:</strong>{" "}
+                          {insight.peakRange}
                         </span>
                       </div>
                     </div>

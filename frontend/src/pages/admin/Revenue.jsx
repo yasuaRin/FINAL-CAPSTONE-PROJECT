@@ -193,21 +193,9 @@ const Revenue = () => {
     }
   };
 
-  // ===== NEW: saves/updates the period date range whenever a session is
-  // created or edited. Previously period_start_date / period_end_date were
-  // captured in the form but never persisted anywhere, so the range never
-  // showed up in the Live Session table.
-  //
-  // Uses a single upsert() keyed on the real composite primary key
-  // (period_id, brand_id) instead of a select-then-insert/update, and
-  // surfaces failures via notify() instead of a swallowed console.warn —
-  // so a DB error (e.g. a permissions/RLS rule blocking writes to
-  // `periods`) is no longer silent. Both dates are required before
-  // attempting the save since period_start_date / period_end_date are
-  // NOT NULL columns in the periods table. =====
   const upsertPeriod = async (periodId, brandId, startDate, endDate) => {
     if (!periodId || !brandId) return;
-    if (!startDate || !endDate) return; // DB requires both dates, skip if either is missing
+    if (!startDate || !endDate) return;
 
     try {
       const { error } = await supabase
@@ -539,11 +527,6 @@ if (allPeriods.length > 0) {
     });
   };
 
-  // ===== NEW: validates every field in the add/edit session form is filled
-  // in before we touch the network. Called synchronously the moment the
-  // user clicks "Create Session" / "Update Session" so any warning shows
-  // immediately (and the modal stays open) instead of surfacing later,
-  // after other async work has run and the modal has already closed. =====
   const validateSessionForm = () => {
     if (!sessionFormData.date) return 'Please select a date';
     if (!sessionFormData.time) return 'Please select a time';
@@ -603,7 +586,6 @@ if (allPeriods.length > 0) {
       const isShopee = ['Shopee', 'Multi'].includes(sessionFormData.platform);
       const isTikTok = ['TikTok', 'Multi'].includes(sessionFormData.platform);
       
-      // Ensure period_id is a valid integer
       const periodId = parseInt(sessionFormData.period_id, 10);
       if (isNaN(periodId) || periodId < 1) {
         notify('Please enter a valid period number (1, 2, 3, etc.)', true);
@@ -611,8 +593,6 @@ if (allPeriods.length > 0) {
         return;
       }
 
-      // NEW: persist the period's date range (if the user filled it in) so it
-      // shows up in the Live Session table / brand insights.
       await upsertPeriod(
         periodId,
         sessionFormData.brandId,
@@ -690,7 +670,6 @@ if (allPeriods.length > 0) {
         throw new Error('Session ID not found');
       }
 
-      // Ensure period_id is a valid integer
       const periodId = parseInt(sessionFormData.period_id, 10);
       if (isNaN(periodId) || periodId < 1) {
         notify('Please enter a valid period number (1, 2, 3, etc.)', true);
@@ -698,8 +677,6 @@ if (allPeriods.length > 0) {
         return;
       }
 
-      // NEW: persist the period's date range (if the user filled it in) so it
-      // shows up in the Live Session table / brand insights.
       await upsertPeriod(
         periodId,
         sessionFormData.brandId,
@@ -799,7 +776,6 @@ if (allPeriods.length > 0) {
       return; 
     }
     
-    // Fetch period data for this session
     let periodStartDate = '';
     let periodEndDate = '';
     if (session.period_id) {
@@ -882,6 +858,7 @@ if (allPeriods.length > 0) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center space-y-4">
+          {/* FIXED: Blue loading spinner */}
           <div className="w-12 h-12 border-3 border-[#2563eb] border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Loading...</p>
         </div>
@@ -889,27 +866,39 @@ if (allPeriods.length > 0) {
     );
   }
 
-  // Key Metric Card component
-  const KeyMetricCardItem = ({ title, value, children, isHovered, onHover }) => (
-    <div 
-      className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0 transition-all cursor-pointer"
-      style={{
-        transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
-        transform: isHovered ? "translateY(-4px) scale(1.02)" : "translateY(0) scale(1)",
-        boxShadow: isHovered ? "0 12px 32px rgba(239,68,68,0.15), 0 4px 12px rgba(0,0,0,0.08)" : "none",
-        borderColor: isHovered ? "#ef4444" : "var(--border)",
-        backgroundColor: "var(--card)",
-      }}
-      onMouseEnter={onHover}
-      onMouseLeave={onHover}
-    >
-      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
-        {title}
-      </p>
-      <p className="text-base sm:text-lg font-bold text-foreground leading-tight break-all">{value}</p>
-      {children}
-    </div>
-  );
+  // ========== FIXED: Key Metric Card component with blue hover ==========
+  const KeyMetricCardItem = ({ title, value, children, metricKey }) => {
+    const isHovered = hoveredMetric === metricKey;
+    
+    const handleMouseEnter = () => {
+      setHoveredMetric(metricKey);
+    };
+    
+    const handleMouseLeave = () => {
+      setHoveredMetric(null);
+    };
+
+    return (
+      <div 
+        className="bg-card p-5 rounded-2xl border border-border shadow-sm min-w-0 transition-all cursor-pointer"
+        style={{
+          transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
+          transform: isHovered ? "translateY(-4px) scale(1.02)" : "translateY(0) scale(1)",
+          boxShadow: isHovered ? "0 12px 32px rgba(37,99,235,0.15), 0 4px 12px rgba(0,0,0,0.08)" : "none",
+          borderColor: isHovered ? "#2563eb" : "var(--border)",
+          backgroundColor: isHovered ? "rgba(37,99,235,0.02)" : "var(--card)",
+        }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
+          {title}
+        </p>
+        <p className="text-base sm:text-lg font-bold text-foreground leading-tight break-all">{value}</p>
+        {children}
+      </div>
+    );
+  };
 
   return (
     <div id="revenue-report-container" className="space-y-6 pb-12 relative">
@@ -944,20 +933,18 @@ if (allPeriods.length > 0) {
         </div>
       </div>
 
-      {/* Key Metrics Row */}
+      {/* Key Metrics Row - FIXED with blue hover */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KeyMetricCardItem 
           title="Revenue (range)" 
           value={formatCurrency(rangeRevenue)}
-          isHovered={hoveredMetric === 'revenue'}
-          onHover={() => setHoveredMetric(hoveredMetric === 'revenue' ? null : 'revenue')}
+          metricKey="revenue"
         />
 
         <KeyMetricCardItem 
           title="Top Performers"
           value=""
-          isHovered={hoveredMetric === 'performers'}
-          onHover={() => setHoveredMetric(hoveredMetric === 'performers' ? null : 'performers')}
+          metricKey="performers"
         >
           <div className="space-y-2 mt-2 pt-3 border-t border-border/40">
             {topPerformersFromView.length === 0 ? (
@@ -983,8 +970,7 @@ if (allPeriods.length > 0) {
         <KeyMetricCardItem 
           title="Top Platform (range)" 
           value={topPlatform.name}
-          isHovered={hoveredMetric === 'platform'}
-          onHover={() => setHoveredMetric(hoveredMetric === 'platform' ? null : 'platform')}
+          metricKey="platform"
         >
           <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
             <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Revenue</span>
@@ -995,8 +981,7 @@ if (allPeriods.length > 0) {
         <KeyMetricCardItem 
           title="Live Sessions (range)" 
           value={totalSessionsInRange.toLocaleString()}
-          isHovered={hoveredMetric === 'sessions'}
-          onHover={() => setHoveredMetric(hoveredMetric === 'sessions' ? null : 'sessions')}
+          metricKey="sessions"
         >
           <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
             <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Avg / session</span>

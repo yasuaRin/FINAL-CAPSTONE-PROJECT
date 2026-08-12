@@ -1,7 +1,13 @@
+/* ============================================================
+   theme.css
+   SINGLE SOURCE OF TRUTH for design tokens.
+   Do NOT redefine --primary/--background/etc anywhere else.
+   index.css imports this file — it does not redeclare tokens.
+   ============================================================ */
+
 @theme {
-  /* Font Families - Public/Crimson Theme */
-  --font-sans: "Urbanist", system-ui, sans-serif;
-  --font-serif: "Playfair Display", serif;
+  --font-sans: "Urbanist", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Playfair Display", "Merriweather", Georgia, "Times New Roman", serif;
   --font-display: "Cormorant", serif;
   --font-cursive: "Dancing Script", cursive;
   --font-mono: "JetBrains Mono", "SF Mono", Monaco, "Cascadia Code", monospace;
@@ -50,28 +56,32 @@
   --color-brand-primary: var(--brand-primary);
   --color-brand-bg: var(--brand-bg);
   --color-brand-dark: var(--brand-dark);
+
+  /* Gradient stops as tokens too, so components never hardcode hex */
+  --color-primary-gradient-start: var(--primary-gradient-start);
+  --color-primary-gradient-end: var(--primary-gradient-end);
 }
 
 @layer base {
   :root {
-    /* Core Colors - Crimson/Red Theme */
+    /* ---- PUBLIC theme: Crimson/Red ---- */
     --background: #ffffff;
     --foreground: #111111;
     font-size: 16px;
-    
+
     --card: #ffffff;
     --card-foreground: #111111;
     --popover: #ffffff;
     --popover-foreground: #111111;
-    
-    /* Primary - Crimson Red */
+
     --primary: #DB1A1A;
     --primary-foreground: #ffffff;
-    
-    /* Secondary - Cyan/Teal accent */
+    --primary-gradient-start: #DB1A1A;
+    --primary-gradient-end: #9A1212;
+
     --secondary: #00f5ff;
     --secondary-foreground: #111111;
-    
+
     --muted: #f5f5f5;
     --muted-foreground: #7B809A;
     --accent: #f5f5f5;
@@ -83,7 +93,6 @@
     --ring: #DB1A1A;
     --radius: 0.75rem;
 
-    /* Sidebar - Light Mode */
     --sidebar: #ffffff;
     --sidebar-foreground: #111111;
     --sidebar-primary: #DB1A1A;
@@ -93,21 +102,26 @@
     --sidebar-border: #e5e5e5;
     --sidebar-ring: #DB1A1A;
 
-    /* Brand Colors */
     --brand-primary: #DB1A1A;
     --brand-bg: #ffffff;
     --brand-dark: #111111;
 
-    /* Chart Colors */
     --chart-1: #DB1A1A;
     --chart-2: #2E8B57;
     --chart-3: #1E90FF;
     --chart-4: #FF8C00;
     --chart-5: #9370DB;
+
+    /* fixed status colors, used everywhere (not theme-dependent) */
+    --status-success: #43A047;
+    --status-success-end: #66BB6A;
+    --status-warning: #FB8C00;
+    --status-warning-end: #FFA726;
+    --status-info: #1A73E8;
+    --status-info-end: #49A3F1;
   }
 
   .dark {
-    /* Core Colors - Dark Mode */
     --background: #0A0A0A;
     --foreground: #ffffff;
     --card: #141414;
@@ -116,6 +130,8 @@
     --popover-foreground: #ffffff;
     --primary: #DB1A1A;
     --primary-foreground: #ffffff;
+    --primary-gradient-start: #DB1A1A;
+    --primary-gradient-end: #9A1212;
     --secondary: #00f5ff;
     --secondary-foreground: #ffffff;
     --muted: #1f1f1f;
@@ -128,7 +144,6 @@
     --input: #262626;
     --ring: #DB1A1A;
 
-    /* Sidebar - Dark Mode */
     --sidebar: #000000;
     --sidebar-foreground: #ffffff;
     --sidebar-primary: #DB1A1A;
@@ -138,14 +153,38 @@
     --sidebar-border: rgba(255, 255, 255, 0.1);
     --sidebar-ring: #DB1A1A;
 
-    /* Brand Colors - Dark Mode */
     --brand-primary: #DB1A1A;
     --brand-bg: #0A0A0A;
     --brand-dark: #ffffff;
   }
+
+  /* ---- ADMIN theme: Blue ----
+     Set data-theme="admin" on <html> (not a nested div) so it also
+     reaches React portals (modals/toasts/dropdowns render on document.body,
+     which is still a descendant of <html>). See AdminLayout snippet below. */
+  html[data-theme="admin"] {
+    --primary: #2563eb;
+    --ring: #2563eb;
+    --sidebar-primary: #2563eb;
+    --sidebar-ring: #2563eb;
+    --brand-primary: #2563eb;
+    --chart-1: #2563eb;
+    --destructive: #ef4444;
+    --primary-gradient-start: #2563eb;
+    --primary-gradient-end: #1d4ed8;
+  }
 }
 
 @layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   * {
     border-color: var(--border);
     outline-color: var(--ring);
@@ -162,6 +201,8 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -171,33 +212,30 @@
     color: var(--foreground);
   }
 
-  h1 {
-    font-size: clamp(2.5rem, 5vw, 4rem);
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-  }
+  h1 { font-size: clamp(2.5rem, 5vw, 4rem); line-height: 1.1; letter-spacing: -0.02em; }
+  h2 { font-size: clamp(2rem, 4vw, 3rem); line-height: 1.2; }
+  h3 { font-size: 1.5rem; line-height: 1.4; }
+  h4 { font-size: 1.25rem; line-height: 1.5; }
 
-  h2 {
-    font-size: clamp(2rem, 4vw, 3rem);
-    line-height: 1.2;
-  }
-
-  h3 {
-    font-size: 1.5rem;
-    line-height: 1.4;
-  }
-
-  h4 {
-    font-size: 1.25rem;
-    line-height: 1.5;
-  }
-
-  .max-w-7xl {
-    max-width: 80rem;
-  }
+  .max-w-7xl { max-width: 80rem; }
 
   ::selection {
     background-color: var(--primary);
     color: white;
+  }
+
+  /* Safari/iOS: form controls keep native chrome unless reset */
+  input, textarea, select, button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

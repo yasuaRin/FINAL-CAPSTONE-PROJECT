@@ -1,194 +1,21 @@
-@layer components {
-  .dashboard-card {
-    background-color: var(--card);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    transition: all 0.3s ease;
-    position: relative;
-  }
-  
-  .dashboard-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 25px -12px rgba(0, 0, 0, 0.1);
-  }
-  
-  .card-header-gradient {
-    position: absolute;
-    top: -1rem;
-    left: 1rem;
-    right: 1rem;
-    height: 4rem;
-    border-radius: var(--radius);
-    display: flex;
-    align-items: center;
-    padding: 0 1rem;
-    color: white;
-    z-index: 10;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
-  
-  .primary-gradient {
-    background: linear-gradient(195deg, #2563eb 0%, #1d4ed8 100%);
-  }
-  
-  .secondary-gradient {
-    background: linear-gradient(195deg, #00f5ff 0%, #00c4cc 100%);
-  }
-  
-  .info-gradient {
-    background: linear-gradient(195deg, #49A3F1 0%, #1A73E8 100%);
-  }
-  
-  .success-gradient {
-    background: linear-gradient(195deg, #66BB6A 0%, #43A047 100%);
-  }
-  
-  .warning-gradient {
-    background: linear-gradient(195deg, #FFA726 0%, #FB8C00 100%);
-  }
-  
-  .error-gradient {
-    background: linear-gradient(195deg, #ef4444 0%, #dc2626 100%);
-  }
-  
-  .dark-gradient {
-    background: linear-gradient(195deg, #42424A 0%, #191919 100%);
-  }
-  
-  .dashboard-table {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: left;
-  }
-  
-  .dashboard-table th {
-    padding: 0.75rem 1rem;
-    font-size: 0.6875rem;
-    font-weight: 700;
-    color: var(--muted-foreground);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid var(--border);
-  }
-  
-  .dashboard-table td {
-    padding: 1rem;
-    font-size: 0.875rem;
-    border-bottom: 1px solid var(--border);
-    transition: background-color 0.2s ease;
-  }
-  
-  .dashboard-table tr:hover td {
-    background-color: var(--muted);
-  }
-  
-  .dashboard-table tr:last-child td {
-    border-bottom: none;
-  }
-  
-  .btn-primary {
-    background: linear-gradient(195deg, #2563eb 0%, #1d4ed8 100%);
-    color: white;
-    padding: 0.5rem 1.5rem;
-    border-radius: var(--radius);
-    font-weight: 500;
-    transition: all 0.3s ease;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  }
-  
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
-  }
-  
-  .btn-secondary {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--foreground);
-    padding: 0.5rem 1.5rem;
-    border-radius: var(--radius);
-    font-weight: 500;
-    transition: all 0.3s ease;
-  }
-  
-  .btn-secondary:hover {
-    background-color: var(--muted);
-    border-color: var(--primary);
-  }
-  
-  .input-primary {
-    background-color: var(--background);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.5rem 1rem;
-    transition: all 0.2s ease;
-  }
-  
-  .input-primary:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-  }
-  
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-  }
-  
-  .badge-primary {
-    background-color: var(--primary);
-    color: white;
-  }
-  
-  .badge-success {
-    background-color: #43A047;
-    color: white;
-  }
-  
-  .badge-warning {
-    background-color: #FB8C00;
-    color: white;
-  }
-  
-  .badge-info {
-    background-color: #1A73E8;
-    color: white;
-  }
-}
+/* ============================================================
+   Admin.css
+   Everything that used to hardcode blue here (.primary-gradient,
+   .btn-primary, .badge-primary, etc.) has been removed. Those
+   classes now live once in index.css and read var(--primary),
+   which is automatically blue whenever html[data-theme="admin"]
+   is set (see theme.css + the AdminLayout snippet in chat).
 
-@media (max-width: 768px) {
-  .dashboard-card {
-    margin-bottom: 1rem;
-  }
-  
-  .dashboard-table th,
-  .dashboard-table td {
-    padding: 0.75rem;
-  }
-}
+   That's what makes the color CONSTANT across every admin module:
+   one class definition, one variable, one place it's assigned.
 
-/* Bar Chart Hover Effects */
-.bar-actual:hover rect {
-  fill: #1d4ed8 !important;
-  transition: fill 0.2s ease;
-  cursor: pointer;
-}
+   Keep this file only for admin-specific rules that are NOT about
+   color (spacing, density, admin-only layout tweaks). Example below;
+   delete if you don't need it, or delete this file's import entirely
+   if you have nothing left to put here.
+   ============================================================ */
 
-.bar-forecast:hover rect {
-  fill: #1e40af !important;
-  transition: fill 0.2s ease;
-  cursor: pointer;
-}
-
-.recharts-bar-rectangle:hover {
-  filter: none !important;
-}
-
-.recharts-bar-rectangle:hover rect {
-  stroke: none !important;
-  opacity: 1 !important;
+[data-layout="admin"] .dashboard-table th,
+[data-layout="admin"] .dashboard-table td {
+  padding: 0.6rem 0.9rem; /* slightly denser tables in admin views */
 }

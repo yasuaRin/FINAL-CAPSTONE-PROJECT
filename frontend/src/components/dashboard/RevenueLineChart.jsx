@@ -71,7 +71,7 @@ const EmptyChart = ({ onRerunModel, isRetraining, hasBrandFilter }) => (
     {!hasBrandFilter && (
       <button onClick={onRerunModel} disabled={isRetraining} style={{
         display: 'inline-flex', alignItems: 'center', gap: '6px',
-        padding: '8px 16px', background: '#2563eb', color: '#fff',
+        padding: '8px 16px', background: 'var(--primary)', color: '#fff',
         border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
         cursor: isRetraining ? 'not-allowed' : 'pointer', opacity: isRetraining ? 0.7 : 1,
       }}>
@@ -112,18 +112,20 @@ const ForecastDot = (props) => {
 };
 
 // ── Filter Chip Component ────────────────────────────────────────────────────
+// Was a standalone rgba(59,130,246,...) blue, slightly different from the
+// buttons' #2563eb — now both derive from var(--primary), so they match.
 const FilterChip = ({ brand, onRemove }) => (
   <span style={{
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
     padding: '4px 10px',
-    background: 'rgba(59, 130, 246, 0.1)',
-    border: '1px solid rgba(59, 130, 246, 0.2)',
+    background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+    border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
     borderRadius: '999px',
     fontSize: '11px',
     fontWeight: 500,
-    color: '#2563eb',
+    color: 'var(--primary)',
   }}>
     <span>{brand}</span>
     <button
@@ -136,7 +138,7 @@ const FilterChip = ({ brand, onRemove }) => (
         background: 'none',
         border: 'none',
         cursor: 'pointer',
-        color: '#2563eb',
+        color: 'var(--primary)',
         opacity: 0.6,
         transition: 'opacity 0.15s',
         borderRadius: '50%',
@@ -232,7 +234,7 @@ export const RevenueLineChart = ({
         </div>
         <button onClick={onRerunModel} disabled={isRetraining} style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
-          padding: '7px 14px', background: '#2563eb', color: '#fff',
+          padding: '7px 14px', background: 'var(--primary)', color: '#fff',
           border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: 600,
           cursor: isRetraining ? 'not-allowed' : 'pointer',
           opacity: isRetraining ? 0.7 : 1, transition: 'background 0.15s', flexShrink: 0,
