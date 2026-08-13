@@ -414,13 +414,13 @@ export default function Team() {
         <AnimatePresence>
           {notification && (
             <motion.div
-              initial={{ opacity: 0, y: -20, x: "-50%" }} animate={{ opacity: 1, y: 20, x: "-50%" }} exit={{ opacity: 0, y: -20, x: "-50%" }}
-              style={{ position: "fixed", top: 4, left: "50%", zIndex: 100, background: "var(--card)", color: "var(--foreground)", padding: "12px 24px", borderRadius: 16, boxShadow: "0 8px 40px rgba(0,0,0,0.18)", display: "flex", alignItems: "center", gap: 12, border: "1px solid var(--border)", minWidth: 260 }}
+              initial={{ opacity: 0, y: -16, x: "-50%" }} animate={{ opacity: 1, y: 20, x: "-50%" }} exit={{ opacity: 0, y: -16, x: "-50%" }}
+              style={{ position: "fixed", top: 4, left: "50%", zIndex: 100, background: "#0d1117", color: "#fff", padding: "16px 24px", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.4)", display: "flex", alignItems: "center", gap: 16, border: "1px solid rgba(255,255,255,0.08)", minWidth: 260 }}
             >
-              <div style={{ borderRadius: "50%", padding: 4, display: "flex", alignItems: "center", justifyContent: "center", background: notification.includes("❌") ? "#ef4444" : "#22c55e", flexShrink: 0 }}>
-                <CheckCircle2 size={16} color="white" />
+              <div style={{ width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: notification.includes("❌") ? "rgba(239,68,68,0.15)" : "rgba(34,197,94,0.15)", flexShrink: 0 }}>
+                <CheckCircle2 size={20} color={notification.includes("❌") ? "#ef4444" : "#22c55e"} />
               </div>
-              <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em" }}>{notification}</span>
+              <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>{notification}</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -553,14 +553,14 @@ export default function Team() {
                     <div style={{ padding: "16px 20px", textAlign: "right" }}>
                       {canEdit(member) && (
                         <div style={{ display: "inline-flex", gap: 6 }}>
-                          <button onClick={() => openForm(member)} style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(219,26,26,0.08)", cursor: "pointer", color: "#DB1A1A", transition: "all 0.15s", display: "flex", alignItems: "center", justifyContent: "center" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.2)"; e.currentTarget.style.transform = "scale(1.12)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.08)"; e.currentTarget.style.transform = "scale(1)"; }}>
+                          <button onClick={() => openForm(member)} style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(37,99,235,0.08)", cursor: "pointer", color: "#2563eb", transition: "all 0.15s", display: "flex", alignItems: "center", justifyContent: "center" }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(37,99,235,0.2)"; e.currentTarget.style.transform = "scale(1.12)"; e.currentTarget.style.boxShadow = "0 0 14px rgba(37,99,235,0.5)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(37,99,235,0.08)"; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}>
                             <Edit3 size={13} />
                           </button>
                           <button onClick={() => setDeleteTarget(member)} style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(219,26,26,0.08)", cursor: "pointer", color: "#DB1A1A", transition: "all 0.15s", display: "flex", alignItems: "center", justifyContent: "center" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.2)"; e.currentTarget.style.transform = "scale(1.12)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.08)"; e.currentTarget.style.transform = "scale(1)"; }}>
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.2)"; e.currentTarget.style.transform = "scale(1.12)"; e.currentTarget.style.boxShadow = "0 0 14px rgba(219,26,26,0.5)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(219,26,26,0.08)"; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}>
                             <Trash2 size={13} />
                           </button>
                         </div>
@@ -621,20 +621,20 @@ export default function Team() {
         {deleteTarget && (
           <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
             <div onClick={() => setDeleteTarget(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-            <div style={{ position: "relative", zIndex: 10, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: 32, maxWidth: 420, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center" }}>
-                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(219,26,26,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <AlertTriangle size={24} color="var(--primary)" />
+            <div style={{ position: "relative", zIndex: 10, background: "var(--background)", border: "1px solid var(--border)", borderRadius: 20, padding: "24px 24px", maxWidth: 400, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center" }}>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(219,26,26,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <AlertTriangle size={26} color="#DB1A1A" />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>Delete Member?</h3>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>Delete Member?</h3>
                   <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "8px 0 0" }}>
-                    This will permanently remove <strong style={{ color: "var(--foreground)" }}>{deleteTarget.name}</strong> from the system.
+                    Permanently remove <strong style={{ color: "var(--foreground)" }}>{deleteTarget.name}</strong> from the system.
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: 12, width: "100%" }}>
-                  <button onClick={() => setDeleteTarget(null)} style={cancelBtn}>Cancel</button>
-                  <button onClick={handleDelete} style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "#DB1A1A", color: "#ffffff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Confirm</button>
+                  <button onClick={() => setDeleteTarget(null)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: "1px solid var(--border)", background: "transparent", color: "var(--foreground)", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>Cancel</button>
+                  <button onClick={handleDelete} style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: "none", background: "#DB1A1A", color: "#ffffff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Confirm</button>
                 </div>
               </div>
             </div>

@@ -41,24 +41,29 @@ function Toast({ message, type, visible }) {
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -12 }}
+          initial={{ opacity: 0, y: -16, x: '-50%' }}
+          animate={{ opacity: 1, y: 16, x: '-50%' }}
+          exit={{ opacity: 0, y: -16, x: '-50%' }}
           style={{
-            position: 'fixed', top: 16, left: 0, right: 0, margin: '0 auto',
-            width: 'fit-content', maxWidth: '90vw',
-            zIndex: 200, background: 'var(--bg)', border: '1px solid var(--border)',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.12)', color: 'var(--fg)',
-            padding: '10px 20px', borderRadius: 14,
-            display: 'flex', alignItems: 'center', gap: 10,
-            fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap',
+            position: 'fixed', top: 4, left: '50%', zIndex: 200,
+            background: '#0d1117', color: '#fff',
+            padding: '16px 24px', borderRadius: 16,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+            display: 'flex', alignItems: 'center', gap: 16,
+            border: '1px solid rgba(255,255,255,0.08)', minWidth: 260,
           }}
         >
           <div style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: type === 'error' ? 'var(--accent)' : '#22c55e',
-          }} />
-          {message}
+            width: 36, height: 36, borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: type === 'error' ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)',
+            flexShrink: 0,
+          }}>
+            <CheckCircle2 size={20} color={type === 'error' ? '#ef4444' : '#22c55e'} />
+          </div>
+          <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
+            {message}
+          </span>
         </motion.div>
       )}
     </AnimatePresence>
@@ -282,7 +287,7 @@ export default function ProfileSettings() {
 
       setProfileSnapshot({ ...profile });
       setSaved(true); setIsEditing(false);
-      showToast('Profile updated successfully.');
+      showToast('Profile update successfully');
       setTimeout(() => setSaved(false), 3000);
     } catch {
       showToast('Failed to update profile.', 'error');
