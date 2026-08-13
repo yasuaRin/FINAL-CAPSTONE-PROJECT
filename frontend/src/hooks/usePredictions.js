@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../services/supabase';
 
-const ML_API_URL = 'http://localhost:3000';
+const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:3000';
 
 export const usePredictions = () => {
   const [futurePredictions, setFuturePredictions] = useState([]);

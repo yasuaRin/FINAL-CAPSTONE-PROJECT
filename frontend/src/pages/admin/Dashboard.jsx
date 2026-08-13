@@ -186,7 +186,7 @@ const KpiCard = ({ title, value, icon: Icon, badge, badgeStyle, action, onAction
       <div className="flex justify-between items-start gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
         {Icon && (
-          <div className="p-1.5 rounded-lg bg-[#EE4D2D]/10 text-[#EE4D2D]">
+          <div className="p-1.5 rounded-lg bg-blue-600/10 text-blue-600">
             <Icon size={14} />
           </div>
         )}
@@ -640,7 +640,6 @@ if (!isRerunAborted()) updateRerunToast('Model is currently being trained. \nPle
     [selectedBrand, brands, notify]
   );
 
-  // ✅ NEW: Handle clearing brand filter from the chart's X button
   const handleClearBrandFilter = useCallback(() => {
     console.log('✅ Clearing brand filter from Dashboard');
     setSelectedBrand(null);
@@ -657,7 +656,6 @@ if (!isRerunAborted()) updateRerunToast('Model is currently being trained. \nPle
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
         <div className="w-11 h-11 border-3 border-muted border-t-[#2563eb] rounded-full animate-spin" />
         <p className="text-muted-foreground text-sm">Loading dashboard data...</p>
-        <p className="text-[10px] text-muted-foreground opacity-70">This may take a moment</p>
       </div>
     );
   }
@@ -703,7 +701,7 @@ if (!isRerunAborted()) updateRerunToast('Model is currently being trained. \nPle
           value={formatCurrency(totalRevenue)}
           icon={TrendingUp}
           badge={selectedBrandName ? selectedBrandName : 'All Time'}
-          badgeStyle="bg-[#EE4D2D]/10 text-[#EE4D2D]"
+          badgeStyle="bg-blue-600/10 text-blue-600"
           action={!selectedBrand ? 'View Analysis' : ''}
           onAction={() => !selectedBrand && navigate('/admin/revenue')}
         />

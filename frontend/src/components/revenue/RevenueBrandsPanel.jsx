@@ -15,7 +15,7 @@ const BASE_STYLE = `
   }
   
   .brands-panel-header {
-    padding: 16px 20px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--border);
     background: rgba(0,0,0,0.02);
     flex-shrink: 0;
@@ -24,40 +24,43 @@ const BASE_STYLE = `
   .brands-panel-body {
     flex: 1;
     overflow-y: auto;
-    padding: 16px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     -webkit-overflow-scrolling: touch;
+    min-height: 0;
   }
   
+  /* Scrollbar matching RevenueSessionsTable - always visible */
   .brands-panel-body::-webkit-scrollbar {
-    width: 4px;
+    width: 6px;
+    height: 6px;
   }
   
   .brands-panel-body::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.03);
-    border-radius: 4px;
+    background: rgba(0,0,0,0.05);
+    border-radius: 8px;
   }
   
   .brands-panel-body::-webkit-scrollbar-thumb {
-    background: rgba(37,99,235,0.2);
-    border-radius: 4px;
+    background: rgba(37,99,235,0.3);
+    border-radius: 8px;
   }
   
   .brands-panel-body::-webkit-scrollbar-thumb:hover {
-    background: rgba(37,99,235,0.4);
+    background: rgba(37,99,235,0.5);
   }
   
-  /* Firefox scrollbar */
+  /* Firefox scrollbar matching RevenueSessionsTable */
   .brands-panel-body {
     scrollbar-width: thin;
-    scrollbar-color: rgba(37,99,235,0.2) rgba(0,0,0,0.03);
+    scrollbar-color: rgba(37,99,235,0.3) rgba(0,0,0,0.05);
   }
   
   .brand-card {
-    padding: 16px;
-    border-radius: 16px;
+    padding: 12px 14px;
+    border-radius: 14px;
     border: 1px solid var(--border);
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     position: relative;
@@ -66,6 +69,7 @@ const BASE_STYLE = `
     width: 100%;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    flex-shrink: 0;
   }
   
   .brand-card-interactive {
@@ -89,26 +93,29 @@ const BASE_STYLE = `
   }
   
   .brand-name {
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 600;
     transition: color 0.15s ease;
     word-wrap: break-word;
     overflow-wrap: break-word;
     word-break: break-word;
+    line-height: 1.3;
   }
   
   .brand-revenue {
-    font-size: 16px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
     transition: color 0.15s ease;
     word-wrap: break-word;
     overflow-wrap: break-word;
     word-break: break-word;
+    line-height: 1.3;
+    margin-top: 2px;
   }
   
   .brand-meta {
-    margin-top: 12px;
-    font-size: 11px;
+    margin-top: 8px;
+    font-size: 10px;
     color: var(--muted-foreground);
   }
   
@@ -129,12 +136,12 @@ const BASE_STYLE = `
   
   .brand-icon {
     flex-shrink: 0;
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
   }
   
   .brand-no-sessions {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--muted-foreground);
     margin: 0;
   }
@@ -142,69 +149,13 @@ const BASE_STYLE = `
   /* Responsive adjustments */
   @media (max-width: 1024px) {
     .brands-panel-header {
-      padding: 14px 16px;
-    }
-    
-    .brand-card {
-      padding: 14px 16px;
-    }
-    
-    .brand-name {
-      font-size: 16px;
-    }
-    
-    .brand-revenue {
-      font-size: 15px;
-    }
-  }
-  
-  @media (max-width: 640px) {
-    .brands-panel-header {
-      padding: 12px 14px;
+      padding: 10px 14px;
     }
     
     .brands-panel-header h3 {
-      font-size: 10px;
+      font-size: 9px;
     }
     
-    .brands-panel-body {
-      padding: 12px;
-      gap: 10px;
-    }
-    
-    .brand-card {
-      padding: 12px 14px;
-      border-radius: 14px;
-    }
-    
-    .brand-name {
-      font-size: 15px;
-    }
-    
-    .brand-revenue {
-      font-size: 14px;
-    }
-    
-    .brand-meta {
-      font-size: 10px;
-      margin-top: 10px;
-    }
-    
-    .brand-meta-item {
-      gap: 3px;
-    }
-    
-    .brand-icon {
-      width: 7px;
-      height: 7px;
-    }
-    
-    .brand-no-sessions {
-      font-size: 10px;
-    }
-  }
-  
-  @media (max-width: 480px) {
     .brands-panel-body {
       padding: 10px;
       gap: 8px;
@@ -216,11 +167,109 @@ const BASE_STYLE = `
     }
     
     .brand-name {
-      font-size: 14px;
+      font-size: 13px;
     }
     
     .brand-revenue {
-      font-size: 13px;
+      font-size: 12px;
+    }
+    
+    .brand-meta {
+      font-size: 9px;
+      margin-top: 6px;
+    }
+    
+    .brand-icon {
+      width: 6px;
+      height: 6px;
+    }
+    
+    .brand-no-sessions {
+      font-size: 9px;
+    }
+  }
+  
+  @media (max-width: 640px) {
+    .brands-panel-header {
+      padding: 8px 12px;
+    }
+    
+    .brands-panel-header h3 {
+      font-size: 8px;
+      letter-spacing: 0.15em;
+    }
+    
+    .brands-panel-body {
+      padding: 8px;
+      gap: 6px;
+    }
+    
+    .brand-card {
+      padding: 8px 10px;
+      border-radius: 10px;
+    }
+    
+    .brand-name {
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .brand-revenue {
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 1px;
+    }
+    
+    .brand-meta {
+      font-size: 8px;
+      margin-top: 5px;
+    }
+    
+    .brand-meta-item {
+      gap: 3px;
+    }
+    
+    .brand-icon {
+      width: 5px;
+      height: 5px;
+    }
+    
+    .brand-no-sessions {
+      font-size: 8px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .brands-panel-body {
+      padding: 6px;
+      gap: 5px;
+    }
+    
+    .brand-card {
+      padding: 6px 8px;
+      border-radius: 8px;
+    }
+    
+    .brand-name {
+      font-size: 11px;
+    }
+    
+    .brand-revenue {
+      font-size: 10px;
+    }
+    
+    .brand-meta {
+      font-size: 7px;
+      margin-top: 4px;
+    }
+    
+    .brand-icon {
+      width: 4px;
+      height: 4px;
+    }
+    
+    .brand-no-sessions {
+      font-size: 7px;
     }
   }
 `;
@@ -235,14 +284,14 @@ const RevenueBrandsPanel = ({
   const [hoveredItem, setHoveredItem] = useState(null);
 
   return (
-    <div className="lg:col-span-1 border border-border bg-card rounded-3xl overflow-hidden shadow-sm flex flex-col h-[700px] w-full">
+    <div className="lg:col-span-1 border border-border bg-card rounded-3xl overflow-hidden shadow-sm flex flex-col" style={{ height: '700px', width: '100%' }}>
       <style>{BASE_STYLE}</style>
       
       <div className="brands-panel-wrapper">
         {/* Header */}
         <div className="brands-panel-header">
           <div className="flex items-center gap-2">
-            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-foreground">
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground">
               Brand Performance Overview
             </h3>
           </div>
@@ -270,8 +319,8 @@ const RevenueBrandsPanel = ({
                     : 'brand-card-disabled'
                 }`}
                 style={{
-                  transform: isHovered && isInteractive ? "translateY(-4px)" : "translateY(0)",
-                  boxShadow: isHovered && isInteractive ? "0 12px 32px rgba(37,99,235,0.15), 0 4px 12px rgba(0,0,0,0.08)" : "none",
+                  transform: isHovered && isInteractive ? "translateY(-3px)" : "translateY(0)",
+                  boxShadow: isHovered && isInteractive ? "0 8px 24px rgba(37,99,235,0.12), 0 4px 8px rgba(0,0,0,0.06)" : "none",
                   borderColor: isHovered && isInteractive ? "rgba(37,99,235,0.3)" : "var(--border)",
                   backgroundColor: isHovered && isInteractive ? "rgba(37,99,235,0.02)" : "transparent",
                 }}
@@ -303,13 +352,13 @@ const RevenueBrandsPanel = ({
                       
                       <div className="brand-meta">
                         <div className="brand-meta-item">
-                          <Calendar size={8} className="brand-icon text-primary" />
+                          <Calendar size={7} className="brand-icon text-primary" />
                           <span>
                             <strong>Active:</strong> {insight.overallRange}
                           </span>
                         </div>
                         <div className="brand-meta-item">
-                          <TrendingUp size={8} className="brand-icon text-primary" />
+                          <TrendingUp size={7} className="brand-icon text-primary" />
                           <span>
                             <strong>Peak {insight.peakPeriod}:</strong>{" "}
                             {formatCurrency(insight.bestPeriodRevenue || insight.peakRevenue)}

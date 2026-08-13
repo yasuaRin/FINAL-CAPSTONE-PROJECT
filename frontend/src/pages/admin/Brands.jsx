@@ -339,7 +339,7 @@ export default function Brands() {
       <div id="brands-report-container" className="flex items-center justify-center h-[60vh] gap-3 flex-col">
         <style>{BASE_STYLE}</style>
         <div className="w-10 h-10 border-3 border-border border-t-[#2563eb] rounded-full animate-spin" />
-        <p className="text-muted-foreground text-sm font-medium">Loading brands...</p>
+         <p className="text-muted-foreground text-sm">Loading brands data...</p>
       </div>
     );
   }

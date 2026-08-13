@@ -1,6 +1,6 @@
-﻿﻿import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+﻿import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Target, X, Mail, Navigation, Filter, Loader2, Zap, Radar, Globe, LocateFixed, Shield, Activity, Layers, MapPin, Info, ExternalLink, Check, Edit3, Trash2, Star, Phone, Clock, Send, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Target, X, Mail, Navigation, Filter, Loader2, Zap, Radar, Globe, LocateFixed, Shield, Activity, Layers, MapPin, Info, ExternalLink, Check, Edit3, Trash2, Star, Phone, Clock, Send, CheckCircle2 } from "lucide-react";
 import { INDONESIAN_PROVINCES, PROVINCE_COORDINATES } from "../../constants";
 import { usePartners } from "../../contexts/PartnerContext";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
@@ -15,7 +15,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-const INDUSTRIES = ["Fashion", "F&B", "Beauty", "Crafts", "Electronics", "Health", "Home & Living", "Grocery", "Sports", "Toys & Kids"];
+const INDUSTRIES = ["Fashion", "F&B", "Beauty", "Crafts", "Electronics", "Health", "Home & Living", "Grocery", "Sports", "Toys & Kids",];
 
 function estimatePotentialScore(place) {
   let score = 50;
@@ -121,8 +121,6 @@ function LeadsInner() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   // Mobile detail panel: show as bottom sheet on mobile
   const [isMobile, setIsMobile] = useState(false);
-  const [successToast, setSuccessToast] = useState(null);
-  const [toast, setToast] = useState(null);
 
   const loadingInsightIds = useRef(new Set());
   const mapSectionRef = useRef(null);
@@ -141,20 +139,6 @@ function LeadsInner() {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
-
-  // Auto-dismiss success toast
-  useEffect(() => {
-    if (!successToast) return;
-    const t = setTimeout(() => setSuccessToast(null), 3000);
-    return () => clearTimeout(t);
-  }, [successToast]);
-
-  // Auto-dismiss info toast
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3000);
-    return () => clearTimeout(t);
-  }, [toast]);
 
   const filteredBrands = statusFilter === "All" ? partneredBrands : partneredBrands.filter((b) => b.status === statusFilter);
   const totalPages = Math.max(1, Math.ceil(filteredBrands.length / pageSize));
@@ -702,7 +686,7 @@ Be direct. No fluff. No percentages.`;
       {selectedLead._loading ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-muted-foreground">
           <div className="w-10 h-10 border-4 border-[#2563eb]/20 border-t-[#2563eb] rounded-full animate-spin" />
-          <p className="text-xs font-bold uppercase tracking-widest">Loading business details...</p>
+           <p className="text-muted-foreground text-sm">Loading partnership data...</p>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -856,13 +840,9 @@ Be direct. No fluff. No percentages.`;
         {/* Filters — stack on mobile, row on desktop */}
         <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
           {/* Province */}
-          <div className="flex items-center gap-2 bg-[#2563eb] px-4 py-2 rounded-full flex-1 sm:flex-none transition-colors">
-            <MapPin size={13} className="text-white shrink-0" />
-            <select
-              value={locationFilter}
-              onChange={handleLocationChange}
-              className="bg-transparent text-xs font-bold uppercase outline-none w-full sm:w-36 cursor-pointer transition-colors appearance-none min-w-0 text-white [&>option]:text-foreground"
-            >
+          <div className="flex items-center gap-2 bg-muted/50 border border-border px-3 py-2 rounded-md flex-1 sm:flex-none">
+            <MapPin size={13} className="text-muted-foreground shrink-0" />
+            <select value={locationFilter} onChange={handleLocationChange} className="bg-transparent text-xs font-semibold outline-none w-full sm:w-36 cursor-pointer hover:text-[#2563eb] transition-colors appearance-none min-w-0">
               <option value="">ALL PROVINCES</option>
               {INDONESIAN_PROVINCES.map((p) => (
                 <option key={p} value={p}>
@@ -873,13 +853,9 @@ Be direct. No fluff. No percentages.`;
           </div>
 
           {/* Sector + Potential — two separate selects on mobile */}
-          <div className="flex items-center gap-2 bg-[#2563eb] px-4 py-2 rounded-full flex-1 sm:flex-none transition-colors">
-            <Filter size={13} className="text-white shrink-0" />
-            <select
-              value={industryFilter}
-              onChange={handleIndustryChange}
-              className="bg-transparent text-xs font-bold uppercase outline-none cursor-pointer transition-colors appearance-none min-w-0 text-white [&>option]:text-foreground"
-            >
+          <div className="flex items-center gap-2 bg-muted/50 border border-border px-3 py-2 rounded-md flex-1 sm:flex-none">
+            <Filter size={13} className="text-muted-foreground shrink-0" />
+            <select value={industryFilter} onChange={handleIndustryChange} className="bg-transparent text-xs font-semibold uppercase outline-none cursor-pointer hover:text-[#2563eb] transition-colors appearance-none min-w-0">
               <option value="All">All Sectors</option>
               {INDUSTRIES.map((i) => (
                 <option key={i} value={i}>
@@ -889,12 +865,12 @@ Be direct. No fluff. No percentages.`;
             </select>
           </div>
 
-          <div className="flex items-center gap-2 bg-[#2563eb] px-4 py-2 rounded-full flex-1 sm:flex-none transition-colors">
-            <Activity size={13} className="text-white shrink-0" />
+          <div className="flex items-center gap-2 bg-muted/50 border border-border px-3 py-2 rounded-md flex-1 sm:flex-none">
+            <Activity size={13} className="text-muted-foreground shrink-0" />
             <select
               value={potentialFilter}
               onChange={(e) => setPotentialFilter(e.target.value)}
-              className="bg-transparent text-xs font-bold uppercase outline-none cursor-pointer transition-colors appearance-none min-w-0 text-white [&>option]:text-foreground"
+              className="bg-transparent text-xs font-semibold uppercase outline-none cursor-pointer hover:text-[#2563eb] transition-colors appearance-none min-w-0"
             >
               <option value="All">All Potential</option>
               <option value="High">HOT (Red)</option>
@@ -1094,18 +1070,22 @@ Be direct. No fluff. No percentages.`;
                         gridTemplateColumns: "52px 2fr 1fr 1.2fr 1fr 1fr 1.2fr 110px",
                         alignItems: "center",
                         borderRadius: 12,
+                        border: "1px solid var(--border)",
                         background: "var(--background)",
-                        border: "2px solid transparent",
                         cursor: hasCoords ? "pointer" : "default",
                         transition: "transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, background 0.2s",
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = "translateY(-4px)";
-                        e.currentTarget.style.borderColor = "#DB1A1A";
+                        e.currentTarget.style.boxShadow = "0 12px 32px rgba(219,26,26,0.15),0 4px 12px rgba(0,0,0,0.08)";
+                        e.currentTarget.style.borderColor = "rgba(219,26,26,0.3)";
+                        e.currentTarget.style.background = "rgba(219,26,26,0.02)";
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = "";
-                        e.currentTarget.style.borderColor = "transparent";
+                        e.currentTarget.style.boxShadow = "";
+                        e.currentTarget.style.borderColor = "var(--border)";
+                        e.currentTarget.style.background = "var(--background)";
                       }}
                     >
                       <div style={{ padding: "18px 14px" }}>
@@ -1255,7 +1235,6 @@ Be direct. No fluff. No percentages.`;
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setEditingId(null);
-                                setSuccessToast("Status updated successfully");
                               }}
                               style={actionBtn("rgba(34,197,94,0.1)", "#22c55e")}
                               title="Save"
@@ -1264,11 +1243,11 @@ Be direct. No fluff. No percentages.`;
                             </button>
                           ) : (
                             <button
-                             onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingId(brand.id);
-                            }}
-                              style={actionBtn("rgba(37,99,235,0.08)", "#2563eb")}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingId(brand.id);
+                              }}
+                              style={actionBtn("rgba(219,26,26,0.08)", "#DB1A1A")}
                               title="Edit"
                             >
                               <Edit3 size={13} />
@@ -1385,7 +1364,6 @@ Be direct. No fluff. No percentages.`;
                             onClick={(e) => {
                               e.stopPropagation();
                               setEditingId(null);
-                              setSuccessToast("Status updated successfully");
                             }}
                             style={actionBtn("rgba(34,197,94,0.1)", "#22c55e")}
                           >
@@ -1396,9 +1374,8 @@ Be direct. No fluff. No percentages.`;
                             onClick={(e) => {
                               e.stopPropagation();
                               setEditingId(brand.id);
-                              setToast(`Mode edit aktif untuk "${brand.name}" — pilih status baru lalu klik ✓ untuk simpan.`);
                             }}
-                            style={actionBtn("rgba(37,99,235,0.08)", "#2563eb")}
+                            style={actionBtn("rgba(99,102,241,0.08)", "#6366f1")}
                           >
                             <Edit3 size={13} />
                           </button>
@@ -1493,8 +1470,8 @@ Be direct. No fluff. No percentages.`;
           <div onClick={() => setDeleteConfirm(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
           <div style={{ position: "relative", zIndex: 10, background: "var(--background)", border: "1px solid var(--border)", borderRadius: 20, padding: "24px 24px", maxWidth: 400, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center" }}>
-              <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(219,26,26,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <AlertTriangle size={26} color="#DB1A1A" />
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(219,26,26,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Trash2 size={22} color="#DB1A1A" />
               </div>
               <div>
                 <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }} className="text-foreground">
@@ -1504,10 +1481,10 @@ Be direct. No fluff. No percentages.`;
                   Permanently remove <strong className="text-foreground">{deleteConfirm.name}</strong> from the pipeline.
                 </p>
               </div>
-              <div style={{ display: "flex", gap: 12, width: "100%" }}>
+              <div style={{ display: "flex", gap: 10, width: "100%" }}>
                 <button
                   onClick={() => setDeleteConfirm(null)}
-                  style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: "1px solid var(--border)", background: "transparent", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+                  style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
                   className="text-foreground"
                 >
                   Cancel
@@ -1518,9 +1495,8 @@ Be direct. No fluff. No percentages.`;
                     removePartner(deleteConfirm.id);
                     if (editingId === deleteConfirm.id) setEditingId(null);
                     setDeleteConfirm(null);
-                    setSuccessToast("Partner deleted successfully");
                   }}
-                  style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: "none", background: "#DB1A1A", color: "white", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+                  style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: "#DB1A1A", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
                 >
                   Confirm
                 </button>
@@ -1649,42 +1625,12 @@ vidhelp.com`)}`}
         )}
       </AnimatePresence>
 
-      {/* ── Success toast (top) ── */}
-      <AnimatePresence>
-        {successToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-4 bg-[#0d1117] border border-border/60 px-6 py-4 rounded-2xl shadow-2xl"
-          >
-            <div className="w-9 h-9 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
-              <CheckCircle2 size={20} className="text-emerald-500" />
-            </div>
-            <span className="text-white text-base font-semibold whitespace-nowrap">{successToast}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Toast notification ── */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 bg-amber-500 text-white px-4 py-3 rounded-lg shadow-xl text-xs font-bold max-w-[90vw]"
-          >
-            <Info size={16} className="shrink-0" />
-            {toast}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <style>{`
         .leaflet-container { background: #f0f2f5 !important; }
         .custom-marker { background: transparent !important; border: none !important; }
         .custom-marker:hover > div { transform: scale(1.15) !important; transition: transform 0.2s ease !important; }
+        .leads-table-row:hover .lead-name { color: #DB1A1A !important; }
+        .leads-table-row:hover .lead-row-number { background: #DB1A1A !important; color: #fff !important; }
 
         /* Prevent horizontal overflow on small screens */
         #leads-report-container { overflow-x: hidden; }

@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Edit2, Trash2, Plus, X,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, ChevronDown,
 } from 'lucide-react';
 
 const BASE_STYLE = `
@@ -56,23 +56,23 @@ const BASE_STYLE = `
   .revenue-grid-row {
     display: grid;
     gap: 4px;
-    min-width: 900px;
-    grid-template-columns: 50px 100px 70px 1fr 1fr 90px 85px 85px 110px 90px;
+    min-width: 920px;
+    grid-template-columns: 50px 100px 70px 1fr 1fr 90px 105px 85px 110px 90px;
   }
   
   @media (max-width: 1200px) {
     .revenue-grid-header,
     .revenue-grid-row {
-      grid-template-columns: 45px 90px 65px 1fr 1fr 80px 75px 75px 100px 80px;
-      min-width: 800px;
+      grid-template-columns: 45px 90px 65px 1fr 1fr 80px 95px 75px 100px 80px;
+      min-width: 820px;
     }
   }
   
   @media (max-width: 640px) {
     .revenue-grid-header,
     .revenue-grid-row {
-      grid-template-columns: 40px 80px 60px 1fr 1fr 70px 65px 65px 90px 70px;
-      min-width: 700px;
+      grid-template-columns: 40px 80px 60px 1fr 1fr 70px 85px 65px 90px 70px;
+      min-width: 720px;
       gap: 2px;
     }
   }
@@ -146,7 +146,7 @@ const BASE_STYLE = `
     align-items: center;
     justify-content: center;
     gap: 4px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     transition: all 0.15s ease;
     -webkit-tap-highlight-color: transparent;
@@ -164,35 +164,100 @@ const BASE_STYLE = `
     color: #fff;
   }
   
-  .revenue-select {
+  /* Custom "Show entries" dropdown — replaces native <select> so the menu
+     always opens downward, regardless of browser/OS default placement. */
+  .revenue-select-wrapper {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .revenue-select-trigger {
     padding: 6px 10px;
     border-radius: 8px;
     border: 1px solid var(--border);
     background: var(--bg);
     color: var(--foreground);
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     outline: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='currentColor' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 8px center;
-    padding-right: 28px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    min-height: 32px;
   }
   
-  .revenue-select:focus {
+  .revenue-select-trigger:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+  }
+  
+  .revenue-select-trigger-icon {
+    display: inline-flex;
+    transition: transform 0.15s ease;
+    flex-shrink: 0;
+  }
+  
+  .revenue-select-trigger-icon-open {
+    transform: rotate(180deg);
+  }
+  
+  .revenue-select-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    bottom: auto;
+    min-width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    z-index: 50;
+    overflow: hidden;
+    padding: 4px;
+  }
+  
+  .revenue-select-option {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--foreground);
+    cursor: pointer;
+    white-space: nowrap;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    display: block;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  
+  .revenue-select-option:hover,
+  .revenue-select-option:focus {
+    background: rgba(37,99,235,0.1);
+    color: var(--primary);
+  }
+  
+  .revenue-select-option-active {
+    background: var(--primary);
+    color: #fff;
+  }
+  
+  .revenue-select-option-active:hover,
+  .revenue-select-option-active:focus {
+    background: var(--primary);
+    color: #fff;
   }
   
   .revenue-badge {
     display: inline-block;
     padding: 3px 10px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -206,7 +271,7 @@ const BASE_STYLE = `
     width: 28px;
     height: 28px;
     border-radius: 8px;
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 700;
     transition: background 0.18s ease, color 0.18s ease;
     flex-shrink: 0;
@@ -216,7 +281,7 @@ const BASE_STYLE = `
     .revenue-row-number {
       width: 26px;
       height: 26px;
-      font-size: 12px;
+      font-size: 10px;
     }
   }
   
@@ -234,6 +299,14 @@ const BASE_STYLE = `
     }
   }
 `;
+
+const ROW_LIMIT_OPTIONS = [
+  { value: 10, label: '10' },
+  { value: 20, label: '20' },
+  { value: 50, label: '50' },
+  { value: 100, label: '100' },
+  { value: 'all', label: 'All' },
+];
 
 function getPageList(currentPage, totalPages) {
   if (totalPages <= 7) {
@@ -271,10 +344,29 @@ const RevenueSessionsTable = ({
   loading = false,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [showLimitMenu, setShowLimitMenu] = useState(false);
+  const limitDropdownRef = useRef(null);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [rowLimit, searchTerm, tableFilter.brandId, tableFilter.period, sortCol, sortDir]);
+
+  // Close the custom "entries" dropdown on outside click/tap, works the
+  // same across mouse and touch input.
+  useEffect(() => {
+    if (!showLimitMenu) return;
+    const handleOutside = (e) => {
+      if (limitDropdownRef.current && !limitDropdownRef.current.contains(e.target)) {
+        setShowLimitMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('touchstart', handleOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+    };
+  }, [showLimitMenu]);
 
   const totalCount = sessionIntelligence.length;
   const showingAll = rowLimit === null;
@@ -319,6 +411,14 @@ const RevenueSessionsTable = ({
     if (platform === 'TikTok') return { background: '#000000', color: '#fff' };
     if (platform === 'Shopee') return { background: '#f97316', color: '#fff' };
     return { background: '#3b82f6', color: '#fff' };
+  };
+
+  const currentLimitValue = showingAll ? 'all' : rowLimit;
+  const currentLimitLabel = ROW_LIMIT_OPTIONS.find((o) => o.value === currentLimitValue)?.label || currentLimitValue;
+
+  const handleSelectLimit = (value) => {
+    setRowLimit(value === 'all' ? null : Number(value));
+    setShowLimitMenu(false);
   };
 
   return (
@@ -407,12 +507,13 @@ const RevenueSessionsTable = ({
                       h === 'Brand' || h === 'Host' ? 'revenue-cell-center' : 'revenue-cell-left'
                     }`}
                     style={{
-                      fontSize: 11,
+                      fontSize: 9,
                       fontWeight: 700,
                       textTransform: 'uppercase',
                       letterSpacing: '0.08em',
                       color: '#fff',
                       padding: '12px 6px',
+                      ...(h === 'Platform' ? { paddingLeft: 16 } : null),
                     }}
                   >
                     <span className={h === 'Period' ? 'hidden sm:inline' : h === 'Viewers' ? 'hidden md:inline' : ''}>
@@ -478,46 +579,46 @@ const RevenueSessionsTable = ({
 
                       {/* Date */}
                       <div className="revenue-cell revenue-cell-left">
-                        <span style={{ fontSize: 13, color: 'var(--muted-foreground)', display: 'block' }}>
+                        <span style={{ fontSize: 11, color: 'var(--muted-foreground)', display: 'block' }}>
                           {format(parseISO(log.date), 'MMM dd, yyyy')}
                         </span>
                       </div>
 
                       {/* Time */}
                       <div className="revenue-cell revenue-cell-left">
-                        <span style={{ fontSize: 13, color: 'var(--muted-foreground)' }}>
+                        <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>
                           {log.time || '00:00'}
                         </span>
                       </div>
 
                       {/* Brand */}
                       <div className="revenue-cell revenue-cell-center revenue-cell-wrap">
-                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', display: 'block' }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--foreground)', display: 'block' }}>
                           {log.brandName}
                         </span>
                       </div>
 
                       {/* Host */}
                       <div className="revenue-cell revenue-cell-center">
-                        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--foreground)', display: 'block' }}>
+                        <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--foreground)', display: 'block' }}>
                           {log.staffName || '—'}
                         </span>
                       </div>
 
                       {/* Period */}
                       <div className="revenue-cell revenue-cell-left hidden sm:block">
-                        <span style={{ fontSize: 12, color: 'var(--muted-foreground)', display: 'block' }}>
+                        <span style={{ fontSize: 10, color: 'var(--muted-foreground)', display: 'block' }}>
                           {log.period}
                         </span>
                         {log.periodRange && (
-                          <span style={{ fontSize: 10, color: 'var(--muted-foreground)', opacity: 0.7, display: 'block' }}>
+                          <span style={{ fontSize: 8, color: 'var(--muted-foreground)', opacity: 0.7, display: 'block' }}>
                             {log.periodRange}
                           </span>
                         )}
                       </div>
 
                       {/* Platform */}
-                      <div className="revenue-cell revenue-cell-left">
+                      <div className="revenue-cell revenue-cell-left" style={{ paddingLeft: 16 }}>
                         <span
                           className="revenue-badge"
                           style={pStyle}
@@ -528,14 +629,14 @@ const RevenueSessionsTable = ({
 
                       {/* Viewers */}
                       <div className="revenue-cell revenue-cell-right hidden md:block">
-                        <span style={{ fontSize: 13, color: 'var(--foreground)' }}>
+                        <span style={{ fontSize: 11, color: 'var(--foreground)' }}>
                           {log.viewers?.toLocaleString()}
                         </span>
                       </div>
 
                       {/* Revenue */}
                       <div className="revenue-cell revenue-cell-right">
-                        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--foreground)' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--foreground)' }}>
                           {formatCurrency(log.revenue)}
                         </span>
                       </div>
@@ -607,22 +708,56 @@ const RevenueSessionsTable = ({
             flexShrink: 0,
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Show:</span>
-              <select 
-                value={showingAll ? 'all' : rowLimit} 
-                onChange={(e) => setRowLimit(e.target.value === 'all' ? null : Number(e.target.value))}
-                className="revenue-select"
-              >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-                <option value="all">All</option>
-              </select>
-              <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>entries</span>
+              <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Show:</span>
+
+              {/* Custom dropdown: menu is always anchored below the trigger
+                  (top: calc(100% + 4px)) so it never flips upward, unlike a
+                  native <select> whose direction is decided by the browser. */}
+              <div className="revenue-select-wrapper" ref={limitDropdownRef}>
+                <button
+                  type="button"
+                  className="revenue-select-trigger"
+                  onClick={() => setShowLimitMenu((prev) => !prev)}
+                  aria-haspopup="listbox"
+                  aria-expanded={showLimitMenu}
+                >
+                  {currentLimitLabel}
+                  <span className={`revenue-select-trigger-icon ${showLimitMenu ? 'revenue-select-trigger-icon-open' : ''}`}>
+                    <ChevronDown size={14} />
+                  </span>
+                </button>
+
+                <AnimatePresence>
+                  {showLimitMenu && (
+                    <motion.div
+                      className="revenue-select-menu"
+                      role="listbox"
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.12 }}
+                    >
+                      {ROW_LIMIT_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          role="option"
+                          aria-selected={currentLimitValue === opt.value}
+                          className={`revenue-select-option ${currentLimitValue === opt.value ? 'revenue-select-option-active' : ''}`}
+                          onClick={() => handleSelectLimit(opt.value)}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>entries</span>
             </div>
             
-            <div style={{ fontSize: 13, color: "var(--muted-foreground)", textAlign: "center" }}>
+            <div style={{ fontSize: 11, color: "var(--muted-foreground)", textAlign: "center" }}>
               {totalCount === 0
                 ? 'No sessions'
                 : showingAll
