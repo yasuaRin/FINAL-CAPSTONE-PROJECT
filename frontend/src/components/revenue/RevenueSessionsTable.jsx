@@ -291,7 +291,7 @@ const RevenueSessionsTable = ({
                       if (brandName) brandName.style.color = 'var(--foreground)';
                       if (hostName) hostName.style.color = 'var(--foreground)';
                       if (num) { num.style.background = 'var(--muted)'; num.style.color = '#2563eb'; }
-                      if (actions) actions.style.opacity = '0';
+                      if (actions) actions.style.opacity = '1';
                     }}
                   >
                     {/* No */}
@@ -393,7 +393,7 @@ const RevenueSessionsTable = ({
                     <div style={{ padding: '14px 8px', textAlign: 'right', minWidth: 0 }}>
                       <div
                         className="row-actions"
-                        style={{ display: 'inline-flex', gap: 6, opacity: 0, transition: 'opacity 0.15s ease' }}
+                        style={{ display: 'inline-flex', gap: 6, opacity: 1, transition: 'opacity 0.15s ease' }}
                       >
                         <button
                           onClick={() => openEditModal(log)}

@@ -655,7 +655,7 @@ if (!isRerunAborted()) updateRerunToast('Model is currently being trained. \nPle
   if (showLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-        <div className="w-11 h-11 border-3 border-muted border-t-[#EE4D2D] rounded-full animate-spin" />
+        <div className="w-11 h-11 border-3 border-muted border-t-[#2563eb] rounded-full animate-spin" />
         <p className="text-muted-foreground text-sm">Loading dashboard data...</p>
         <p className="text-[10px] text-muted-foreground opacity-70">This may take a moment</p>
       </div>

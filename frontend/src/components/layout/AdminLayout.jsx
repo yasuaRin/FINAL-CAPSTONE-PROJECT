@@ -180,7 +180,7 @@ export const AdminLayout = () => {
     <>
       <div className="p-4 sm:p-6 flex items-center justify-between border-b border-sidebar-border">
         <div className="font-sans font-black text-primary text-xl">VH</div>
-        <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-lg transition-colors text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5">
+        <button onClick={() => setIsSidebarOpen(false)} className="p-2.5 sm:p-2 rounded-lg transition-colors text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5">
           <X size={20} />
         </button>
       </div>
@@ -192,7 +192,7 @@ export const AdminLayout = () => {
             to={item.path}
             end={item.path === '/admin'}
             className={({ isActive }) =>
-              `flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 ${
+              `flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 min-h-[44px] ${
                 isActive ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5'
               }`
             }
@@ -205,7 +205,7 @@ export const AdminLayout = () => {
       <div className="p-4 border-t border-sidebar-border space-y-2">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all text-sm text-destructive hover:bg-red-50 dark:hover:bg-red-950/30"
+          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all text-sm text-destructive hover:bg-red-50 dark:hover:bg-red-950/30 min-h-[44px]"
         >
           <LogOut size={18} />
           Sign Out
@@ -228,19 +228,27 @@ export const AdminLayout = () => {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" onClick={() => setIsSidebarOpen(false)} />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 sm:w-72 flex flex-col bg-white dark:bg-card transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* max-w-[85vw] guards against the drawer overflowing extremely narrow
+          (e.g. 280px) devices; w-64/w-72 are unchanged for normal phones+. */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 sm:w-72 max-w-[85vw] flex flex-col bg-white dark:bg-card transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        style={{ paddingLeft: 'env(safe-area-inset-left, 0px)' }}
+      >
         <SidebarContent />
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="shrink-0 z-30 bg-white dark:bg-card border-b border-border sticky top-0 shadow-sm">
+        <header
+          className="shrink-0 z-30 bg-white dark:bg-card border-b border-border sticky top-0 shadow-sm"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
           <div className="px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
             {/* LEFT: Hamburger + Page Title + Date */}
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsSidebarOpen(true)}
-                className="p-1.5 rounded-lg hover:bg-muted dark:hover:bg-white/5 transition-colors"
+                className="p-2.5 sm:p-1.5 -m-1 sm:m-0 rounded-lg hover:bg-muted dark:hover:bg-white/5 transition-colors"
               >
                 <Menu size={18} className="text-muted-foreground" />
               </button>
@@ -270,22 +278,25 @@ export const AdminLayout = () => {
                     value={searchQuery}
                     onChange={e => { setSearchQuery(e.target.value); if (!e.target.value) { setHighlightQuery(''); clearHighlights(); } }}
                     onKeyDown={e => { if (e.key === 'Enter' && searchQuery.trim()) { setHighlightQuery(searchQuery.trim()); setSearchQuery(''); } }}
-                    className="w-full bg-transparent border-none outline-none text-[13px] text-foreground placeholder:text-muted-foreground/60 py-0.5"
+                    /* text-base (16px) on mobile prevents iOS Safari's
+                       automatic zoom-on-focus for inputs under 16px;
+                       reverts to the original 13px from sm: up. */
+                    className="w-full bg-transparent border-none outline-none text-base sm:text-[13px] text-foreground placeholder:text-muted-foreground/60 py-0.5"
                   />
                   {searchQuery && (
-                    <button onClick={() => { setSearchQuery(''); setHighlightQuery(''); clearHighlights(); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                    <button onClick={() => { setSearchQuery(''); setHighlightQuery(''); clearHighlights(); }} className="text-muted-foreground hover:text-foreground transition-colors p-1 -m-1">
                       <X size={14} />
                     </button>
                   )}
                 </div>
 
                 {showDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-card border border-border rounded-xl shadow-xl overflow-hidden z-50 py-1">
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-card border border-border rounded-xl shadow-xl overflow-hidden z-50 py-1 max-h-[60vh] overflow-y-auto">
                     {allResults.length > 0 ? allResults.map(result => (
                       <button
                         key={result.id}
                         onClick={() => { setHighlightQuery(searchQuery.trim()); navigate(result.path); setSearchQuery(''); }}
-                        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-muted transition-colors text-left"
+                        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-muted transition-colors text-left min-h-[44px]"
                       >
                         <div className="flex flex-col gap-0.5">
                           <span className="text-sm font-medium text-foreground">{result.title}</span>
@@ -304,7 +315,7 @@ export const AdminLayout = () => {
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={handleExportReport}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-all whitespace-nowrap"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-all whitespace-nowrap min-h-[36px]"
                 >
                   <Download size={13} />
                   Export Report
@@ -315,7 +326,7 @@ export const AdminLayout = () => {
               <div
                 onClick={() => navigate('/admin/profile')}
                 title={displayName}
-                className="relative w-7 h-7 rounded-full border-2 border-primary/20 overflow-hidden cursor-pointer flex-shrink-0 bg-muted hover:border-primary hover:scale-105 transition-all duration-200"
+                className="relative w-9 h-9 sm:w-7 sm:h-7 rounded-full border-2 border-primary/20 overflow-hidden cursor-pointer flex-shrink-0 bg-muted hover:border-primary hover:scale-105 transition-all duration-200"
               >
                 {avatarUrl ? (
                   <img src={avatarUrl} alt={displayName} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
@@ -340,23 +351,21 @@ export const AdminLayout = () => {
         </section>
 
         {highlightQuery && (
-          <div style={{
-            position: 'fixed', top: '88px', right: '24px', zIndex: 200,
-            display: 'flex', alignItems: 'center', gap: '4px', background: '#1e293b',
-            borderRadius: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-            padding: '8px 12px', color: 'white', fontSize: '13px', userSelect: 'none',
-          }}>
-            <span style={{ color: '#94a3b8', marginRight: '4px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div
+            className="fixed z-[200] top-[104px] sm:top-[88px] right-3 sm:right-6 left-3 sm:left-auto flex items-center gap-1 rounded-[10px] shadow-[0_8px_32px_rgba(0,0,0,0.3)] px-2.5 sm:px-3 py-2 text-white text-[13px] select-none sm:max-w-none max-w-[calc(100vw-1.5rem)]"
+            style={{ background: '#1e293b' }}
+          >
+            <span className="text-[#94a3b8] mr-1 max-w-[100px] sm:max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap">
               {highlightQuery}
             </span>
             <span style={{ color: '#FEF08A', fontWeight: 700, minWidth: '36px', textAlign: 'center' }}>
               {matchCount === 0 ? '0/0' : `${currentMatch}/${matchCount}`}
             </span>
             <div style={{ width: '1px', height: '16px', background: '#334155', margin: '0 4px' }} />
-            <button onClick={goPrev} disabled={matchCount === 0} style={{ background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed', color: matchCount ? 'white' : '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', lineHeight: 1 }}>&#8743;</button>
-            <button onClick={goNext} disabled={matchCount === 0} style={{ background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed', color: matchCount ? 'white' : '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', lineHeight: 1 }}>&#8744;</button>
+            <button onClick={goPrev} disabled={matchCount === 0} className="min-w-[32px] min-h-[32px]" style={{ background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed', color: matchCount ? 'white' : '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', lineHeight: 1 }}>&#8743;</button>
+            <button onClick={goNext} disabled={matchCount === 0} className="min-w-[32px] min-h-[32px]" style={{ background: 'none', border: 'none', cursor: matchCount ? 'pointer' : 'not-allowed', color: matchCount ? 'white' : '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', lineHeight: 1 }}>&#8744;</button>
             <div style={{ width: '1px', height: '16px', background: '#334155', margin: '0 4px' }} />
-            <button onClick={() => { setHighlightQuery(''); clearHighlights(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontSize: '16px', lineHeight: 1 }}>&#x2715;</button>
+            <button onClick={() => { setHighlightQuery(''); clearHighlights(); }} className="min-w-[32px] min-h-[32px]" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontSize: '16px', lineHeight: 1 }}>&#x2715;</button>
           </div>
         )}
       </main>

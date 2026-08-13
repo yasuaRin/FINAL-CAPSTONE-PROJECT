@@ -1,9 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Activity, Brain, RefreshCw, TrendingUp, X } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, ComposedChart, Area,
 } from 'recharts';
+
+// ── Scoped style: color-mix() fallback + chart-canvas responsive height ────
+// color-mix() isn't supported in Safari <16.2 or Firefox <113 (and not at
+// all in legacy Edge). Since these are React inline `style` objects, a
+// browser that can't parse color-mix() can't "skip" just that property —
+// it has to be declared in real CSS so the plain rgba() fallback stays in
+// effect when color-mix() is unsupported. Same idea for the chart height:
+// a CSS class lets it shrink on small screens via a media query, which a
+// numeric height prop passed straight to ResponsiveContainer can't do.
+const CHART_STYLE = `
+  .rlc-filter-chip {
+    background: rgba(37, 99, 235, 0.10);
+    border-color: rgba(37, 99, 235, 0.20);
+  }
+  .rlc-filter-chip {
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    border-color: color-mix(in srgb, var(--primary) 20%, transparent);
+  }
+  .rlc-chart-canvas { height: 380px; }
+  @media (max-width: 640px) {
+    .rlc-chart-canvas { height: 280px; }
+  }
+`;
 
 // ── Tooltip ──────────────────────────────────────────────────────────────────
 const RevenueTooltip = ({ active, payload, formatCurrency }) => {
@@ -18,6 +41,7 @@ const RevenueTooltip = ({ active, payload, formatCurrency }) => {
       padding: '12px 14px',
       boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
       minWidth: '190px',
+      maxWidth: '90vw',
     }}>
       <p style={{
         fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
@@ -74,6 +98,7 @@ const EmptyChart = ({ onRerunModel, isRetraining, hasBrandFilter }) => (
         padding: '8px 16px', background: 'var(--primary)', color: '#fff',
         border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
         cursor: isRetraining ? 'not-allowed' : 'pointer', opacity: isRetraining ? 0.7 : 1,
+        minHeight: '36px',
       }}>
         {isRetraining ? <><Activity size={13} />Training</> : <><Brain size={13} />Run ML Models</>}
       </button>
@@ -82,9 +107,23 @@ const EmptyChart = ({ onRerunModel, isRetraining, hasBrandFilter }) => (
 );
 
 // ── X-Axis Tick ───────────────────────────────────────────────────────────────
-const PeriodTick = ({ x, y, payload, index, visibleData }) => {
+// Roughly how much horizontal room a "Jan 25"-style label needs to not
+// collide with its neighbors.
+const MIN_TICK_SPACING_PX = 56;
+
+const PeriodTick = ({ x, y, payload, index, visibleData, containerWidth }) => {
   const total = visibleData?.length || 1;
-  const step = total > 24 ? 3 : total > 12 ? 2 : 1;
+  // Width-aware when we know the chart's actual rendered width (updates on
+  // resize/split-screen via the ResizeObserver below); falls back to the
+  // old count-only thresholds if width isn't available yet (e.g. very old
+  // browsers without ResizeObserver, or the first render before it fires).
+  let step;
+  if (containerWidth && containerWidth > 0) {
+    const maxLabels = Math.max(1, Math.floor(containerWidth / MIN_TICK_SPACING_PX));
+    step = Math.max(1, Math.ceil(total / maxLabels));
+  } else {
+    step = total > 24 ? 3 : total > 12 ? 2 : 1;
+  }
   if (index % step !== 0) return null;
   return (
     <text x={x} y={y + 14} textAnchor="middle" dominantBaseline="middle"
@@ -114,27 +153,31 @@ const ForecastDot = (props) => {
 // ── Filter Chip Component ────────────────────────────────────────────────────
 // Was a standalone rgba(59,130,246,...) blue, slightly different from the
 // buttons' #2563eb — now both derive from var(--primary), so they match.
+// background/border-color now come from the .rlc-filter-chip class (see
+// CHART_STYLE above) so unsupported browsers fall back to the plain rgba().
 const FilterChip = ({ brand, onRemove }) => (
-  <span style={{
+  <span className="rlc-filter-chip" style={{
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
     padding: '4px 10px',
-    background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
-    border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
     borderRadius: '999px',
     fontSize: '11px',
     fontWeight: 500,
     color: 'var(--primary)',
+    maxWidth: '100%',
   }}>
-    <span>{brand}</span>
+    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}>{brand}</span>
     <button
       onClick={onRemove}
       style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '0',
+        padding: '4px',
+        margin: '-4px',
         background: 'none',
         border: 'none',
         cursor: 'pointer',
@@ -142,8 +185,9 @@ const FilterChip = ({ brand, onRemove }) => (
         opacity: 0.6,
         transition: 'opacity 0.15s',
         borderRadius: '50%',
-        width: '16px',
-        height: '16px',
+        width: '24px',
+        height: '24px',
+        flexShrink: 0,
       }}
       onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
       onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
@@ -173,6 +217,24 @@ export const RevenueLineChart = ({
 
   const hasData = chartData.length > 0;
   const hasBrandFilter = !!selectedBrand;
+
+  // Chart canvas width, kept in sync via ResizeObserver so the X-axis label
+  // spacing (see PeriodTick above) recalculates whenever the window is
+  // resized or the browser is split-screened — not just on initial mount.
+  const [chartWidth, setChartWidth] = useState(0);
+  const chartCanvasRef = useRef(null);
+
+  useEffect(() => {
+    const el = chartCanvasRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setChartWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasData, mounted]);
 
   const firstForecastPeriod = hasForecast
     ? chartData.find((d) => d.forecast > 0)?.displayName
@@ -205,6 +267,7 @@ export const RevenueLineChart = ({
       display: 'flex',
       flexDirection: 'column',
     }}>
+      <style>{CHART_STYLE}</style>
 
       {/* Header */}
       <div style={{
@@ -238,121 +301,124 @@ export const RevenueLineChart = ({
           border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: 600,
           cursor: isRetraining ? 'not-allowed' : 'pointer',
           opacity: isRetraining ? 0.7 : 1, transition: 'background 0.15s', flexShrink: 0,
+          minHeight: '32px',
         }}>
           {isRetraining ? <><Activity size={13} />Retraining</> : <><RefreshCw size={13} />Rerun ML</>}
         </button>
       </div>
 
       {/* Chart area */}
-      <div style={{ flex: 1, minHeight: '300px', padding: '16px 8px 0' }}>
+      <div style={{ flex: 1, minHeight: '300px', minWidth: 0, padding: '16px 8px 0' }}>
         {isLoading ? (
           <ChartSkeleton />
         ) : hasData && mounted ? (
-          <ResponsiveContainer width="100%" height={380} minHeight={280} minWidth={0}>
-            <ComposedChart data={normalizedData} margin={{ top: 16, right: 24, left: 16, bottom: 40 }}>
+          <div className="rlc-chart-canvas" ref={chartCanvasRef} style={{ minWidth: 0 }}>
+            <ResponsiveContainer width="100%" height="100%" minHeight={280} minWidth={0}>
+              <ComposedChart data={normalizedData} margin={{ top: 16, right: 24, left: 16, bottom: 40 }}>
 
-              <defs>
-                <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%"   stopColor="#3b82f6" stopOpacity={0.18} />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.01} />
-                </linearGradient>
-                <linearGradient id="gradForecast" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%"   stopColor="#ef4444" stopOpacity={0.14} />
-                  <stop offset="100%" stopColor="#ef4444" stopOpacity={0.01} />
-                </linearGradient>
-              </defs>
+                <defs>
+                  <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%"   stopColor="#3b82f6" stopOpacity={0.18} />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.01} />
+                  </linearGradient>
+                  <linearGradient id="gradForecast" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%"   stopColor="#ef4444" stopOpacity={0.14} />
+                    <stop offset="100%" stopColor="#ef4444" stopOpacity={0.01} />
+                  </linearGradient>
+                </defs>
 
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="var(--border, #e5e7eb)"
-                strokeOpacity={0.5}
-                vertical={false}
-              />
-
-              <XAxis
-                dataKey="displayName"
-                axisLine={false}
-                tickLine={false}
-                tick={(props) => <PeriodTick {...props} visibleData={chartData} />}
-                padding={{ left: 16, right: 16 }}
-                height={44}
-                interval={0}
-              />
-
-              {/* Left Y-axis — Actual revenue scale */}
-              <YAxis
-                yAxisId="actual"
-                orientation="left"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 10, fill: 'var(--muted-foreground, #9ca3af)', fontWeight: 500 }}
-                tickFormatter={formatCompactCurrency}
-                width={76}
-                domain={['auto', 'auto']}
-              />
-
-              {/* Right Y-axis — Forecast revenue scale (independent) */}
-              <YAxis
-                yAxisId="forecast"
-                orientation="right"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 10, fill: '#ef4444', fontWeight: 500, opacity: 0.7 }}
-                tickFormatter={formatCompactCurrency}
-                width={76}
-                domain={['auto', 'auto']}
-              />
-
-              <Tooltip
-                content={<RevenueTooltip formatCurrency={formatCurrency} />}
-                cursor={{ stroke: 'var(--border, #e5e7eb)', strokeWidth: 1, strokeDasharray: '4 2' }}
-              />
-
-              {firstForecastPeriod && (
-                <ReferenceLine
-                  yAxisId="actual"
-                  x={firstForecastPeriod}
-                  stroke="#ef4444"
-                  strokeDasharray="6 4"
-                  strokeWidth={1.5}
-                  label={{
-                    value: 'FORECAST',
-                    position: 'insideTopRight',
-                    fontSize: 9, fill: '#ef4444', fontWeight: 700, letterSpacing: '0.06em',
-                  }}
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="var(--border, #e5e7eb)"
+                  strokeOpacity={0.5}
+                  vertical={false}
                 />
-              )}
 
-              {/* Actual Revenue — blue solid line + fill + dots */}
-              <Area
-                yAxisId="actual"
-                type="monotone"
-                dataKey="actual"
-                name="Actual Revenue"
-                stroke="#3b82f6"
-                strokeWidth={2.5}
-                fill="url(#gradActual)"
-                dot={<ActualDot />}
-                activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
-                connectNulls={false}
-              />
+                <XAxis
+                  dataKey="displayName"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={(props) => <PeriodTick {...props} visibleData={chartData} containerWidth={chartWidth} />}
+                  padding={{ left: 16, right: 16 }}
+                  height={44}
+                  interval={0}
+                />
 
-              {/* Forecast Revenue — red solid line + fill + dots, independent scale */}
-              <Area
-                yAxisId="forecast"
-                type="monotone"
-                dataKey="forecast"
-                name="Forecast Revenue"
-                stroke="#ef4444"
-                strokeWidth={2.5}
-                fill="url(#gradForecast)"
-                dot={<ForecastDot />}
-                activeDot={{ r: 6, fill: '#ef4444', stroke: '#fff', strokeWidth: 2 }}
-                connectNulls={false}
-              />
+                {/* Left Y-axis — Actual revenue scale */}
+                <YAxis
+                  yAxisId="actual"
+                  orientation="left"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fill: 'var(--muted-foreground, #9ca3af)', fontWeight: 500 }}
+                  tickFormatter={formatCompactCurrency}
+                  width={76}
+                  domain={['auto', 'auto']}
+                />
 
-            </ComposedChart>
-          </ResponsiveContainer>
+                {/* Right Y-axis — Forecast revenue scale (independent) */}
+                <YAxis
+                  yAxisId="forecast"
+                  orientation="right"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fill: '#ef4444', fontWeight: 500, opacity: 0.7 }}
+                  tickFormatter={formatCompactCurrency}
+                  width={76}
+                  domain={['auto', 'auto']}
+                />
+
+                <Tooltip
+                  content={<RevenueTooltip formatCurrency={formatCurrency} />}
+                  cursor={{ stroke: 'var(--border, #e5e7eb)', strokeWidth: 1, strokeDasharray: '4 2' }}
+                />
+
+                {firstForecastPeriod && (
+                  <ReferenceLine
+                    yAxisId="actual"
+                    x={firstForecastPeriod}
+                    stroke="#ef4444"
+                    strokeDasharray="6 4"
+                    strokeWidth={1.5}
+                    label={{
+                      value: 'FORECAST',
+                      position: 'insideTopRight',
+                      fontSize: 9, fill: '#ef4444', fontWeight: 700, letterSpacing: '0.06em',
+                    }}
+                  />
+                )}
+
+                {/* Actual Revenue — blue solid line + fill + dots */}
+                <Area
+                  yAxisId="actual"
+                  type="monotone"
+                  dataKey="actual"
+                  name="Actual Revenue"
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
+                  fill="url(#gradActual)"
+                  dot={<ActualDot />}
+                  activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
+                  connectNulls={false}
+                />
+
+                {/* Forecast Revenue — red solid line + fill + dots, independent scale */}
+                <Area
+                  yAxisId="forecast"
+                  type="monotone"
+                  dataKey="forecast"
+                  name="Forecast Revenue"
+                  stroke="#ef4444"
+                  strokeWidth={2.5}
+                  fill="url(#gradForecast)"
+                  dot={<ForecastDot />}
+                  activeDot={{ r: 6, fill: '#ef4444', stroke: '#fff', strokeWidth: 2 }}
+                  connectNulls={false}
+                />
+
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         ) : (
           <EmptyChart onRerunModel={onRerunModel} isRetraining={isRetraining} hasBrandFilter={hasBrandFilter} />
         )}
@@ -362,7 +428,8 @@ export const RevenueLineChart = ({
       {hasData && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: '24px', padding: '12px 20px',
+          flexWrap: 'wrap',
+          gap: '16px 24px', padding: '12px 20px',
           borderTop: '1px solid var(--border, #e5e7eb)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

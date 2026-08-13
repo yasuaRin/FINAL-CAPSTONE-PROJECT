@@ -272,7 +272,7 @@ export const AdminLogin = () => {
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0A0A0A]">
         <ToastNotification toast={toast} hideToast={hideToast} />
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-12 h-12 border-3 border-[#2563eb] border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
             Verifying access...
           </p>

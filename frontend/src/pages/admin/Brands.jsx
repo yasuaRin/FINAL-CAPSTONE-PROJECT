@@ -346,7 +346,7 @@ export default function Brands() {
 
   return (
     <div id="brands-export-container">
-      <div className="pt-2 pb-12">
+      <div className="pt-2 pb-12 px-3 sm:px-4 md:px-0">
         <style>{BASE_STYLE}</style>
 
         <AnimatePresence>
@@ -355,7 +355,7 @@ export default function Brands() {
               initial={{ opacity: 0, y: -20, x: "-50%" }}
               animate={{ opacity: 1, y: 20, x: "-50%" }}
               exit={{ opacity: 0, y: -20, x: "-50%" }}
-              className="fixed top-4 left-1/2 z-[100] bg-card text-foreground px-6 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-border min-w-[260px]"
+              className="fixed top-4 left-1/2 z-[100] bg-card text-foreground px-4 sm:px-6 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-border w-[90vw] max-w-[380px] sm:min-w-[260px] sm:w-auto"
             >
               <div className={`rounded-full p-1 flex items-center justify-center flex-shrink-0 ${notification.includes("Failed") ? "bg-red-500" : "bg-emerald-500"}`}>
                 <CheckCircle2 size={16} color="white" />
@@ -369,14 +369,14 @@ export default function Brands() {
         <div className="flex justify-between items-start mb-4 flex-wrap gap-4">
           <div>
             <p className="text-[11px] text-muted-foreground mb-1">Pages / brands</p>
-            <h1 className="text-[22px] font-extrabold text-foreground tracking-tight">Brand Portfolio</h1>
+            <h1 className="text-[20px] sm:text-[22px] font-extrabold text-foreground tracking-tight">Brand Portfolio</h1>
             <p className="text-muted-foreground text-sm mt-1">Track and manage all your brands in one place.</p>
           </div>
         </div>
 
         {/* Add Button */}
         <div className="flex items-center justify-start mb-5">
-          <button onClick={() => openForm()} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border-none bg-[#2563eb] text-white font-bold text-sm cursor-pointer hover:bg-[#1d4ed8] transition-colors">
+          <button onClick={() => openForm()} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border-none bg-[#2563eb] text-white font-bold text-sm cursor-pointer hover:bg-[#1d4ed8] transition-colors">
             <Plus size={16} /> Add Brand
           </button>
         </div>
@@ -384,7 +384,8 @@ export default function Brands() {
         {/* Main Card */}
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <div className="grid grid-cols-[60px_2fr_1.4fr_1.2fr_1fr_100px] bg-[#2563eb] px-2">
+            {/* Column headers — desktop/tablet only, rows stack into cards below md */}
+            <div className="hidden md:grid grid-cols-[60px_2fr_1.4fr_1.2fr_1fr_100px] bg-[#2563eb] px-2">
               {["No", "Brand", "Revenue", "Risk Level", "Status", "Actions"].map((h) => (
                 <div key={h} className={`py-3.5 px-4 text-[10px] font-bold uppercase tracking-wider text-white ${h === "Actions" ? "text-right" : "text-left"}`}>
                   {h}
@@ -392,14 +393,14 @@ export default function Brands() {
               ))}
             </div>
 
-            <div className="flex flex-col gap-1 p-2">
+            <div className="flex flex-col gap-2 md:gap-1 p-2">
               {brandMatrix.length === 0 ? (
                 <div className="py-12 text-center text-muted-foreground text-sm">No brands found.</div>
               ) : (
                 brandMatrix.map((brand, idx) => (
                   <div
                     key={brand.brand_id}
-                    className="grid grid-cols-[60px_2fr_1.4fr_1.2fr_1fr_100px] items-center rounded-xl border border-border bg-card transition-all duration-300"
+                    className="grid grid-cols-1 md:grid-cols-[60px_2fr_1.4fr_1.2fr_1fr_100px] items-center rounded-xl border border-border bg-card transition-all duration-300 divide-y divide-border md:divide-y-0"
                     style={{
                       transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
                       opacity: brand.isActive ? 1 : 0.5,
@@ -433,7 +434,7 @@ export default function Brands() {
                       }
                     }}
                   >
-                    <div className="py-4 px-3 text-center">
+                    <div className="hidden md:block py-4 px-3 text-center">
                       <span
                         className="row-number"
                         style={{
@@ -454,8 +455,8 @@ export default function Brands() {
                       </span>
                     </div>
 
-                    <div className="py-4 px-5">
-                      <div className="flex items-center gap-3">
+                    <div className="py-3 px-4 md:py-4 md:px-5">
+                      <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className={`brand-name text-sm font-bold transition-colors duration-200 ${brand.isActive ? "text-foreground" : "text-muted-foreground"} ${!brand.isActive ? "line-through" : ""}`}>
                             {brand.brand_name}
@@ -464,10 +465,13 @@ export default function Brands() {
                             {brand.brand_category || 'General'}
                           </p>
                         </div>
+                        <div className="md:hidden flex-shrink-0">
+                          <StatusBadge status={brand.isActive ? 'active' : 'inactive'} />
+                        </div>
                       </div>
                     </div>
 
-                    <div className="py-4 px-5">
+                    <div className="py-3 px-4 md:py-4 md:px-5">
                       <div className="flex items-center gap-2">
                         <span className={`text-sm font-semibold ${brand.isActive ? "text-foreground" : "text-muted-foreground"} ${!brand.isActive ? "line-through" : ""}`}>
                           {formatRevenue(brand.totalRevenue)}
@@ -484,7 +488,7 @@ export default function Brands() {
                       </p>
                     </div>
 
-                    <div className="py-4 px-5">
+                    <div className="py-3 px-4 md:py-4 md:px-5">
                       {brand.riskLevel ? (
                         <span className={`inline-flex px-3 py-1 rounded-xl text-[9px] font-bold uppercase tracking-wider border ${
                           !brand.isActive ? 'bg-gray-500/10 text-gray-500 border-gray-500/20'
@@ -500,21 +504,21 @@ export default function Brands() {
                         </span>
                       )}
                       {brand.riskReasons.length > 0 && (
-                        <div className="text-[10px] text-muted-foreground mt-1 max-w-[200px] truncate">
+                        <div className="text-[10px] text-muted-foreground mt-1 max-w-full md:max-w-[200px] truncate">
                           {brand.riskReasons[0]}
                         </div>
                       )}
                     </div>
 
-                    <div className="py-4 px-5">
+                    <div className="hidden md:block py-4 px-5">
                       <StatusBadge status={brand.isActive ? 'active' : 'inactive'} />
                     </div>
 
-                    <div className="py-4 px-5 text-right">
+                    <div className="py-3 px-4 md:py-4 md:px-5 flex justify-end md:justify-end">
                       <div className="inline-flex gap-1.5">
                         <button 
                           onClick={() => openForm(brand)} 
-                          className="w-8 h-8 rounded-full border-none bg-[#2563eb]/10 text-[#2563eb] transition-all duration-200 hover:bg-[#2563eb]/20 hover:scale-110 flex items-center justify-center cursor-pointer"
+                          className="w-9 h-9 md:w-8 md:h-8 rounded-full border-none bg-[#2563eb]/10 text-[#2563eb] transition-all duration-200 hover:bg-[#2563eb]/20 hover:scale-110 flex items-center justify-center cursor-pointer"
                           disabled={!brand.isActive}
                           style={{ opacity: brand.isActive ? 1 : 0.4 }}
                         >
@@ -523,7 +527,7 @@ export default function Brands() {
                         {isSuperAdmin && (
                           <button 
                             onClick={() => setDeleteId(brand.brand_id)} 
-                            className="w-8 h-8 rounded-full border-none bg-red-500/10 text-[#DB1A1A] transition-all duration-200 hover:bg-red-500/20 hover:scale-110 flex items-center justify-center cursor-pointer"
+                            className="w-9 h-9 md:w-8 md:h-8 rounded-full border-none bg-red-500/10 text-[#DB1A1A] transition-all duration-200 hover:bg-red-500/20 hover:scale-110 flex items-center justify-center cursor-pointer"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -541,7 +545,7 @@ export default function Brands() {
         {isSuperAdmin && deleteId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div onClick={() => !isDeleting && setDeleteId(null)} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-            <div className="relative z-10 bg-card border border-border rounded-2xl p-8 max-w-[420px] w-full shadow-2xl">
+            <div className="relative z-10 bg-card border border-border rounded-2xl p-6 sm:p-8 max-w-[420px] w-full shadow-2xl">
               <div className="flex flex-col items-center gap-4 text-center">
                 <div className="w-13 h-13 rounded-full bg-red-500/10 flex items-center justify-center">
                   <AlertTriangle size={24} color="#DB1A1A" />
@@ -563,18 +567,18 @@ export default function Brands() {
 
         {/* Add / Edit Modal */}
         {isFormOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
             <div onClick={closeForm} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
             <div className="relative z-10 bg-card border border-border rounded-2xl max-w-[600px] w-full max-h-[90vh] shadow-2xl overflow-hidden">
-              <div className="px-6 py-4 bg-[#2563eb] flex justify-between items-center">
+              <div className="px-4 sm:px-6 py-4 bg-[#2563eb] flex justify-between items-center">
                 <h3 className="text-base font-bold text-white">{editingBrand ? "Edit Brand" : "Add New Brand"}</h3>
                 <button onClick={closeForm} className="p-1.5 rounded-lg border-none bg-white/15 cursor-pointer text-white hover:bg-white/25 transition-colors flex">
                   <X size={16} />
                 </button>
               </div>
-              <div className="p-7 overflow-y-auto max-h-[calc(90vh-60px)]">
+              <div className="p-5 sm:p-7 overflow-y-auto max-h-[calc(90vh-60px)]">
                 <form onSubmit={handleSubmit}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Brand Name *</label>
                       <input
@@ -637,7 +641,7 @@ export default function Brands() {
                     </select>
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <button 
                       type="button" 
                       onClick={closeForm} 
