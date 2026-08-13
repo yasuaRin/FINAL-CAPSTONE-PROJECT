@@ -843,12 +843,12 @@ if (allPeriods.length > 0) {
   };
 
   const dropdownTriggerCls = (isOpen) =>
-    `w-full bg-muted/40 border rounded-xl px-3 py-2.5 text-xs text-left flex items-center justify-between transition-all ${
+    `w-full bg-muted/40 border rounded-xl px-3 py-2.5 text-sm text-left flex items-center justify-between transition-all ${
       isOpen ? 'border-[#2563eb] ring-1 ring-[#2563eb]/20' : 'border-border'
     }`;
 
   const dropdownOptionCls = (isSelected) =>
-    `w-full text-left px-3 py-2 text-xs transition-colors ${
+    `w-full text-left px-3 py-2 text-sm transition-colors ${
       isSelected
         ? 'bg-[#2563eb]/10 text-[#2563eb] font-semibold'
         : 'hover:bg-muted/50 text-foreground'
@@ -860,7 +860,7 @@ if (allPeriods.length > 0) {
         <div className="text-center space-y-4">
           {/* FIXED: Blue loading spinner */}
           <div className="w-12 h-12 border-3 border-[#2563eb] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Loading...</p>
+          <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -891,10 +891,10 @@ if (allPeriods.length > 0) {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
           {title}
         </p>
-        <p className="text-base sm:text-lg font-bold text-foreground leading-tight break-all">{value}</p>
+        <p className="text-lg sm:text-xl font-bold text-foreground leading-tight break-all">{value}</p>
         {children}
       </div>
     );
@@ -917,7 +917,7 @@ if (allPeriods.length > 0) {
                 <CheckCircle2 size={16} className="text-white" />
               )}
             </div>
-            <span className="text-sm font-bold tracking-tight text-white">{notification}</span>
+            <span className="text-base font-bold tracking-tight text-white">{notification}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -926,10 +926,10 @@ if (allPeriods.length > 0) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Analytics</span>
+            <span className="text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground">Analytics</span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Revenue</h1>
-          <p className="text-muted-foreground mt-1 font-light text-xs">Track performance, analyze trends, and monitor platform distribution.</p>
+          <h1 className="text-4xl font-bold tracking-tight text-foreground">Revenue</h1>
+          <p className="text-muted-foreground mt-1 font-light text-sm">Track performance, analyze trends, and monitor platform distribution.</p>
         </div>
       </div>
 
@@ -948,7 +948,7 @@ if (allPeriods.length > 0) {
         >
           <div className="space-y-2 mt-2 pt-3 border-t border-border/40">
             {topPerformersFromView.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No data in range</p>
+              <p className="text-sm text-muted-foreground">No data in range</p>
             ) : (
               topPerformersFromView.map((staff, i) => (
                 <div
@@ -957,10 +957,10 @@ if (allPeriods.length > 0) {
                   onClick={() => { setSelectedStaffForDetail(staff); setShowStaffDetailModal(true); }}
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span className="text-[8px] font-black text-muted-foreground/50 w-3 shrink-0">{i + 1}</span>
-                    <span className="text-[11px] font-bold text-[#2563eb] truncate hover:underline">{staff.staffName}</span>
+                    <span className="text-xs font-black text-muted-foreground/50 w-3 shrink-0">{i + 1}</span>
+                    <span className="text-sm font-bold text-[#2563eb] truncate hover:underline">{staff.staffName}</span>
                   </div>
-                  <span className="text-[9px] font-bold text-foreground truncate">See details</span>
+                  <span className="text-xs font-bold text-foreground truncate">See details</span>
                 </div>
               ))
             )}
@@ -973,8 +973,8 @@ if (allPeriods.length > 0) {
           metricKey="platform"
         >
           <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Revenue</span>
-            <span className="text-[11px] font-bold text-foreground break-all">{formatCurrency(topPlatform.revenue)}</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Revenue</span>
+            <span className="text-sm font-bold text-foreground break-all">{formatCurrency(topPlatform.revenue)}</span>
           </div>
         </KeyMetricCardItem>
 
@@ -984,8 +984,8 @@ if (allPeriods.length > 0) {
           metricKey="sessions"
         >
           <div className="mt-2 pt-3 border-t border-border/40 flex items-center gap-1.5 flex-wrap">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Avg / session</span>
-            <span className="text-[11px] font-bold text-foreground break-all">{formatCurrency(Math.round(avgRevenueInRange))}</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Avg / session</span>
+            <span className="text-sm font-bold text-foreground break-all">{formatCurrency(Math.round(avgRevenueInRange))}</span>
           </div>
         </KeyMetricCardItem>
       </div>
@@ -1038,7 +1038,7 @@ if (allPeriods.length > 0) {
             >
               <div className="sticky top-0 z-10 px-5 py-4 border-b border-border bg-card">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-foreground">
+                  <h3 className="text-base font-bold uppercase tracking-[0.2em] text-foreground">
                     {editingSession ? 'Edit Session Record' : 'Record New Session'}
                   </h3>
                   <button
@@ -1049,7 +1049,7 @@ if (allPeriods.length > 0) {
                     <X size={18} />
                   </button>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   {editingSession ? 'Update existing session data' : 'Add a new live session record'}
                 </p>
               </div>
@@ -1057,7 +1057,7 @@ if (allPeriods.length > 0) {
               <div className="overflow-y-auto max-h-[calc(90vh-140px)] px-5 py-5 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Date <span className="text-[#2563eb]">*</span></label>
+                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">Date <span className="text-[#2563eb]">*</span></label>
                     <input
                       type="date"
                       value={sessionFormData.date}
@@ -1067,25 +1067,25 @@ if (allPeriods.length > 0) {
                       }))}
                       disabled={isSubmitting}
                       required
-                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-base disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Time <span className="text-[#2563eb]">*</span></label>
+                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">Time <span className="text-[#2563eb]">*</span></label>
                     <input
                       type="time"
                       value={sessionFormData.time}
                       onChange={e => setSessionFormData(p => ({ ...p, time: e.target.value }))}
                       disabled={isSubmitting}
                       required
-                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-base disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Brand <span className="text-[#2563eb]">*</span></label>
+                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">Brand <span className="text-[#2563eb]">*</span></label>
                     <div className="relative">
                       <button
                         type="button"
@@ -1114,7 +1114,7 @@ if (allPeriods.length > 0) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Channel <span className="text-[#2563eb]">*</span></label>
+                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">Channel <span className="text-[#2563eb]">*</span></label>
                     <div className="relative">
                       <button
                         type="button"
@@ -1142,7 +1142,7 @@ if (allPeriods.length > 0) {
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1.5 sm:col-span-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">
+                      <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">
                         Period <span className="text-[#2563eb]">*</span>
                       </label>
                       <input
@@ -1156,11 +1156,11 @@ if (allPeriods.length > 0) {
                         }}
                         disabled={isSubmitting}
                         required
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-base disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                       />
                     </div>
                     <div className="space-y-1.5 sm:col-span-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Period Start <span className="text-[#2563eb]">*</span></label>
+                      <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">Period Start <span className="text-[#2563eb]">*</span></label>
                       <input
                         type="date"
                         value={sessionFormData.period_start_date}
@@ -1171,11 +1171,11 @@ if (allPeriods.length > 0) {
                         }))}
                         disabled={isSubmitting}
                         required
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-base disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                       />
                     </div>
                     <div className="space-y-1.5 sm:col-span-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Period End <span className="text-[#2563eb]">*</span></label>
+                      <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">Period End <span className="text-[#2563eb]">*</span></label>
                       <input
                         type="date"
                         min={sessionFormData.period_start_date || undefined}
@@ -1183,18 +1183,18 @@ if (allPeriods.length > 0) {
                         onChange={e => setSessionFormData(p => ({ ...p, period_end_date: e.target.value }))}
                         disabled={isSubmitting}
                         required
-                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-base disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                       />
                     </div>
                   </div>
-                  <p className="text-[9px] text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground">
                     Enter period number and its date range. The date range will be stored in the periods table.
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Host <span className="text-[#2563eb]">*</span></label>
+                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">Host <span className="text-[#2563eb]">*</span></label>
                     <div className="relative">
                       <button
                         type="button"
@@ -1220,7 +1220,7 @@ if (allPeriods.length > 0) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Viewers <span className="text-[#2563eb]">*</span></label>
+                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">Viewers <span className="text-[#2563eb]">*</span></label>
                     <input
                       type="text" 
                       inputMode="numeric"
@@ -1232,13 +1232,13 @@ if (allPeriods.length > 0) {
                     }}
                       disabled={isSubmitting}
                       required
-                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+                      className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-base disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Revenue (Rp) <span className="text-[#2563eb]">*</span></label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">Revenue (Rp) <span className="text-[#2563eb]">*</span></label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1250,19 +1250,19 @@ if (allPeriods.length > 0) {
                   }}
                     disabled={isSubmitting}
                     required
-                    className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+                    className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-base font-bold disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                   />
                 </div>
               </div>
 
               <div className="sticky bottom-0 z-10 px-5 py-4 border-t border-border bg-card flex flex-col sm:flex-row items-center justify-end gap-3">
-                <button onClick={closeSessionModal} disabled={isSubmitting} className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase text-muted-foreground hover:bg-muted transition-all disabled:opacity-50 order-2 sm:order-1">
+                <button onClick={closeSessionModal} disabled={isSubmitting} className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-bold uppercase text-muted-foreground hover:bg-muted transition-all disabled:opacity-50 order-2 sm:order-1">
                   Cancel
                 </button>
                 <button
                   onClick={editingSession ? handleUpdateSession : handleCreateSession}
                   disabled={isSubmitting}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase bg-[#2563eb] text-white hover:bg-[#1d4ed8] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 order-1 sm:order-2"
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-bold uppercase bg-[#2563eb] text-white hover:bg-[#1d4ed8] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 order-1 sm:order-2"
                 >
                   {isSubmitting ? (
                     <>
@@ -1293,13 +1293,13 @@ if (allPeriods.length > 0) {
               <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
                 <AlertTriangle size={32} />
               </div>
-              <h3 className="text-lg font-bold mb-2">Delete Session?</h3>
-              <p className="text-xs text-muted-foreground mb-8">
+              <h3 className="text-xl font-bold mb-2">Delete Session?</h3>
+              <p className="text-sm text-muted-foreground mb-8">
                 This will permanently remove the record for <span className="text-foreground font-bold">{sessionToDelete.brandName}</span>.
               </p>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setSessionToDelete(null)} disabled={isSubmitting} className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase text-muted-foreground hover:bg-muted transition-all disabled:opacity-50">Cancel</button>
-                <button onClick={confirmDelete} disabled={isSubmitting} className="px-6 py-3 rounded-2xl text-[10px] font-bold uppercase bg-red-500 text-white hover:bg-red-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                <button onClick={() => setSessionToDelete(null)} disabled={isSubmitting} className="px-6 py-3 rounded-2xl text-xs font-bold uppercase text-muted-foreground hover:bg-muted transition-all disabled:opacity-50">Cancel</button>
+                <button onClick={confirmDelete} disabled={isSubmitting} className="px-6 py-3 rounded-2xl text-xs font-bold uppercase bg-red-500 text-white hover:bg-red-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
                   {isSubmitting ? (
                     <>
                       <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1327,43 +1327,43 @@ if (allPeriods.length > 0) {
               className="relative z-10 bg-card w-full max-w-sm rounded-2xl border border-border shadow-2xl overflow-hidden"
             >
               <div className="px-4 py-3 border-b border-border bg-[#2563eb]/10">
-                <h3 className="text-lg font-bold text-foreground">{selectedStaffForDetail.staffName}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Performance Details</p>
+                <h3 className="text-xl font-bold text-foreground">{selectedStaffForDetail.staffName}</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">Performance Details</p>
               </div>
 
               <div className="p-4 space-y-3">
                 <div className="flex items-center justify-between pb-2 border-b border-border/40">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Sessions</p>
-                    <p className="text-xl font-bold text-foreground">{selectedStaffForDetail.sessionCount.toLocaleString()}</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sessions</p>
+                    <p className="text-2xl font-bold text-foreground">{selectedStaffForDetail.sessionCount.toLocaleString()}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Score</p>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-xl font-bold text-[#2563eb]">{selectedStaffForDetail.finalScore}</span>
-                      <span className="text-xs text-muted-foreground">/100</span>
+                      <span className="text-2xl font-bold text-[#2563eb]">{selectedStaffForDetail.finalScore}</span>
+                      <span className="text-sm text-muted-foreground">/100</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="bg-muted/30 rounded-lg p-2">
-                    <p className="text-[10px] text-muted-foreground">Revenue</p>
-                    <p className="text-xs font-bold text-foreground truncate">{formatCurrency(Math.round(selectedStaffForDetail.totalRevenue / 1000000))}M</p>
+                    <p className="text-xs text-muted-foreground">Revenue</p>
+                    <p className="text-sm font-bold text-foreground truncate">{formatCurrency(Math.round(selectedStaffForDetail.totalRevenue / 1000000))}M</p>
                   </div>
                   <div className="bg-muted/30 rounded-lg p-2">
-                    <p className="text-[10px] text-muted-foreground">Viewers</p>
-                    <p className="text-xs font-bold text-foreground">{(selectedStaffForDetail.totalViewers / 1000).toFixed(0)}K</p>
+                    <p className="text-xs text-muted-foreground">Viewers</p>
+                    <p className="text-sm font-bold text-foreground">{(selectedStaffForDetail.totalViewers / 1000).toFixed(0)}K</p>
                   </div>
                   <div className="bg-muted/30 rounded-lg p-2">
-                    <p className="text-[10px] text-muted-foreground">Likes</p>
-                    <p className="text-xs font-bold text-foreground">{(selectedStaffForDetail.totalLikes / 1000).toFixed(0)}K</p>
+                    <p className="text-xs text-muted-foreground">Likes</p>
+                    <p className="text-sm font-bold text-foreground">{(selectedStaffForDetail.totalLikes / 1000).toFixed(0)}K</p>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
-                  <span className="text-xs font-bold text-muted-foreground">Revenue/Viewer</span>
-                  <span className="text-sm font-bold text-foreground">{formatCurrency(Math.round(selectedStaffForDetail.revenuePerViewer))}</span>
+                  <span className="text-sm font-bold text-muted-foreground">Revenue/Viewer</span>
+                  <span className="text-base font-bold text-foreground">{formatCurrency(Math.round(selectedStaffForDetail.revenuePerViewer))}</span>
                 </div>
 
                 <div className="space-y-2 pt-1">
@@ -1373,7 +1373,7 @@ if (allPeriods.length > 0) {
                     { label: 'Likes',   score: selectedStaffForDetail.likesScore,  color: 'bg-red-500' },
                   ].map(({ label, score, color }) => (
                     <div key={label}>
-                      <div className="flex justify-between text-[10px] mb-1">
+                      <div className="flex justify-between text-xs mb-1">
                         <span>{label}</span><span>{score}%</span>
                       </div>
                       <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
@@ -1387,7 +1387,7 @@ if (allPeriods.length > 0) {
               <div className="p-3 bg-muted/20 border-t border-border">
                 <button
                   onClick={() => setShowStaffDetailModal(false)}
-                  className="w-full py-2.5 rounded-xl text-xs font-bold uppercase bg-[#2563eb] text-white hover:bg-[#1d4ed8] transition-all"
+                  className="w-full py-2.5 rounded-xl text-sm font-bold uppercase bg-[#2563eb] text-white hover:bg-[#1d4ed8] transition-all"
                 >
                   Close
                 </button>
@@ -1398,7 +1398,7 @@ if (allPeriods.length > 0) {
       </AnimatePresence>
 
       <div className="pt-8 border-t border-border">
-        <p className="text-[9px] text-center text-muted-foreground uppercase tracking-[0.3em] font-bold">
+        <p className="text-[11px] text-center text-muted-foreground uppercase tracking-[0.3em] font-bold">
           VidHelp Intelligence Hub • {revenueData?.length?.toLocaleString() || '0'} Total Sessions
         </p>
       </div>
