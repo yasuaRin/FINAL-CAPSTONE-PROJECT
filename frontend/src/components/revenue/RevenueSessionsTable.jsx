@@ -427,7 +427,7 @@ const RevenueSessionsTable = ({
       <div
         id="session-intelligence"
         className="rounded-3xl border border-border shadow-sm flex flex-col h-full w-full"
-        style={{ background: 'rgba(37, 99, 235, 0.06)' }}
+        style={{ background: 'var(--card)' }}
       >
         {/* Loading bar */}
         <div className="h-[3px] w-full bg-border/40 overflow-hidden flex-shrink-0 rounded-t-3xl">
@@ -486,18 +486,16 @@ const RevenueSessionsTable = ({
         <div className="revenue-table-container">
           <div className="revenue-table-scroll">
             <div className="revenue-table-inner">
-              {/* Header - sticky */}
+              {/* Header - sticky with muted background matching Brand panel */}
               <div
                 className="revenue-grid-header"
-                style={{
-                  background: '#2563eb',
-                  borderRadius: 10,
-                  padding: '0 4px',
-                  flexShrink: 0,
-                  position: 'sticky',
-                  top: 0,
-                  zIndex: 10,
-                }}
+               style={{
+                background: '#2563eb',
+                borderRadius: 10,
+                padding: '0 4px',
+                flexShrink: 0,
+                borderBottom: '1px solid var(--border)',
+              }}
               >
                 {['No', 'Date', 'Time', 'Brand', 'Host', 'Period', 'Platform', 'Viewers', 'Revenue', 'Actions'].map((h, i) => (
                   <div
@@ -511,7 +509,7 @@ const RevenueSessionsTable = ({
                       fontWeight: 700,
                       textTransform: 'uppercase',
                       letterSpacing: '0.08em',
-                      color: '#fff',
+                     color: '#ffffff',
                       padding: '12px 6px',
                       ...(h === 'Platform' ? { paddingLeft: 16 } : null),
                     }}
