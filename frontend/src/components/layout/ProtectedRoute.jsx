@@ -25,3 +25,5 @@ export const ProtectedRoute = ({ children }) => {
   // Render children if authenticated
   return children;
 };
+
+

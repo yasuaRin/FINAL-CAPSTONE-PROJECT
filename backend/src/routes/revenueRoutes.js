@@ -22,17 +22,17 @@ const router = express.Router();
 // ENDPOINT 1: Compare Models
 // POST /api/revenue/models/compare
 // ─────────────────────────────────────────────────────────────
-router.post('/models/compare', async (req, res) => {
-  try {
-    res.json({ 
-      success: true, 
-      message: 'Model comparison - implement MLBridge or call Python directly',
-      output: 'Placeholder - implement compareModels()'
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+// router.post('/models/compare', async (req, res) => {
+//   try {
+//     res.json({ 
+//       success: true, 
+//       message: 'Model comparison - implement MLBridge or call Python directly',
+//       output: 'Placeholder - implement compareModels()'
+//     });
+//   } catch (error) {
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// });
 
 // ─────────────────────────────────────────────────────────────
 // ENDPOINT 2: Generate predictions using best model

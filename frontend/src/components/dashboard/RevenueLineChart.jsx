@@ -6,13 +6,6 @@ import {
 } from 'recharts';
 
 // ── Scoped style: color-mix() fallback + chart-canvas responsive height ────
-// color-mix() isn't supported in Safari <16.2 or Firefox <113 (and not at
-// all in legacy Edge). Since these are React inline `style` objects, a
-// browser that can't parse color-mix() can't "skip" just that property —
-// it has to be declared in real CSS so the plain rgba() fallback stays in
-// effect when color-mix() is unsupported. Same idea for the chart height:
-// a CSS class lets it shrink on small screens via a media query, which a
-// numeric height prop passed straight to ResponsiveContainer can't do.
 const CHART_STYLE = `
   .rlc-filter-chip {
     background: rgba(37, 99, 235, 0.10);
@@ -108,23 +101,56 @@ const EmptyChart = ({ onRerunModel, isRetraining, hasBrandFilter }) => (
 
 // ── X-Axis Tick ───────────────────────────────────────────────────────────────
 // Roughly how much horizontal room a "Jan 25"-style label needs to not
-// collide with its neighbors.
+// collide with its neighbors when laid out horizontally.
 const MIN_TICK_SPACING_PX = 56;
+// Rotated labels need much less horizontal room per tick, so on small
+// screens we switch to rotated labels instead of just dropping most of them.
+const MIN_TICK_SPACING_ROTATED_PX = 34;
+// Fixed "chrome" around the plot area that eats into the measured chart
+// canvas width: left Y-axis (76) + right Y-axis (76) + chart margins
+// (left 16 + right 24). Subtracting this gives the width actually
+// available for X-axis labels, instead of the full canvas width.
+const PLOT_CHROME_WIDTH = 76 + 76 + 16 + 24;
+// Below this usable-plot-width, switch ticks to rotated mode.
+const ROTATE_BREAKPOINT_PX = 480;
 
-const PeriodTick = ({ x, y, payload, index, visibleData, containerWidth }) => {
+const PeriodTick = ({ x, y, payload, index, visibleData, containerWidth, rotate }) => {
   const total = visibleData?.length || 1;
-  // Width-aware when we know the chart's actual rendered width (updates on
-  // resize/split-screen via the ResizeObserver below); falls back to the
-  // old count-only thresholds if width isn't available yet (e.g. very old
-  // browsers without ResizeObserver, or the first render before it fires).
+
+  // Width-aware when we know the chart's actual rendered plot width
+  // (updates on resize/split-screen via the ResizeObserver below); falls
+  // back to the old count-only thresholds if width isn't available yet
+  // (e.g. very old browsers without ResizeObserver, or the first render
+  // before it fires).
   let step;
   if (containerWidth && containerWidth > 0) {
-    const maxLabels = Math.max(1, Math.floor(containerWidth / MIN_TICK_SPACING_PX));
+    const spacing = rotate ? MIN_TICK_SPACING_ROTATED_PX : MIN_TICK_SPACING_PX;
+    const maxLabels = Math.max(1, Math.floor(containerWidth / spacing));
     step = Math.max(1, Math.ceil(total / maxLabels));
   } else {
     step = total > 24 ? 3 : total > 12 ? 2 : 1;
   }
   if (index % step !== 0) return null;
+
+  if (rotate) {
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text
+          x={0}
+          y={10}
+          transform="rotate(-40)"
+          textAnchor="end"
+          fill="var(--muted-foreground, #9ca3af)"
+          fontSize={9}
+          fontWeight={500}
+          fontFamily="inherit"
+        >
+          {payload.value}
+        </text>
+      </g>
+    );
+  }
+
   return (
     <text x={x} y={y + 14} textAnchor="middle" dominantBaseline="middle"
       fill="var(--muted-foreground, #9ca3af)" fontSize={10} fontWeight={500} fontFamily="inherit">
@@ -151,10 +177,6 @@ const ForecastDot = (props) => {
 };
 
 // ── Filter Chip Component ────────────────────────────────────────────────────
-// Was a standalone rgba(59,130,246,...) blue, slightly different from the
-// buttons' #2563eb — now both derive from var(--primary), so they match.
-// background/border-color now come from the .rlc-filter-chip class (see
-// CHART_STYLE above) so unsupported browsers fall back to the plain rgba().
 const FilterChip = ({ brand, onRemove }) => (
   <span className="rlc-filter-chip" style={{
     display: 'inline-flex',
@@ -207,7 +229,7 @@ export const RevenueLineChart = ({
   formatCompactCurrency,
   formatCurrency,
   selectedBrand = null,
-  onClearBrandFilter, // ✅ Callback to clear filter
+  onClearBrandFilter,
 }) => {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -236,6 +258,12 @@ export const RevenueLineChart = ({
     return () => observer.disconnect();
   }, [hasData, mounted]);
 
+  // Usable plot width = measured canvas width minus the fixed chrome
+  // (both Y-axes + chart margins) that the X-axis labels actually have
+  // to share. This is what drives both tick-skipping and rotation.
+  const usablePlotWidth = chartWidth > 0 ? Math.max(0, chartWidth - PLOT_CHROME_WIDTH) : 0;
+  const rotateTicks = usablePlotWidth > 0 && usablePlotWidth < ROTATE_BREAKPOINT_PX;
+
   const firstForecastPeriod = hasForecast
     ? chartData.find((d) => d.forecast > 0)?.displayName
     : null;
@@ -247,7 +275,6 @@ export const RevenueLineChart = ({
     forecast: d.forecast > 0 ? d.forecast : null,
   }));
 
-  // ✅ Handle clear filter with console log for debugging
   const handleClearFilter = () => {
     console.log('🗑️ Clearing brand filter...');
     if (onClearBrandFilter) {
@@ -285,11 +312,10 @@ export const RevenueLineChart = ({
             }}>
               Revenue Forecast & Trend Analysis
             </h3>
-            
-            {/* ✅ Filter Chip - shows X button when brand is selected */}
+
             {selectedBrand && (
-              <FilterChip 
-                brand={selectedBrand} 
+              <FilterChip
+                brand={selectedBrand}
                 onRemove={handleClearFilter}
               />
             )}
@@ -314,7 +340,10 @@ export const RevenueLineChart = ({
         ) : hasData && mounted ? (
           <div className="rlc-chart-canvas" ref={chartCanvasRef} style={{ minWidth: 0 }}>
             <ResponsiveContainer width="100%" height="100%" minHeight={280} minWidth={0}>
-              <ComposedChart data={normalizedData} margin={{ top: 16, right: 24, left: 16, bottom: 40 }}>
+              <ComposedChart
+                data={normalizedData}
+                margin={{ top: 16, right: 24, left: 16, bottom: rotateTicks ? 52 : 40 }}
+              >
 
                 <defs>
                   <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
@@ -338,9 +367,16 @@ export const RevenueLineChart = ({
                   dataKey="displayName"
                   axisLine={false}
                   tickLine={false}
-                  tick={(props) => <PeriodTick {...props} visibleData={chartData} containerWidth={chartWidth} />}
+                  tick={(props) => (
+                    <PeriodTick
+                      {...props}
+                      visibleData={chartData}
+                      containerWidth={usablePlotWidth}
+                      rotate={rotateTicks}
+                    />
+                  )}
                   padding={{ left: 16, right: 16 }}
-                  height={44}
+                  height={rotateTicks ? 60 : 44}
                   interval={0}
                 />
 

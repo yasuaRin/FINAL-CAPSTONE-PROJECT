@@ -215,7 +215,7 @@ const RevenueSessionsTable = ({
                   key={h}
                   style={{
                     padding: '12px 10px',
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     letterSpacing: '0.08em',
@@ -307,7 +307,7 @@ const RevenueSessionsTable = ({
                           height: 28,
                           borderRadius: 8,
                           background: 'var(--muted)',
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: 700,
                           color: '#2563eb',
                           transition: 'background 0.18s ease, color 0.18s ease',
@@ -319,39 +319,39 @@ const RevenueSessionsTable = ({
 
                     {/* Date */}
                     <div style={{ padding: '14px 8px', minWidth: 0, overflow: 'hidden' }}>
-                      <span style={{ fontSize: 12, color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+                      <span style={{ fontSize: 11, color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
                         {format(parseISO(log.date), 'MMM dd, yyyy')}
                       </span>
                     </div>
 
                     {/* Time */}
                     <div style={{ padding: '14px 8px', minWidth: 0, overflow: 'hidden' }}>
-                      <span style={{ fontSize: 12, color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 11, color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>
                         {log.time || '00:00'}
                       </span>
                     </div>
 
                     {/* Brand - Centered */}
                     <div style={{ padding: '14px 8px', textAlign: 'center', minWidth: 0, overflow: 'hidden' }}>
-                      <span className="session-brand-name" style={{ fontSize: 12, fontWeight: 600, color: 'var(--foreground)', whiteSpace: 'nowrap', transition: 'color 0.15s ease' }}>
+                      <span className="session-brand-name" style={{ fontSize: 11, fontWeight: 600, color: 'var(--foreground)', whiteSpace: 'nowrap', transition: 'color 0.15s ease' }}>
                         {log.brandName}
                       </span>
                     </div>
 
                     {/* Host - NEW COLUMN */}
                     <div style={{ padding: '14px 8px', textAlign: 'center', minWidth: 0, overflow: 'hidden' }}>
-                      <span className="session-host-name" style={{ fontSize: 12, fontWeight: 500, color: 'var(--foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', transition: 'color 0.15s ease' }}>
+                      <span className="session-host-name" style={{ fontSize: 11, fontWeight: 500, color: 'var(--foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', transition: 'color 0.15s ease' }}>
                         {log.staffName || '—'}
                       </span>
                     </div>
 
                     {/* Period */}
                     <div className="hidden sm:block" style={{ padding: '14px 8px', minWidth: 0, overflow: 'hidden' }}>
-                      <span style={{ fontSize: 11, color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+                      <span style={{ fontSize: 10, color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
                         {log.period}
                       </span>
                       {log.periodRange && (
-                        <span style={{ fontSize: 10, color: 'var(--muted-foreground)', opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+                        <span style={{ fontSize: 9, color: 'var(--muted-foreground)', opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
                           {log.periodRange}
                         </span>
                       )}
@@ -361,7 +361,7 @@ const RevenueSessionsTable = ({
                     <div style={{ padding: '14px 6px', minWidth: 0, overflow: 'hidden' }}>
                       <span
                         style={{
-                          fontSize: 10,
+                          fontSize: 9,
                           fontWeight: 700,
                           textTransform: 'uppercase',
                           padding: '3px 10px',
@@ -378,14 +378,14 @@ const RevenueSessionsTable = ({
 
                     {/* Viewers */}
                     <div className="hidden md:block" style={{ padding: '14px 8px', textAlign: 'right', minWidth: 0, overflow: 'hidden' }}>
-                      <span style={{ fontSize: 12, color: 'var(--foreground)', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 11, color: 'var(--foreground)', whiteSpace: 'nowrap' }}>
                         {log.viewers?.toLocaleString()}
                       </span>
                     </div>
 
                     {/* Revenue */}
                     <div style={{ padding: '14px 10px', textAlign: 'right', minWidth: 0, overflow: 'hidden' }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--foreground)', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--foreground)', whiteSpace: 'nowrap' }}>
                         {formatCurrency(log.revenue)}
                       </span>
                     </div>
