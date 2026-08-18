@@ -224,17 +224,23 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
             .from('risk_monitor')
             .select('brand_id, risk_level_id, risk_levels(name), reasons')
             .order('risk_level_id', { ascending: true }),
-          supabase.from('brands').select('brand_id, brand_name'),
+          // brand_status added so we know which brands are inactive/churned
+          // and can grey them out here the same way Brands.jsx does.
+          supabase.from('brands').select('brand_id, brand_name, brand_status'),
         ]);
         if (error) throw error;
-        const brandMap = new Map(brands?.map((b) => [b.brand_id, b.brand_name]));
+        const brandMap = new Map(brands?.map((b) => [b.brand_id, b]));
         setRiskData(
-          (data || []).map((item) => ({
-            id:      item.brand_id,
-            name:    brandMap.get(item.brand_id) || 'Unknown',
-            risk:    item.risk_levels?.name || 'Unassessed',
-            reasons: item.reasons || [],
-          }))
+          (data || []).map((item) => {
+            const brand = brandMap.get(item.brand_id);
+            return {
+              id:       item.brand_id,
+              name:     brand?.brand_name || 'Unknown',
+              risk:     item.risk_levels?.name || 'Unassessed',
+              reasons:  item.reasons || [],
+              isActive: brand ? brand.brand_status === 'active' : true,
+            };
+          })
         );
       } catch (err) {
         console.error('Error fetching risk data:', err);
@@ -292,19 +298,26 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
             </div>
           ) : (
             riskData.map((brand, idx) => {
-              const cfg = RISK_CONFIG[brand.risk] || RISK_CONFIG.Low;
+              // Inactive/churned brands render greyed-out, matching the
+              // opacity-0.5 + grey-badge treatment Brands.jsx already uses.
+              const cfg = brand.isActive
+                ? (RISK_CONFIG[brand.risk] || RISK_CONFIG.Low)
+                : { color: '#6b7280', bg: 'rgba(107,114,128,0.08)', border: 'rgba(107,114,128,0.2)', dot: '#6b7280' };
               const reasonsText = brand.reasons?.join(' • ') || 'No risk factors detected';
               return (
                 <div
                   key={brand.id}
-                  className="flex flex-col gap-2 sm:grid sm:grid-cols-[minmax(120px,180px)_minmax(90px,120px)_minmax(0,1fr)] sm:gap-3 sm:items-center px-4 py-3 sm:py-2 transition-all cursor-pointer"
+                  className="flex flex-col gap-2 sm:grid sm:grid-cols-[minmax(120px,180px)_minmax(90px,120px)_minmax(0,1fr)] sm:gap-3 sm:items-center px-4 py-3 sm:py-2 transition-all"
                   style={{
-                    transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
+                    transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease, opacity 0.2s ease",
                     borderRadius: idx === 0 ? '8px 8px 0 0' : idx === riskData.length - 1 ? '0 0 8px 8px' : '0',
                     border: '1px solid var(--border)',
                     background: 'var(--card)',
+                    opacity: brand.isActive ? 1 : 0.5,
+                    cursor: brand.isActive ? 'pointer' : 'default',
                   }}
                   onMouseEnter={(e) => {
+                    if (!brand.isActive) return;
                     e.currentTarget.style.transform = "translateY(-4px)";
                     e.currentTarget.style.boxShadow = "0 12px 32px color-mix(in srgb, var(--primary) 15%, transparent), 0 4px 12px rgba(0,0,0,0.08)";
                     e.currentTarget.style.borderColor = "color-mix(in srgb, var(--primary) 30%, transparent)";
@@ -313,6 +326,7 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
                     if (name) name.style.color = "var(--primary)";
                   }}
                   onMouseLeave={(e) => {
+                    if (!brand.isActive) return;
                     e.currentTarget.style.transform = "translateY(0)";
                     e.currentTarget.style.boxShadow = "none";
                     e.currentTarget.style.borderColor = "var(--border)";
@@ -320,14 +334,17 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
                     const name = e.currentTarget.querySelector(".brand-name");
                     if (name) name.style.color = "var(--foreground)";
                   }}
-                  onClick={() => onBrandClick?.(brand.id)}
+                  onClick={() => brand.isActive && onBrandClick?.(brand.id)}
                 >
                   {/* Brand + Risk Level share a row on mobile so the card
                       header reads naturally; they split into separate grid
                       columns from sm: up. */}
                   <div className="flex items-center justify-between gap-2 sm:contents">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="brand-name text-[11px] font-bold text-foreground truncate transition-colors" style={{ transition: "color 0.15s ease" }}>
+                      <span
+                        className={`brand-name text-[11px] font-bold truncate transition-colors ${brand.isActive ? 'text-foreground' : 'text-muted-foreground line-through'}`}
+                        style={{ transition: "color 0.15s ease" }}
+                      >
                         {brand.name}
                       </span>
                     </div>
@@ -338,7 +355,9 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
                         style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}
                       >
                         <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: cfg.dot }} />
-                        <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: cfg.color }}>{brand.risk}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: cfg.color }}>
+                          {brand.isActive ? brand.risk : 'Churned'}
+                        </span>
                       </div>
                     </div>
                   </div>
