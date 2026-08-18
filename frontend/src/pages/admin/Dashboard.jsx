@@ -270,10 +270,15 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
         </div>
       </div>
 
-      {/* Grid Layout - Replaces table */}
-      <div className="w-full overflow-x-auto p-3">
-        {/* Header Row */}
-        <div className="grid grid-cols-[180px_120px_1fr] gap-3 px-4 py-1.5 border-b border-border/40 bg-muted/10 rounded-t-lg">
+      {/* Grid Layout - Replaces table.
+          Below sm: stacked card layout (no grid) so nothing is cropped.
+          From sm: up: responsive grid using fr-units (not fixed px) so it
+          reflows smoothly across phones/tablets/laptops/ultra-wide instead
+          of forcing a fixed 180px/120px column width. */}
+      <div className="w-full p-3">
+        {/* Header Row — hidden on mobile since the stacked cards below
+            show their own inline labels instead of relying on column headers. */}
+        <div className="hidden sm:grid sm:grid-cols-[minmax(120px,180px)_minmax(90px,120px)_minmax(0,1fr)] gap-3 px-4 py-1.5 border-b border-border/40 bg-muted/10 rounded-t-lg">
           <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Brand</div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Risk Level</div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Risk Factors</div>
@@ -288,10 +293,11 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
           ) : (
             riskData.map((brand, idx) => {
               const cfg = RISK_CONFIG[brand.risk] || RISK_CONFIG.Low;
+              const reasonsText = brand.reasons?.join(' • ') || 'No risk factors detected';
               return (
                 <div
                   key={brand.id}
-                  className="grid grid-cols-[180px_120px_1fr] gap-3 px-4 py-2 items-center transition-all cursor-pointer"
+                  className="flex flex-col gap-2 sm:grid sm:grid-cols-[minmax(120px,180px)_minmax(90px,120px)_minmax(0,1fr)] sm:gap-3 sm:items-center px-4 py-3 sm:py-2 transition-all cursor-pointer"
                   style={{
                     transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease",
                     borderRadius: idx === 0 ? '8px 8px 0 0' : idx === riskData.length - 1 ? '0 0 8px 8px' : '0',
@@ -299,8 +305,6 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
                     background: 'var(--card)',
                   }}
                   onMouseEnter={(e) => {
-                    // Was rgba(219,26,26,...) — the public-site red — now the
-                    // admin brand color (blue) via var(--primary).
                     e.currentTarget.style.transform = "translateY(-4px)";
                     e.currentTarget.style.boxShadow = "0 12px 32px color-mix(in srgb, var(--primary) 15%, transparent), 0 4px 12px rgba(0,0,0,0.08)";
                     e.currentTarget.style.borderColor = "color-mix(in srgb, var(--primary) 30%, transparent)";
@@ -318,28 +322,43 @@ const CriticalRiskMonitor = ({ onBrandClick }) => {
                   }}
                   onClick={() => onBrandClick?.(brand.id)}
                 >
-                  {/* Brand */}
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="brand-name text-[11px] font-bold text-foreground truncate transition-colors" style={{ transition: "color 0.15s ease" }}>
-                      {brand.name}
-                    </span>
-                  </div>
+                  {/* Brand + Risk Level share a row on mobile so the card
+                      header reads naturally; they split into separate grid
+                      columns from sm: up. */}
+                  <div className="flex items-center justify-between gap-2 sm:contents">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="brand-name text-[11px] font-bold text-foreground truncate transition-colors" style={{ transition: "color 0.15s ease" }}>
+                        {brand.name}
+                      </span>
+                    </div>
 
-                  {/* Risk Level */}
-                  <div>
-                    <div
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full"
-                      style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}
-                    >
-                      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: cfg.dot }} />
-                      <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: cfg.color }}>{brand.risk}</span>
+                    <div>
+                      <div
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full"
+                        style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}
+                      >
+                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: cfg.dot }} />
+                        <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: cfg.color }}>{brand.risk}</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Risk Factors */}
+                  {/* Risk Factors — no longer truncated/cropped. Wraps onto
+                      multiple lines (clamped to 3 so one bad brand can't
+                      blow out row height), with a native tooltip via
+                      `title` so the full text is always reachable. */}
                   <div className="min-w-0">
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      {brand.reasons?.join(' • ') || 'No risk factors detected'}
+                    <p
+                      className="text-[11px] sm:text-[11px] text-muted-foreground whitespace-normal break-words leading-snug"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                      title={reasonsText}
+                    >
+                      {reasonsText}
                     </p>
                   </div>
                 </div>
